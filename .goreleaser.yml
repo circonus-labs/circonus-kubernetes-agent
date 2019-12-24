@@ -1,0 +1,87 @@
+project_name: circonus-kubernetes-agent
+
+before:
+    hooks:
+        - go mod tidy
+        - ./build_lint.sh
+        
+builds:
+    -
+        main: main.go
+        binary: sbin/circonus-kubernetes-agentd
+        env:
+            - CGO_ENABLED=0
+            - GODEBUG=netdns=go
+        flags: 
+            # - -a
+        goos:
+            - linux
+        goarch:
+            - amd64
+            - arm64
+        ignore:
+            -
+                goarch: 386
+        ldflags:
+            - -w
+            - -extldflags "-static"
+            - -X github.com/circonus-labs/circonus-kubernetes-agent/internal/release.VERSION={{.Version}}
+            - -X github.com/circonus-labs/circonus-kubernetes-agent/internal/release.COMMIT={{.ShortCommit}}
+            - -X github.com/circonus-labs/circonus-kubernetes-agent/internal/release.DATE={{.Date}}
+            - -X github.com/circonus-labs/circonus-kubernetes-agent/internal/release.TAG={{.Tag}}
+dockers:
+    -
+        goos: linux
+        goarch: amd64
+        goarm: ''
+        binaries:
+            - sbin/circonus-kubernetes-agentd
+        image_templates:
+            - "circonuslabs/{{.ProjectName}}:{{.Tag}}"
+            - "circonuslabs/{{.ProjectName}}:latest"
+        skip_push: false
+        dockerfile: docker/x86_64/Dockerfile
+        build_flag_templates:
+            - "--label=org.label-schema.schema-version=1.0"
+            - "--label=org.label-schema.version={{.Version}}"
+            - "--label=org.label-schema.name={{.ProjectName}}"
+    -
+        goos: linux
+        goarch: arm64
+        goarm: ''
+        binaries:
+            - sbin/circonus-kubernetes-agentd
+        image_templates:
+            - "circonuslabs/{{.ProjectName}}-arm64:{{.Tag}}"
+            - "circonuslabs/{{.ProjectName}}-arm64:latest"
+        skip_push: false
+        dockerfile: docker/arm64/Dockerfile
+        build_flag_templates:
+            - "--label=org.label-schema.schema-version=1.0"
+            - "--label=org.label-schema.version={{.Version}}"
+            - "--label=org.label-schema.name={{.ProjectName}}"
+
+archives:
+    -   
+        id: default
+        name_template: "{{.ProjectName}}_{{.Version}}_{{.Os}}_{{.Arch}}"
+        format: tar.gz
+        replacements:
+            amd64: x86_64
+        files:
+            - LICENSE
+            - README.md
+            - CHANGELOG.md
+
+release:
+    github:
+        owner: circonus-labs
+        name: circonus-kubernetes-agent
+    draft: false
+    prerelease: auto
+
+snapshot:
+    name_template: SNAPSHOT-{{.Commit}}
+
+checksum:
+    name_template: "{{.ProjectName}}_checksums.txt"
