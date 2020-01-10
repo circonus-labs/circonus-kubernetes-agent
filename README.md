@@ -8,7 +8,10 @@ An agent designed to retrieve metrics from a Kubernetes cluster. Runs as a deplo
 
 1. Clone repo
 1. Verify `deploy/authrbac.yaml`, alter any applicable settings for cluster security
-1. Change any applicable settings in `deploy/configuration.yaml` - at a minimum, a Circonus API Token, check target, and kubernetes name are required
+1. Change any applicable settings in `deploy/configuration.yaml`, minimum required:
+   * Circonus API Token
+   * check target - so the agent can find the check on restart (short, unique string w/o spaces - normally this is an FQDN)
+   * Kubernetes name - used for check title when creating a check
 1. Change any applicable settings in `deploy/deployment.yaml`
 1. Apply `kubectl apply -f deploy/`
 
@@ -20,4 +23,4 @@ Developed against and tested with...
 * etcd v3.4.3
 * calico v3.10
 * metrics-server v0.3.6
-* kube-state-metrics v1.7.2
+* kube-state-metrics v1.7.2 (arm) and v1.8.0 (amd)

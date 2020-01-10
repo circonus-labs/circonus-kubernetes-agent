@@ -10,14 +10,14 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.6.4 // indirect
 	github.com/pelletier/go-toml v1.6.0
 	github.com/pkg/errors v0.8.1
-	github.com/prometheus/client_model v0.0.0-20191202183732-d1d2010b5bee
+	github.com/prometheus/client_model v0.1.0
 	github.com/prometheus/common v0.7.0
 	github.com/rs/zerolog v1.17.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
-	github.com/spf13/viper v1.5.0
+	github.com/spf13/viper v1.6.1
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
+	golang.org/x/sys v0.0.0-20200107162124-548cf772de50
 	gopkg.in/yaml.v2 v2.2.7
 	k8s.io/api v0.17.0
 	k8s.io/apimachinery v0.17.0

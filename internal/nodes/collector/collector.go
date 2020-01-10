@@ -454,9 +454,12 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 			if nc.done() {
 				break
 			}
-			podLabels, err := nc.getPodLabels(pod.PodRef.Namespace, pod.PodRef.Name)
+			collect, podLabels, err := nc.getPodLabels(pod.PodRef.Namespace, pod.PodRef.Name)
 			if err != nil {
 				nc.log.Warn().Err(err).Str("pod", pod.PodRef.Name).Str("ns", pod.PodRef.Namespace).Msg("fetching pod labels")
+			}
+			if !collect {
+				continue
 			}
 			var podStreamTags []string
 			podStreamTags = append(podStreamTags, parentStreamTags...)
@@ -517,9 +520,12 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 		if nc.done() {
 			break
 		}
-		podLabels, err := nc.getPodLabels(pod.PodRef.Namespace, pod.PodRef.Name)
+		collect, podLabels, err := nc.getPodLabels(pod.PodRef.Namespace, pod.PodRef.Name)
 		if err != nil {
 			nc.log.Warn().Err(err).Str("pod", pod.PodRef.Name).Str("ns", pod.PodRef.Namespace).Msg("fetching pod labels")
+		}
+		if !collect {
+			continue
 		}
 		var podStreamTags []string
 		podStreamTags = append(podStreamTags, parentStreamTags...)
@@ -655,24 +661,25 @@ type podMeta struct {
 	Labels map[string]string `json:"labels"`
 }
 
-func (nc *Collector) getPodLabels(ns string, name string) ([]string, error) {
+func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error) {
+	collect := false
 	tags := []string{}
 
 	client, err := k8s.NewAPIClient(nc.tlsConfig)
 	if err != nil {
-		return tags, err
+		return collect, tags, err
 	}
 	defer client.CloseIdleConnections()
 
 	reqURL := nc.cfg.URL + "/api/v1/namespaces/" + ns + "/pods/" + name
 	req, err := k8s.NewAPIRequest(nc.cfg.BearerToken, reqURL)
 	if err != nil {
-		return tags, err
+		return collect, tags, err
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return tags, err
+		return collect, tags, err
 	}
 	defer resp.Body.Close()
 
@@ -680,22 +687,34 @@ func (nc *Collector) getPodLabels(ns string, name string) ([]string, error) {
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			nc.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
-			return nil, err
+			return collect, nil, err
 		}
 		nc.log.Warn().Str("url", reqURL).Str("status", resp.Status).RawJSON("response", data).Msg("error from API server")
-		return nil, errors.Errorf("error from api %s (%s)", resp.Status, string(data))
+		return collect, nil, errors.Errorf("error from api %s (%s)", resp.Status, string(data))
 	}
 
 	var ps podSpec
 	if err := json.NewDecoder(resp.Body).Decode(&ps); err != nil {
-		return tags, err
+		return collect, tags, err
+	}
+
+	collect = true
+	if nc.cfg.PodLabelKey != "" {
+		collect = false
+		if v, ok := ps.Metadata.Labels[nc.cfg.PodLabelKey]; ok {
+			if nc.cfg.PodLabelVal == "" {
+				collect = true
+			} else if v == nc.cfg.PodLabelVal {
+				collect = true
+			}
+		}
 	}
 
 	for k, v := range ps.Metadata.Labels {
 		tags = append(tags, k+":"+v)
 	}
 
-	return tags, nil
+	return collect, tags, nil
 }
 
 func (nc *Collector) done() bool {
