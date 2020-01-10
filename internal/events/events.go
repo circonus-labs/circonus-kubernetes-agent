@@ -107,9 +107,24 @@ func (e *Events) Start(ctx context.Context, tlsConfig *tls.Config) {
 	e.log.Debug().Msg("closing event watcher")
 }
 
+type abridgedEvent struct {
+	Namespace         string `json:"namespace"`
+	SelfLink          string `json:"selfLink"`
+	CreationTimestamp int64  `json:"creationTimestamp"`
+	Reason            string `json:"reason"`
+	Message           string `json:"message"`
+}
+
 func (e *Events) submitEvent(event *corev1.Event) {
 	ets := event.GetCreationTimestamp().UTC()
-	data, err := json.Marshal(event)
+	ae := abridgedEvent{
+		Namespace:         event.GetNamespace(),
+		SelfLink:          event.GetSelfLink(),
+		CreationTimestamp: event.GetCreationTimestamp().UTC().Unix(),
+		Reason:            event.Reason,
+		Message:           event.Message,
+	}
+	data, err := json.Marshal(ae)
 	if err != nil {
 		e.log.Error().Err(err).Str("data", string(data)).Msg("parsing event")
 		return
