@@ -133,6 +133,12 @@ const (
 	// K8SIncludePods include pod metrics
 	K8SIncludePods = "kubernetes.include_pod_metrics"
 
+	// K8SPodLabelKey include pod if label key found
+	K8SPodLabelKey = "kubernetes.pod_label_key"
+
+	// K8SPodLabelVal include pod if label value matches
+	K8SPodLabelVal = "kubernetes.pod_label_val"
+
 	// K8SIncludeContainers include container metrics
 	// NOTE: will not be included unless include_pods is true
 	K8SIncludeContainers = "kubernetes.include_container_metrics"

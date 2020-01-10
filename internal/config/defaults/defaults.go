@@ -67,6 +67,8 @@ const (
 	K8SEnableNodes            = true
 	K8SNodeSelector           = "" // blank=all
 	K8SIncludePods            = true
+	K8SPodLabelKey            = "" // blank=all
+	K8SPodLabelVal            = "" // blank=all
 	K8SIncludeContainers      = false
 )
 

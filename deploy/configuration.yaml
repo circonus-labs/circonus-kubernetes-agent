@@ -73,6 +73,10 @@
       kubernetes-node-selector: ""
       ## include pod metrics, requires nodes to be enabled
       kubernetes-include-pod-metrics: "true"
+      ## include only pods with this label key, blank = all pods
+      kubernetes-pod-label-key: ""
+      ## include only pods with label key and value, blank = all pods with label key
+      kubernetes-pod-label-val: ""
       ## include container metrics, requires nodes+pods to be enabled
       kubernetes-include-container-metrics: "false"
       ## collection interval, how often to collect metrics (note if a previous 

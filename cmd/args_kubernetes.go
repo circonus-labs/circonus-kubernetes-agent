@@ -247,6 +247,44 @@ func init() {
 
 	{
 		const (
+			key          = keys.K8SPodLabelKey
+			longOpt      = "k8s-pod-label-key"
+			envVar       = release.ENVPREFIX + "_K8S_POD_LABEL_KEY"
+			description  = "Include pods with label"
+			defaultValue = defaults.K8SPodLabelKey
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		const (
+			key          = keys.K8SPodLabelVal
+			longOpt      = "k8s-pod-label-val"
+			envVar       = release.ENVPREFIX + "_K8S_POD_LABEL_VAL"
+			description  = "Include pods with pod label and matching value"
+			defaultValue = defaults.K8SPodLabelVal
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		const (
 			key          = keys.K8SIncludeContainers
 			longOpt      = "k8s-include-containers"
 			envVar       = release.ENVPREFIX + "_K8S_INCLUDE_CONTAINERS"

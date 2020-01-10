@@ -39,6 +39,8 @@ type Cluster struct {
 	NodeSelector           string `mapstructure:"node_selector" json:"node_selector" toml:"node_selector" yaml:"node_selector"`
 	IncludeContainers      bool   `mapstructure:"include_container_metrics" json:"include_container_metrics" toml:"include_container_metrics" yaml:"include_container_metrics"`
 	IncludePods            bool   `mapstructure:"include_pod_metrics" json:"include_pod_metrics" toml:"include_pod_metrics" yaml:"include_pod_metrics"`
+	PodLabelKey            string `mapstructure:"pod_label_key" json:"pod_label_key" toml:"pod_label" yaml:"pod_label_key"`
+	PodLabelVal            string `mapstructure:"pod_label_val" json:"pod_label_val" toml:"pod_label" yaml:"pod_label_val"`
 	Name                   string `json:"name" toml:"name" yaml:"name"`
 	Interval               string `json:"interval" toml:"interval" yaml:"interval"`
 	NodePoolSize           uint   `mapstructure:"node_pool_size" json:"node_pool_size" toml:"node_pool_size" yaml:"node_pool_size"`
