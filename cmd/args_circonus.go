@@ -287,11 +287,11 @@ func init() {
 
 	{
 		const (
-			key          = keys.Base64Tags
-			longOpt      = "base64-tags"
-			envVar       = release.ENVPREFIX + "_BASE64_TAGS"
-			description  = "Use base64 encoding for stream tags"
-			defaultValue = defaults.Base64Tags
+			key          = keys.NoBase64
+			longOpt      = "no-base64"
+			envVar       = release.ENVPREFIX + "_NO_BASE64"
+			description  = "Disable base64 encoding for stream tags"
+			defaultValue = defaults.NoBase64
 		)
 
 		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
@@ -350,11 +350,11 @@ func init() {
 
 	{
 		const (
-			key          = keys.UseGZIP
-			longOpt      = "use-gzip"
-			envVar       = release.ENVPREFIX + "_USE_GZIP"
-			description  = "Enable gzip compression when submitting metrics"
-			defaultValue = defaults.UseGZIP
+			key          = keys.NoGZIP
+			longOpt      = "no-gzip"
+			envVar       = release.ENVPREFIX + "_NO_GZIP"
+			description  = "Disable gzip compression when submitting metrics"
+			defaultValue = defaults.NoGZIP
 		)
 
 		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))

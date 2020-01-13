@@ -14,6 +14,7 @@ import (
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/cluster"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
@@ -60,10 +61,16 @@ func New() (*Agent, error) {
 	}
 
 	// Set the hidden settings based on viper
-	cfg.Circonus.Base64Tags = viper.GetBool(keys.Base64Tags)
+	cfg.Circonus.Base64Tags = defaults.Base64Tags
+	if viper.GetBool(keys.NoBase64) {
+		cfg.Circonus.Base64Tags = false
+	}
+	cfg.Circonus.UseGZIP = defaults.UseGZIP
+	if viper.GetBool(keys.NoGZIP) {
+		cfg.Circonus.UseGZIP = false
+	}
 	cfg.Circonus.DryRun = viper.GetBool(keys.DryRun)
 	cfg.Circonus.StreamMetrics = viper.GetBool(keys.StreamMetrics)
-	cfg.Circonus.UseGZIP = viper.GetBool(keys.UseGZIP)
 
 	if len(cfg.Clusters) > 0 { // multiple clusters
 		for _, clusterConfig := range cfg.Clusters {
