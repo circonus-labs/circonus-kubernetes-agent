@@ -85,7 +85,7 @@ func encodeTags(tags []string, useBase64 bool) string {
 		tagList[i] = tc + ":" + tv
 	}
 
-	return fmt.Sprintf("%q", strings.Join(tagList, ","))
+	return strings.Join(tagList, ",")
 }
 
 func removeSpaces(r rune) rune {
