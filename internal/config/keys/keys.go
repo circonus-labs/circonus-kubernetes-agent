@@ -85,6 +85,8 @@ const (
 
 	// Base64Tags whether to encode tags with base64
 	Base64Tags = "circonus.base64_tags"
+	// NoBase64 disables using base64 encoding for stream tags (debugging)
+	NoBase64 = "circonus.no_base64"
 
 	// DryRun print metrics to stdout rather than sending to circonu
 	DryRun = "circonus.dry_run"
@@ -94,6 +96,8 @@ const (
 
 	// UseGZIP when submitting
 	UseGZIP = "circonus.use_gzip"
+	// NoGZIP disables using compression for submits
+	NoGZIP = "circonus.no_gzip"
 
 	//
 	// Kubernetes cluster (single, use either kubernetes or clusters, not both)

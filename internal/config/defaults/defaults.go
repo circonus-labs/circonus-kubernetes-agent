@@ -33,10 +33,14 @@ const (
 	CheckTitle         = ""
 	TraceSubmits       = ""
 	// hidden circonus settings for development and debugging
-	Base64Tags    = true
 	DryRun        = false
 	StreamMetrics = false
-	UseGZIP       = false
+	// these hidden settings are mainly for debugging
+	// the features default to ON and can be toggled OFF
+	NoBase64   = false
+	Base64Tags = true
+	NoGZIP     = false
+	UseGZIP    = true
 
 	// General defaults
 

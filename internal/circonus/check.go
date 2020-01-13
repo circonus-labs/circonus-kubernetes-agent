@@ -63,14 +63,14 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 	if cfg.Base64Tags != defaults.Base64Tags {
 		c.log.Debug().Bool("enabled", cfg.Base64Tags).Msg("base64 tag encoding")
 	}
+	if cfg.UseGZIP != defaults.UseGZIP {
+		c.log.Debug().Bool("enabled", cfg.UseGZIP).Msg("gzip submit compression")
+	}
 	if cfg.DryRun != defaults.DryRun {
 		c.log.Debug().Bool("enabled", cfg.DryRun).Msg("dry run")
 	}
 	if cfg.StreamMetrics != defaults.StreamMetrics {
 		c.log.Debug().Bool("enabled", cfg.StreamMetrics).Msg("streaming metrics format")
-	}
-	if cfg.UseGZIP != defaults.UseGZIP {
-		c.log.Debug().Bool("enabled", cfg.UseGZIP).Msg("gzip content encoding for metrics")
 	}
 
 	if cfg.DryRun {
