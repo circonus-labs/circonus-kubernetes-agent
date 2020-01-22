@@ -1,3 +1,7 @@
+# v0.3.1
+
+* add: collection summary metrics (sent,accept,filter,bytes,duration)
+
 # v0.3.0
 
 * add: `--no-base64` switch to disable for test/debug (base64 stream tags)
