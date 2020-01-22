@@ -212,16 +212,61 @@ func (c *Cluster) Start(ctx context.Context) error {
 					}(collector)
 				}
 				wg.Wait()
+				cstats := c.check.SubmitStats()
+				dur := time.Since(start)
+				c.logger.Info().
+					Interface("metrics_sent", cstats).
+					Str("duration", dur.String()).
+					Msg("collection complete")
+				baseStreamTags := []string{
+					"cluster:" + c.cfg.Name,
+					"source:ck8s-agent",
+				}
+				metrics := make(map[string]circonus.MetricSample)
+				_ = c.check.QueueMetricSample(
+					metrics,
+					"collect_sent",
+					circonus.MetricTypeUint64,
+					baseStreamTags, []string{},
+					cstats.Total,
+					nil)
+				_ = c.check.QueueMetricSample(
+					metrics,
+					"collect_accept",
+					circonus.MetricTypeUint64,
+					baseStreamTags, []string{},
+					cstats.Accepted,
+					nil)
+				_ = c.check.QueueMetricSample(
+					metrics,
+					"collect_filter",
+					circonus.MetricTypeUint64,
+					baseStreamTags, []string{},
+					cstats.Filtered,
+					nil)
+				streamTags := append(baseStreamTags, "units:bytes")
+				_ = c.check.QueueMetricSample(
+					metrics,
+					"collect_sent",
+					circonus.MetricTypeUint64,
+					streamTags, []string{},
+					cstats.SentBytes,
+					nil)
+				streamTags = append(baseStreamTags, "units:milliseconds")
+				_ = c.check.QueueMetricSample(
+					metrics,
+					"collect_duration",
+					circonus.MetricTypeUint64,
+					streamTags, []string{},
+					dur.Milliseconds(),
+					nil)
+				if err := c.check.SubmitQueue(metrics, c.logger.With().Str("type", "cstats").Logger()); err != nil {
+					c.logger.Warn().Err(err).Msg("submitting collection stats")
+				}
+				c.check.ResetSubmitStats()
 				c.Lock()
 				c.running = false
 				c.Unlock()
-				cstats := c.check.SubmitStats()
-				c.check.ResetSubmitStats()
-				c.logger.Info().
-					Interface("metrics_sent", cstats).
-					Str("duration", time.Since(start).String()).
-					Msg("collection complete")
-
 			}()
 		}
 	}
