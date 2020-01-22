@@ -244,22 +244,31 @@ func (c *Cluster) Start(ctx context.Context) error {
 					baseStreamTags, []string{},
 					cstats.Filtered,
 					nil)
-				streamTags := append(baseStreamTags, "units:bytes")
-				_ = c.check.QueueMetricSample(
-					metrics,
-					"collect_sent",
-					circonus.MetricTypeUint64,
-					streamTags, []string{},
-					cstats.SentBytes,
-					nil)
-				streamTags = append(baseStreamTags, "units:milliseconds")
-				_ = c.check.QueueMetricSample(
-					metrics,
-					"collect_duration",
-					circonus.MetricTypeUint64,
-					streamTags, []string{},
-					dur.Milliseconds(),
-					nil)
+				{
+					var streamTags []string
+					streamTags = append(streamTags, baseStreamTags...)
+					streamTags = append(streamTags, "units:bytes")
+					_ = c.check.QueueMetricSample(
+						metrics,
+						"collect_sent",
+						circonus.MetricTypeUint64,
+						streamTags, []string{},
+						cstats.SentBytes,
+						nil)
+				}
+				{
+					var streamTags []string
+					streamTags = append(streamTags, baseStreamTags...)
+					streamTags = append(streamTags, "units:milliseconds")
+					_ = c.check.QueueMetricSample(
+						metrics,
+						"collect_duration",
+						circonus.MetricTypeUint64,
+						streamTags, []string{},
+						dur.Milliseconds(),
+						nil)
+
+				}
 				if err := c.check.SubmitQueue(metrics, c.logger.With().Str("type", "cstats").Logger()); err != nil {
 					c.logger.Warn().Err(err).Msg("submitting collection stats")
 				}
