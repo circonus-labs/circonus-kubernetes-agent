@@ -36,7 +36,10 @@ type TrapResult struct {
 	Error      string `json:"error,omitempty"`
 }
 
-const traceTSFormat = "20060102_150405.000000000"
+const (
+	compressionThreshold = 1024
+	traceTSFormat        = "20060102_150405.000000000"
+)
 
 func (c *Check) ResetSubmitStats() {
 	c.statsmu.Lock()
@@ -132,8 +135,10 @@ func (c *Check) SubmitStream(metrics io.Reader, resultLogger zerolog.Logger) err
 		return errors.Wrap(err, "reading metric data")
 	}
 
+	payloadIsCompressed := false
+
 	var subData *bytes.Buffer
-	if c.UseCompression() {
+	if c.UseCompression() && len(rawData) > compressionThreshold {
 		subData = bytes.NewBuffer([]byte{})
 		zw := gzip.NewWriter(subData)
 		n, err := zw.Write(rawData)
@@ -146,13 +151,14 @@ func (c *Check) SubmitStream(metrics io.Reader, resultLogger zerolog.Logger) err
 		if err := zw.Close(); err != nil {
 			return errors.Wrap(err, "closing gzip writer")
 		}
+		payloadIsCompressed = true
 	} else {
 		subData = bytes.NewBuffer(rawData)
 	}
 
 	if dumpDir := c.config.TraceSubmits; dumpDir != "" {
 		fn := path.Join(dumpDir, time.Now().UTC().Format(traceTSFormat)+"_"+submitUUID.String()+".json")
-		if c.UseCompression() {
+		if payloadIsCompressed {
 			fn += ".gz"
 		}
 		fh, err := os.Create(fn)
@@ -179,7 +185,7 @@ func (c *Check) SubmitStream(metrics io.Reader, resultLogger zerolog.Logger) err
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Connection", "close")
 	req.Header.Set("Content-Length", strconv.Itoa(dataLen))
-	if c.UseCompression() {
+	if payloadIsCompressed {
 		req.Header.Set("Content-Encoding", "gzip")
 	}
 
