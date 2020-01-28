@@ -9,10 +9,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"path"
 	"strconv"
@@ -181,6 +184,15 @@ func (c *Check) SubmitStream(metrics io.Reader, resultLogger zerolog.Logger) err
 	}
 
 	defer client.CloseIdleConnections()
+
+	if c.DebugSubmissions() {
+		dump, err := httputil.DumpRequestOut(req, true)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println(string(dump))
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {

@@ -72,6 +72,9 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 	if cfg.StreamMetrics != defaults.StreamMetrics {
 		c.log.Debug().Bool("enabled", cfg.StreamMetrics).Msg("streaming metrics format")
 	}
+	if cfg.DebugSubmissions != defaults.DebugSubmissions {
+		c.log.Debug().Bool("enabled", cfg.DebugSubmissions).Msg("debug submissions")
+	}
 
 	if cfg.DryRun {
 		c.log.Debug().Msg("dry run enabled, no check required")
@@ -98,6 +101,11 @@ func (c *Check) UseCompression() bool {
 // StreamMetrics indicates whether to stream metrics (use when multiple samples for same metric name with different timestamps)
 func (c *Check) StreamMetrics() bool {
 	return c.config.StreamMetrics
+}
+
+// DebugSubmissions will dump the submission request to stdout
+func (c *Check) DebugSubmissions() bool {
+	return c.config.DebugSubmissions
 }
 
 // createAPIClient initializes and configures a Circonus API client

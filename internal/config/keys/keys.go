@@ -99,6 +99,9 @@ const (
 	// NoGZIP disables using compression for submits
 	NoGZIP = "circonus.no_gzip"
 
+	// DebugSubmissions dumps requests w/payload to stdout
+	DebugSubmissions = "circonus.debug_submissions"
+
 	//
 	// Kubernetes cluster (single, use either kubernetes or clusters, not both)
 	//

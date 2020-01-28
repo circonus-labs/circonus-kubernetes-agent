@@ -368,4 +368,25 @@ func init() {
 		}
 		viper.SetDefault(key, defaultValue)
 	}
+
+	{
+		const (
+			key          = keys.DebugSubmissions
+			longOpt      = "debug-submissions"
+			envVar       = release.ENVPREFIX + "_DEBUG_SUBMISSIONS"
+			description  = "Enable submission debugging (dump request w/payload to stdout)"
+			defaultValue = defaults.DebugSubmissions
+		)
+
+		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
+		flag := rootCmd.PersistentFlags().Lookup(longOpt)
+		flag.Hidden = true
+		if err := viper.BindPFlag(key, flag); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
 }
