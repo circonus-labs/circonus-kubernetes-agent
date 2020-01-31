@@ -37,6 +37,8 @@ type Cluster struct {
 	EnableMetricServer     bool   `mapstructure:"enable_metrics_server" json:"enable_metrics_server" toml:"enable_metrics_server" yaml:"enable_metrics_server"`
 	EnableNodes            bool   `mapstructure:"enable_nodes" json:"enable_nodes" toml:"enable_nodes" yaml:"enable_nodes"`
 	NodeSelector           string `mapstructure:"node_selector" json:"node_selector" toml:"node_selector" yaml:"node_selector"`
+	EnableNodeStats        bool   `mapstructure:"enable_node_stats" json:"enable_node_stats" toml:"enable_node_stats" yaml:"enable_node_stats"`
+	EnableNodeMetrics      bool   `mapstructure:"enable_node_metrics" json:"enable_node_metrics" toml:"enable_node_metrics" yaml:"enable_node_metrics"`
 	IncludeContainers      bool   `mapstructure:"include_container_metrics" json:"include_container_metrics" toml:"include_container_metrics" yaml:"include_container_metrics"`
 	IncludePods            bool   `mapstructure:"include_pod_metrics" json:"include_pod_metrics" toml:"include_pod_metrics" yaml:"include_pod_metrics"`
 	PodLabelKey            string `mapstructure:"pod_label_key" json:"pod_label_key" toml:"pod_label" yaml:"pod_label_key"`
@@ -60,10 +62,11 @@ type Circonus struct {
 	Check        Check  `json:"check" toml:"check" yaml:"check"`
 	TraceSubmits string `mapstructure:"trace_submits" json:"trace_submits" toml:"trace_submits" yaml:"trace_submits"` // trace metrics being sent to circonus
 	// hidden circonus settings for development and debugging
-	Base64Tags    bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"base64_tags" json:"base64_tags" toml:"base64_tags" yaml:"base64_tags"`
-	DryRun        bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"dry_run" json:"dry_run" toml:"dry_run" yaml:"dry_run"`                             // simulate sending metrics, print them to stdout
-	StreamMetrics bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"stream_metrics" json:"stream_metrics" toml:"stream_metrics" yaml:"stream_metrics"` // use streaming metric submission format (applicable when using _ts)
-	UseGZIP       bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"use_gzip" json:"use_gzip" toml:"use_gzip" yaml:"use_gzip"`                         // compress metrics using gzip when submitting (broker may not support)
+	Base64Tags       bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"base64_tags" json:"base64_tags" toml:"base64_tags" yaml:"base64_tags"`
+	DryRun           bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"dry_run" json:"dry_run" toml:"dry_run" yaml:"dry_run"`                             // simulate sending metrics, print them to stdout
+	StreamMetrics    bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"stream_metrics" json:"stream_metrics" toml:"stream_metrics" yaml:"stream_metrics"` // use streaming metric submission format (applicable when using _ts)
+	UseGZIP          bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"use_gzip" json:"use_gzip" toml:"use_gzip" yaml:"use_gzip"`                         // compress metrics using gzip when submitting (broker may not support)
+	DebugSubmissions bool `json:"-" toml:"-" yaml:"-"`
 }
 
 // API defines the circonus api configuration options

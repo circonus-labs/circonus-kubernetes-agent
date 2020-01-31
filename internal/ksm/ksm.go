@@ -7,7 +7,6 @@
 package ksm
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -27,12 +26,10 @@ import (
 )
 
 type KSM struct {
-	config   *config.Cluster
-	mbufSize int
-	tbufSize int
-	check    *circonus.Check
-	log      zerolog.Logger
-	running  bool
+	config  *config.Cluster
+	check   *circonus.Check
+	log     zerolog.Logger
+	running bool
 	sync.Mutex
 	ts *time.Time
 }
@@ -52,11 +49,9 @@ func New(cfg *config.Cluster, parentLogger zerolog.Logger, check *circonus.Check
 	}
 
 	ksm := &KSM{
-		config:   cfg,
-		mbufSize: 32768,
-		tbufSize: 32768,
-		check:    check,
-		log:      parentLogger.With().Str("collector", "kube-state-metrics").Logger(),
+		config: cfg,
+		check:  check,
+		log:    parentLogger.With().Str("collector", "kube-state-metrics").Logger(),
 	}
 
 	return ksm, nil
@@ -142,7 +137,7 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 
 	wg.Wait()
 
-	ksm.log.Info().Str("duration", time.Since(collectStart).String()).Msg("kube-state-metrics collect end")
+	ksm.log.Debug().Str("duration", time.Since(collectStart).String()).Msg("kube-state-metrics collect end")
 	ksm.Lock()
 	ksm.running = false
 	ksm.Unlock()
@@ -234,35 +229,13 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 	measurementTags := []string{}
 
 	if ksm.check.StreamMetrics() {
-		var buf bytes.Buffer
-		buf.Grow(ksm.mbufSize)
-
-		if err := promtext.StreamMetrics(ctx, &buf, ksm.log, resp.Body, ksm.check, streamTags, measurementTags, ksm.ts); err != nil {
+		if err := promtext.StreamMetrics(ctx, ksm.check, ksm.log, resp.Body, ksm.check, streamTags, measurementTags, ksm.ts); err != nil {
 			return err
 		}
-
-		if buf.Len() > 0 {
-			ksm.mbufSize = buf.Len() // save for next allocation to minimize dynamic growth
-			if err := ksm.check.SubmitStream(&buf, ksm.log); err != nil {
-				ksm.log.Warn().Err(err).Msg("submitting metrics")
-			}
-		} else {
-			ksm.log.Warn().Msg("no telemetry to submit")
-		}
-
-		return nil
-	}
-
-	metrics := make(map[string]circonus.MetricSample)
-	if err := promtext.QueueMetrics(ctx, metrics, ksm.log, resp.Body, ksm.check, streamTags, measurementTags, nil); err != nil {
-		return err
-	}
-	if len(metrics) > 0 {
-		if err := ksm.check.SubmitQueue(metrics, ksm.log); err != nil {
-			ksm.log.Warn().Err(err).Msg("submitting metrics")
-		}
 	} else {
-		ksm.log.Warn().Msg("no telemetry to submit")
+		if err := promtext.QueueMetrics(ctx, ksm.check, ksm.log, resp.Body, ksm.check, streamTags, measurementTags, nil); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -284,7 +257,6 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 	if err != nil {
 		return err
 	}
-
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -301,35 +273,13 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 	measurementTags := []string{}
 
 	if ksm.check.StreamMetrics() {
-		var buf bytes.Buffer
-		buf.Grow(ksm.tbufSize)
-
-		if err := promtext.StreamMetrics(ctx, &buf, ksm.log, resp.Body, ksm.check, streamTags, measurementTags, ksm.ts); err != nil {
+		if err := promtext.StreamMetrics(ctx, ksm.check, ksm.log, resp.Body, ksm.check, streamTags, measurementTags, ksm.ts); err != nil {
 			return err
 		}
-
-		if buf.Len() > 0 {
-			ksm.tbufSize = buf.Len() // save for next allocation to minimize dynamic growth
-			if err := ksm.check.SubmitStream(&buf, ksm.log); err != nil {
-				ksm.log.Warn().Err(err).Msg("submitting metrics")
-			}
-		} else {
-			ksm.log.Warn().Msg("no telemetry to submit")
-		}
-
-		return nil
-	}
-
-	metrics := make(map[string]circonus.MetricSample)
-	if err := promtext.QueueMetrics(ctx, metrics, ksm.log, resp.Body, ksm.check, streamTags, measurementTags, nil); err != nil {
-		return err
-	}
-	if len(metrics) > 0 {
-		if err := ksm.check.SubmitQueue(metrics, ksm.log); err != nil {
-			ksm.log.Warn().Err(err).Msg("submitting metrics")
-		}
 	} else {
-		ksm.log.Warn().Msg("no telemetry to submit")
+		if err := promtext.QueueMetrics(ctx, ksm.check, ksm.log, resp.Body, ksm.check, streamTags, measurementTags, nil); err != nil {
+			return err
+		}
 	}
 
 	return nil

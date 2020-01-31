@@ -7,6 +7,7 @@
 package promtext
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -26,6 +27,8 @@ const (
 	//       happy with the support the gating flag logic can be removed and the code simplifed.
 	emitHistogramBuckets    = false
 	circCumulativeHistogram = true
+	// max metrics to queue before submitting them
+	maxMetrics = 200
 )
 
 // QueueMetrics is a generic function to digest prometheus text format metrics and
@@ -33,7 +36,7 @@ const (
 // Formats supported: https://prometheus.io/docs/instrumenting/exposition_formats/
 func QueueMetrics(
 	ctx context.Context,
-	dest map[string]circonus.MetricSample,
+	targetCheck *circonus.Check,
 	logger zerolog.Logger,
 	data io.Reader,
 	check *circonus.Check,
@@ -54,11 +57,19 @@ func QueueMetrics(
 		return err
 	}
 
+	metrics := make(map[string]circonus.MetricSample)
+
 	for mn, mf := range metricFamilies {
 		if done(ctx) {
 			return nil
 		}
 		for _, m := range mf.Metric {
+			if len(metrics) >= maxMetrics {
+				if err := targetCheck.SubmitQueue(ctx, metrics, logger); err != nil {
+					logger.Warn().Err(err).Msg("submitting metrics")
+				}
+				metrics = make(map[string]circonus.MetricSample)
+			}
 			if done(ctx) {
 				return nil
 			}
@@ -68,12 +79,12 @@ func QueueMetrics(
 			switch mf.GetType() {
 			case dto.MetricType_SUMMARY:
 				_ = check.QueueMetricSample(
-					dest, metricName+"_count",
+					metrics, metricName+"_count",
 					circonus.MetricTypeUint64,
 					streamTags, parentMeasurementTags,
 					m.GetSummary().GetSampleCount(), ts)
 				_ = check.QueueMetricSample(
-					dest, metricName+"_sum",
+					metrics, metricName+"_sum",
 					circonus.MetricTypeFloat64,
 					streamTags, parentMeasurementTags,
 					m.GetSummary().GetSampleSum(), ts)
@@ -82,19 +93,19 @@ func QueueMetrics(
 					qtags = append(qtags, streamTags...)
 					qtags = append(qtags, "quantile:"+qn)
 					_ = check.QueueMetricSample(
-						dest, metricName,
+						metrics, metricName,
 						circonus.MetricTypeFloat64,
 						qtags, parentMeasurementTags,
 						qv, nil)
 				}
 			case dto.MetricType_HISTOGRAM:
 				_ = check.QueueMetricSample(
-					dest, metricName+"_count",
+					metrics, metricName+"_count",
 					circonus.MetricTypeUint64,
 					streamTags, parentMeasurementTags,
 					m.GetHistogram().GetSampleCount(), ts)
 				_ = check.QueueMetricSample(
-					dest, metricName+"_sum",
+					metrics, metricName+"_sum",
 					circonus.MetricTypeFloat64,
 					streamTags, parentMeasurementTags,
 					m.GetHistogram().GetSampleSum(), ts)
@@ -105,7 +116,7 @@ func QueueMetrics(
 						histo := promHistoBucketsToCircHisto(m)
 						if len(histo) > 0 {
 							_ = check.QueueMetricSample(
-								dest, metricName,
+								metrics, metricName,
 								circonus.MetricTypeCumulativeHistogram,
 								htags, parentMeasurementTags,
 								strings.Join(histo, ","), ts)
@@ -116,7 +127,7 @@ func QueueMetrics(
 							htags = append(htags, streamTags...)
 							htags = append(htags, "bucket:"+bn)
 							_ = check.QueueMetricSample(
-								dest, metricName,
+								metrics, metricName,
 								circonus.MetricTypeUint64,
 								htags, parentMeasurementTags,
 								bv, ts)
@@ -128,7 +139,7 @@ func QueueMetrics(
 				case m.Gauge != nil:
 					if m.GetGauge().Value != nil {
 						_ = check.QueueMetricSample(
-							dest, metricName,
+							metrics, metricName,
 							circonus.MetricTypeFloat64,
 							streamTags, parentMeasurementTags,
 							*m.GetGauge().Value, ts)
@@ -136,7 +147,7 @@ func QueueMetrics(
 				case m.Counter != nil:
 					if m.GetCounter().Value != nil {
 						_ = check.QueueMetricSample(
-							dest, metricName,
+							metrics, metricName,
 							circonus.MetricTypeFloat64,
 							streamTags, parentMeasurementTags,
 							*m.GetCounter().Value, ts)
@@ -152,13 +163,20 @@ func QueueMetrics(
 							continue
 						}
 						_ = check.QueueMetricSample(
-							dest, metricName,
+							metrics, metricName,
 							circonus.MetricTypeFloat64,
 							streamTags, parentMeasurementTags,
 							*m.GetUntyped().Value, ts)
 					}
 				}
 			}
+		}
+	}
+
+	// send any remaining metrics
+	if len(metrics) > 0 {
+		if err := targetCheck.SubmitQueue(ctx, metrics, logger); err != nil {
+			logger.Warn().Err(err).Msg("submitting metrics")
 		}
 	}
 
@@ -170,7 +188,7 @@ func QueueMetrics(
 // Formats supported: https://prometheus.io/docs/instrumenting/exposition_formats/
 func StreamMetrics(
 	ctx context.Context,
-	dest io.Writer,
+	targetCheck *circonus.Check,
 	logger zerolog.Logger,
 	data io.Reader,
 	check *circonus.Check,
@@ -191,6 +209,9 @@ func StreamMetrics(
 		return err
 	}
 
+	var buf bytes.Buffer
+	metricsQueued := 0
+
 	for mn, mf := range metricFamilies {
 		if done(ctx) {
 			return nil
@@ -199,18 +220,25 @@ func StreamMetrics(
 			if done(ctx) {
 				return nil
 			}
+			if metricsQueued >= maxMetrics {
+				if err := targetCheck.SubmitStream(ctx, &buf, logger); err != nil {
+					logger.Warn().Err(err).Msg("submitting metrics")
+				}
+				buf.Reset()
+			}
+			metricsQueued++
 			metricName := mn
 			streamTags := getLabels(m)
 			streamTags = append(streamTags, baseStreamTags...)
 			switch mf.GetType() {
 			case dto.MetricType_SUMMARY:
 				_ = check.WriteMetricSample(
-					dest, metricName+"_count",
+					&buf, metricName+"_count",
 					circonus.MetricTypeUint64,
 					streamTags, parentMeasurementTags,
 					m.GetSummary().GetSampleCount(), ts)
 				_ = check.WriteMetricSample(
-					dest, metricName+"_sum",
+					&buf, metricName+"_sum",
 					circonus.MetricTypeFloat64,
 					streamTags, parentMeasurementTags,
 					m.GetSummary().GetSampleSum(), ts)
@@ -219,19 +247,19 @@ func StreamMetrics(
 					qtags = append(qtags, streamTags...)
 					qtags = append(qtags, "quantile:"+qn)
 					_ = check.WriteMetricSample(
-						dest, metricName,
+						&buf, metricName,
 						circonus.MetricTypeFloat64,
 						qtags, parentMeasurementTags,
 						qv, nil)
 				}
 			case dto.MetricType_HISTOGRAM:
 				_ = check.WriteMetricSample(
-					dest, metricName+"_count",
+					&buf, metricName+"_count",
 					circonus.MetricTypeUint64,
 					streamTags, parentMeasurementTags,
 					m.GetHistogram().GetSampleCount(), ts)
 				_ = check.WriteMetricSample(
-					dest, metricName+"_sum",
+					&buf, metricName+"_sum",
 					circonus.MetricTypeFloat64,
 					streamTags, parentMeasurementTags,
 					m.GetHistogram().GetSampleSum(), ts)
@@ -242,7 +270,7 @@ func StreamMetrics(
 						histo := promHistoBucketsToCircHisto(m)
 						if len(histo) > 0 {
 							_ = check.WriteMetricSample(
-								dest, metricName,
+								&buf, metricName,
 								circonus.MetricTypeCumulativeHistogram,
 								htags, parentMeasurementTags,
 								strings.Join(histo, ","), ts)
@@ -253,7 +281,7 @@ func StreamMetrics(
 							htags = append(htags, streamTags...)
 							htags = append(htags, "bucket:"+bn)
 							_ = check.WriteMetricSample(
-								dest, metricName,
+								&buf, metricName,
 								circonus.MetricTypeUint64,
 								htags, parentMeasurementTags,
 								bv, ts)
@@ -265,7 +293,7 @@ func StreamMetrics(
 				case m.Gauge != nil:
 					if m.GetGauge().Value != nil {
 						_ = check.WriteMetricSample(
-							dest, metricName,
+							&buf, metricName,
 							circonus.MetricTypeFloat64,
 							streamTags, parentMeasurementTags,
 							*m.GetGauge().Value, ts)
@@ -273,7 +301,7 @@ func StreamMetrics(
 				case m.Counter != nil:
 					if m.GetCounter().Value != nil {
 						_ = check.WriteMetricSample(
-							dest, metricName,
+							&buf, metricName,
 							circonus.MetricTypeFloat64,
 							streamTags, parentMeasurementTags,
 							*m.GetCounter().Value, ts)
@@ -289,7 +317,7 @@ func StreamMetrics(
 							continue
 						}
 						_ = check.WriteMetricSample(
-							dest, metricName,
+							&buf, metricName,
 							circonus.MetricTypeFloat64,
 							streamTags, parentMeasurementTags,
 							*m.GetUntyped().Value, ts)

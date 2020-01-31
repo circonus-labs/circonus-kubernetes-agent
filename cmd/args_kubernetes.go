@@ -228,6 +228,44 @@ func init() {
 
 	{
 		const (
+			key          = keys.K8SEnableNodeStats
+			longOpt      = "k8s-enable-node-stats"
+			envVar       = release.ENVPREFIX + "_K8S_ENABLE_NODE_STATS"
+			description  = "Kubernetes include summary stats for individual nodes (and pods)"
+			defaultValue = defaults.K8SEnableNodeStats
+		)
+
+		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		const (
+			key          = keys.K8SEnableNodeMetrics
+			longOpt      = "k8s-enable-node-metrics"
+			envVar       = release.ENVPREFIX + "_K8S_ENABLE_NODE_METRICS"
+			description  = "Kubernetes include metrics for individual nodes"
+			defaultValue = defaults.K8SEnableNodeMetrics
+		)
+
+		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		const (
 			key          = keys.K8SIncludePods
 			longOpt      = "k8s-include-pods"
 			envVar       = release.ENVPREFIX + "_K8S_INCLUDE_PODS"

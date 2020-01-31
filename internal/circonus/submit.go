@@ -8,11 +8,15 @@ package circonus
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"path"
 	"strconv"
@@ -21,6 +25,7 @@ import (
 	"code.cloudfoundry.org/bytefmt"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -29,18 +34,18 @@ type TrapResult struct {
 	CheckUUID  string
 	SubmitUUID uuid.UUID
 	Stats      uint64 `json:"stats"`
-	Filtered   uint64 `json:"filtered"`
 	Error      string `json:"error,omitempty"`
 }
 
-const traceTSFormat = "20060102_150405.000000000"
+const (
+	compressionThreshold = 1024
+	traceTSFormat        = "20060102_150405.000000000"
+)
 
 func (c *Check) ResetSubmitStats() {
 	c.statsmu.Lock()
 	defer c.statsmu.Unlock()
-	c.stats.Total = 0
-	c.stats.Accepted = 0
-	c.stats.Filtered = 0
+	c.stats.Metrics = 0
 	c.stats.SentBytes = 0
 }
 
@@ -48,15 +53,13 @@ func (c *Check) SubmitStats() Stats {
 	c.statsmu.Lock()
 	defer c.statsmu.Unlock()
 	return Stats{
-		Total:     c.stats.Total,
-		Accepted:  c.stats.Accepted,
-		Filtered:  c.stats.Filtered,
+		Metrics:   c.stats.Metrics,
 		SentBytes: c.stats.SentBytes,
 		SentSize:  bytefmt.ByteSize(c.stats.SentBytes),
 	}
 }
 
-func (c *Check) SubmitQueue(metrics map[string]MetricSample, resultLogger zerolog.Logger) error {
+func (c *Check) SubmitQueue(ctx context.Context, metrics map[string]MetricSample, resultLogger zerolog.Logger) error {
 	if metrics == nil {
 		return errors.New("invalid metrics (nil)")
 	}
@@ -66,11 +69,11 @@ func (c *Check) SubmitQueue(metrics map[string]MetricSample, resultLogger zerolo
 		return errors.Wrap(err, "marshaling metrics")
 	}
 
-	return c.SubmitStream(bytes.NewReader(data), resultLogger)
+	return c.SubmitStream(ctx, bytes.NewReader(data), resultLogger)
 }
 
 // SubmitStream sends metrics to a circonus trap
-func (c *Check) SubmitStream(metrics io.Reader, resultLogger zerolog.Logger) error {
+func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
 	if metrics == nil {
 		return errors.New("invalid metrics (nil)")
 	}
@@ -92,7 +95,7 @@ func (c *Check) SubmitStream(metrics io.Reader, resultLogger zerolog.Logger) err
 			Transport: &http.Transport{
 				Proxy: http.ProxyFromEnvironment,
 				DialContext: (&net.Dialer{
-					Timeout:   30 * time.Second,
+					Timeout:   10 * time.Second,
 					KeepAlive: 30 * time.Second,
 					DualStack: true,
 				}).DialContext,
@@ -108,7 +111,7 @@ func (c *Check) SubmitStream(metrics io.Reader, resultLogger zerolog.Logger) err
 			Transport: &http.Transport{
 				Proxy: http.ProxyFromEnvironment,
 				DialContext: (&net.Dialer{
-					Timeout:   30 * time.Second,
+					Timeout:   10 * time.Second,
 					KeepAlive: 30 * time.Second,
 					DualStack: true,
 				}).DialContext,
@@ -129,8 +132,10 @@ func (c *Check) SubmitStream(metrics io.Reader, resultLogger zerolog.Logger) err
 		return errors.Wrap(err, "reading metric data")
 	}
 
+	payloadIsCompressed := false
+
 	var subData *bytes.Buffer
-	if c.UseCompression() {
+	if c.UseCompression() && len(rawData) > compressionThreshold {
 		subData = bytes.NewBuffer([]byte{})
 		zw := gzip.NewWriter(subData)
 		n, err := zw.Write(rawData)
@@ -143,13 +148,14 @@ func (c *Check) SubmitStream(metrics io.Reader, resultLogger zerolog.Logger) err
 		if err := zw.Close(); err != nil {
 			return errors.Wrap(err, "closing gzip writer")
 		}
+		payloadIsCompressed = true
 	} else {
 		subData = bytes.NewBuffer(rawData)
 	}
 
 	if dumpDir := c.config.TraceSubmits; dumpDir != "" {
 		fn := path.Join(dumpDir, time.Now().UTC().Format(traceTSFormat)+"_"+submitUUID.String()+".json")
-		if c.UseCompression() {
+		if payloadIsCompressed {
 			fn += ".gz"
 		}
 		fh, err := os.Create(fn)
@@ -167,22 +173,44 @@ func (c *Check) SubmitStream(metrics io.Reader, resultLogger zerolog.Logger) err
 
 	dataLen := subData.Len()
 
-	req, err := http.NewRequest("PUT", c.submissionURL, subData)
+	req, err := retryablehttp.NewRequest("PUT", c.submissionURL, subData)
 	if err != nil {
 		return err
 	}
+	req = req.WithContext(ctx)
 	req.Header.Set("User-Agent", release.NAME+"/"+release.VERSION)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Connection", "close")
 	req.Header.Set("Content-Length", strconv.Itoa(dataLen))
-	if c.UseCompression() {
+	if payloadIsCompressed {
 		req.Header.Set("Content-Encoding", "gzip")
 	}
 
-	defer client.CloseIdleConnections()
+	if c.DebugSubmissions() {
+		dump, err := httputil.DumpRequestOut(req.Request, !payloadIsCompressed)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	resp, err := client.Do(req)
+		fmt.Println(string(dump))
+	}
+
+	retryClient := retryablehttp.NewClient()
+	retryClient.HTTPClient = client
+	retryClient.Logger = logshim{logh: c.log.With().Str("pkg", "retryablehttp").Logger()}
+	retryClient.RetryWaitMin = 50 * time.Millisecond
+	retryClient.RetryWaitMax = 2 * time.Second
+	retryClient.RetryMax = 10
+	retryClient.RequestLogHook = func(l retryablehttp.Logger, r *http.Request, attempt int) {
+		if attempt > 0 {
+			l.Printf("[WARN] %s retry %d", r.URL, attempt)
+		}
+	}
+
+	defer retryClient.HTTPClient.CloseIdleConnections()
+
+	resp, err := retryClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -213,9 +241,7 @@ func (c *Check) SubmitStream(metrics io.Reader, resultLogger zerolog.Logger) err
 		Msg("submitted")
 
 	c.statsmu.Lock()
-	c.stats.Total += result.Stats + result.Filtered
-	c.stats.Accepted += result.Stats
-	c.stats.Filtered += result.Filtered
+	c.stats.Metrics += result.Stats
 	c.stats.SentBytes += uint64(dataLen)
 	c.statsmu.Unlock()
 

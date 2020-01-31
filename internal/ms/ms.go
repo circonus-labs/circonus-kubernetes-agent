@@ -7,7 +7,6 @@
 package ms
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"io/ioutil"
@@ -25,7 +24,6 @@ import (
 
 type MS struct {
 	config  *config.Cluster
-	bufSize int
 	check   *circonus.Check
 	log     zerolog.Logger
 	running bool
@@ -47,10 +45,9 @@ func New(cfg *config.Cluster, parentLog zerolog.Logger, check *circonus.Check) (
 	}
 
 	ms := &MS{
-		config:  cfg,
-		bufSize: 32768,
-		check:   check,
-		log:     parentLog.With().Str("collector", "metrics-server").Logger(),
+		config: cfg,
+		check:  check,
+		log:    parentLog.With().Str("collector", "metrics-server").Logger(),
 	}
 
 	return ms, nil
@@ -122,28 +119,20 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 		return
 	}
 
-	var buf bytes.Buffer
-	buf.Grow(ms.bufSize)
-
 	streamTags := []string{"source:metrics-server"}
 	measurementTags := []string{}
 
-	if err := promtext.StreamMetrics(ctx, &buf, ms.log, resp.Body, ms.check, streamTags, measurementTags, ts); err != nil {
-		ms.log.Error().Err(err).Msg("formatting metrics")
-	}
-
-	if buf.Len() > 0 {
-		submitStart := time.Now()
-		if err := ms.check.SubmitStream(&buf, ms.log); err != nil {
-			ms.log.Warn().Err(err).Msg("submitting metrics")
+	if ms.check.StreamMetrics() {
+		if err := promtext.StreamMetrics(ctx, ms.check, ms.log, resp.Body, ms.check, streamTags, measurementTags, ts); err != nil {
+			ms.log.Error().Err(err).Msg("formatting metrics")
 		}
-		ms.bufSize = buf.Len() // save for next allocation to minimize dynamic growth
-		ms.log.Info().Str("duration", time.Since(submitStart).String()).Int("size", ms.bufSize).Msg("submit end")
 	} else {
-		ms.log.Warn().Msg("no telemetry to submit")
+		if err := promtext.QueueMetrics(ctx, ms.check, ms.log, resp.Body, ms.check, streamTags, measurementTags, ts); err != nil {
+			ms.log.Error().Err(err).Msg("formatting metrics")
+		}
 	}
 
-	ms.log.Info().Str("duration", time.Since(collectStart).String()).Msg("metric-server collect end")
+	ms.log.Debug().Str("duration", time.Since(collectStart).String()).Msg("metric-server collect end")
 	ms.Lock()
 	ms.running = false
 	ms.Unlock()

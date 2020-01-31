@@ -12,7 +12,9 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"runtime"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
@@ -225,24 +227,17 @@ func (c *Cluster) Start(ctx context.Context) error {
 				metrics := make(map[string]circonus.MetricSample)
 				_ = c.check.QueueMetricSample(
 					metrics,
-					"collect_sent",
+					"collect_metrics",
 					circonus.MetricTypeUint64,
 					baseStreamTags, []string{},
-					cstats.Total,
+					cstats.Metrics,
 					nil)
 				_ = c.check.QueueMetricSample(
 					metrics,
-					"collect_accept",
+					"collect_ngr",
 					circonus.MetricTypeUint64,
 					baseStreamTags, []string{},
-					cstats.Accepted,
-					nil)
-				_ = c.check.QueueMetricSample(
-					metrics,
-					"collect_filter",
-					circonus.MetricTypeUint64,
-					baseStreamTags, []string{},
-					cstats.Filtered,
+					runtime.NumGoroutine(),
 					nil)
 				{
 					var streamTags []string
@@ -255,6 +250,48 @@ func (c *Cluster) Start(ctx context.Context) error {
 						streamTags, []string{},
 						cstats.SentBytes,
 						nil)
+					var ms runtime.MemStats
+					runtime.ReadMemStats(&ms)
+					_ = c.check.QueueMetricSample(
+						metrics,
+						"collect_heap_alloc",
+						circonus.MetricTypeUint64,
+						streamTags, []string{},
+						ms.HeapAlloc,
+						nil)
+					_ = c.check.QueueMetricSample(
+						metrics,
+						"collect_heap_relased",
+						circonus.MetricTypeUint64,
+						streamTags, []string{},
+						ms.HeapReleased,
+						nil)
+					_ = c.check.QueueMetricSample(
+						metrics,
+						"collect_stack_sys",
+						circonus.MetricTypeUint64,
+						streamTags, []string{},
+						ms.StackSys,
+						nil)
+					_ = c.check.QueueMetricSample(
+						metrics,
+						"collect_other_sys",
+						circonus.MetricTypeUint64,
+						streamTags, []string{},
+						ms.OtherSys,
+						nil)
+					var mem syscall.Rusage
+					if err := syscall.Getrusage(syscall.RUSAGE_SELF, &mem); err == nil {
+						_ = c.check.QueueMetricSample(
+							metrics,
+							"collect_max_rss",
+							circonus.MetricTypeUint64,
+							streamTags, []string{},
+							mem.Maxrss*1024, // maxrss is resident set size in kilobytes
+							nil)
+					} else {
+						c.logger.Warn().Err(err).Msg("collecting rss from system")
+					}
 				}
 				{
 					var streamTags []string
@@ -269,7 +306,7 @@ func (c *Cluster) Start(ctx context.Context) error {
 						nil)
 
 				}
-				if err := c.check.SubmitQueue(metrics, c.logger.With().Str("type", "cstats").Logger()); err != nil {
+				if err := c.check.SubmitQueue(ctx, metrics, c.logger.With().Str("type", "cstats").Logger()); err != nil {
 					c.logger.Warn().Err(err).Msg("submitting collection stats")
 				}
 				c.check.ResetSubmitStats()

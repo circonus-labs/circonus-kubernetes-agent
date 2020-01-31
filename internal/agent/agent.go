@@ -71,6 +71,7 @@ func New() (*Agent, error) {
 	}
 	cfg.Circonus.DryRun = viper.GetBool(keys.DryRun)
 	cfg.Circonus.StreamMetrics = viper.GetBool(keys.StreamMetrics)
+	cfg.Circonus.DebugSubmissions = viper.GetBool(keys.DebugSubmissions)
 
 	if len(cfg.Clusters) > 0 { // multiple clusters
 		for _, clusterConfig := range cfg.Clusters {
