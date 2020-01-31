@@ -207,24 +207,24 @@ func init() {
 		viper.SetDefault(key, defaultValue)
 	}
 
-	{
-		const (
-			key          = keys.CheckMetricFilters
-			longOpt      = "check-metric-filters"
-			envVar       = release.ENVPREFIX + "_CIRCONUS_CHECK_METRIC_FILTERS"
-			description  = "Circonus Check Metric Filters"
-			defaultValue = defaults.CheckMetricFilters
-		)
+	// {
+	// 	const (
+	// 		key          = keys.CheckMetricFilters
+	// 		longOpt      = "check-metric-filters"
+	// 		envVar       = release.ENVPREFIX + "_CIRCONUS_CHECK_METRIC_FILTERS"
+	// 		description  = "Circonus Check Metric Filters"
+	// 		defaultValue = defaults.CheckMetricFilters
+	// 	)
 
-		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
-		viper.SetDefault(key, defaultValue)
-	}
+	// 	rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+	// 	if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+	// 		bindFlagError(longOpt, err)
+	// 	}
+	// 	if err := viper.BindEnv(key, envVar); err != nil {
+	// 		bindEnvError(envVar, err)
+	// 	}
+	// 	viper.SetDefault(key, defaultValue)
+	// }
 
 	{
 		const (
