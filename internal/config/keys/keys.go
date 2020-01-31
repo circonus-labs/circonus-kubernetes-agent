@@ -127,6 +127,10 @@ const (
 	// K8SEnableNodes enable collection of metrics from nodes
 	// NOTE: include_pods and include_containers are levers to control volume of detail
 	K8SEnableNodes = "kubernetes.enable_nodes"
+	// K8SEnableNodeStats - kublet /stats/summary performance metrics (e.g. cpu, memory, fs)
+	K8SEnableNodeStats = "kubernetes.enable_node_stats"
+	// K8SEnableNodeMetrics - kublet /metrics observation metrics
+	K8SEnableNodeMetrics = "kubernetes.enable_node_metrics"
 
 	// K8SEnableEvents enable events
 	K8SEnableEvents = "kubernetes.enable_events"
@@ -138,6 +142,7 @@ const (
 	K8SEnableMetricsServer = "kubernetes.enable_metrics_server"
 
 	// K8SIncludePods include pod metrics
+	// NOTE: requires K8SEnableNodes and K8SEnableNodeSummary
 	K8SIncludePods = "kubernetes.include_pod_metrics"
 
 	// K8SPodLabelKey include pod if label key found
