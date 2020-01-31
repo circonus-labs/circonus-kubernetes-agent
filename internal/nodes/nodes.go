@@ -133,7 +133,7 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	close(nodeQueue)
 	wg.Wait() // wait for last one to finish
 
-	n.log.Info().
+	n.log.Debug().
 		Str("duration", time.Since(collectStart).String()).
 		Int("nodes_queued", nodesQueued).
 		Int("nodes_total", len(nodes.Items)).
