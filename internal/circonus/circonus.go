@@ -7,6 +7,8 @@
 package circonus
 
 import (
+	"strings"
+
 	"github.com/rs/zerolog"
 )
 
@@ -16,5 +18,11 @@ type logshim struct {
 }
 
 func (l logshim) Printf(fmt string, v ...interface{}) {
+	if strings.HasPrefix(fmt, "[DEBUG]") {
+		if e := l.logh.Debug(); !e.Enabled() {
+			return
+		}
+	}
+
 	l.logh.Printf(fmt, v...)
 }
