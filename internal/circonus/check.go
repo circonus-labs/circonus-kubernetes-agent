@@ -14,6 +14,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path"
 	"strings"
 	"sync"
 
@@ -32,9 +34,7 @@ const (
 )
 
 type Stats struct {
-	Total     uint64
-	Accepted  uint64
-	Filtered  uint64
+	Metrics   uint64
 	SentBytes uint64
 	SentSize  string
 }
@@ -157,7 +157,7 @@ func (c *Check) initializeCheckBundle(client *apiclient.API) error {
 		return c.setSubmissionURL(client, bundle)
 	}
 
-	bundle, err := findOrCreateCheckBundle(client, c.config)
+	bundle, err := c.findOrCreateCheckBundle(client, c.config)
 	if err != nil {
 		return errors.Wrap(err, "finding/creating check")
 	}
@@ -186,7 +186,7 @@ func (c *Check) setSubmissionURL(client *apiclient.API, bundle *apiclient.CheckB
 }
 
 // findOrCreateCheckBundle searches for a check bundle based on target and display name
-func findOrCreateCheckBundle(client *apiclient.API, cfg *config.Circonus) (*apiclient.CheckBundle, error) {
+func (c *Check) findOrCreateCheckBundle(client *apiclient.API, cfg *config.Circonus) (*apiclient.CheckBundle, error) {
 	searchCriteria := apiclient.SearchQueryType(fmt.Sprintf(`(active:1)(type:"%s")(host:%s)`, checkType, cfg.Check.Target))
 
 	bundles, err := client.SearchCheckBundles(&searchCriteria, nil)
@@ -195,7 +195,7 @@ func findOrCreateCheckBundle(client *apiclient.API, cfg *config.Circonus) (*apic
 	}
 
 	if len(*bundles) == 0 {
-		return createCheckBundle(client, cfg)
+		return c.createCheckBundle(client, cfg)
 	}
 
 	numActive := 0
@@ -219,7 +219,7 @@ func findOrCreateCheckBundle(client *apiclient.API, cfg *config.Circonus) (*apic
 }
 
 // createCheckBundle creates a new check bundle
-func createCheckBundle(client *apiclient.API, cfg *config.Circonus) (*apiclient.CheckBundle, error) {
+func (c *Check) createCheckBundle(client *apiclient.API, cfg *config.Circonus) (*apiclient.CheckBundle, error) {
 
 	secret, err := makeSecret()
 	if err != nil {
@@ -228,7 +228,7 @@ func createCheckBundle(client *apiclient.API, cfg *config.Circonus) (*apiclient.
 
 	notes := fmt.Sprintf("%s-%s", release.NAME, release.VERSION)
 
-	checkMetricFilters := [][]string{{"deny", "^$", ""}, {"allow", "^.+$", ""}}
+	checkMetricFilters := c.loadMetricFilters()
 	if cfg.Check.MetricFilters != "" {
 		var filters [][]string
 		if err := json.Unmarshal([]byte(cfg.Check.MetricFilters), &filters); err != nil {
@@ -274,4 +274,44 @@ func makeSecret() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(hash.Sum(nil))[0:16], nil
+}
+
+type metricFilters struct {
+	Filters [][]string `json:"metric_filters"`
+}
+
+func (c *Check) loadMetricFilters() [][]string {
+	defaults := [][]string{
+		{"allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units::errors),not(container_name:*),not(sys_container:*))", "utilization"},
+		{"allow", "^used$", "tags", "and(units:bytes,or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"},
+		{"allow", "^usageNanoCores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"},
+		{"allow", "^kube_pod_container_status_(running|terminated|waiting|ready)$", "containers"},
+		{"allow", "^kube_deployment_(created|spec_replicas|status_replicas|status_replicas_updated|status_replicas_available|status_replicas_unavailable)$", "deployments"},
+		{"allow", "^kube_pod_start_time", "pods"},
+		{"allow", "^kube_pod_status_phase$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"},
+		{"allow", "^kube_pod_status_(ready|scheduled)$", "tags", "and(condition:true)", "pods"},
+		{"allow", "^kube_(service_labels|deployment_labels|pod_container_info)$", "ksm inventory"},
+		{"allow", "^(node|kubelet_running_pod_count|Ready)$", "nodes"},
+		{"allow", "^NetworkUnavailable$", "nodes"},
+		{"allow", "^(Disk|Memory|PID)Pressure$", "nodes"},
+		{"allow", "^kube_namespace_status_phase$", "tags", "and(or(phase:Active,phase:Terminating))", "namespaces"},
+		{"allow", "^collect_.*$", "agent collection stats"},
+		{"allow", "^events$", "events"},
+		{"deny", "^.+$", "all other metrics"},
+	}
+
+	mfConfigFile := path.Join(string(os.PathSeparator), "ck8sa", "metric-filters.json")
+	data, err := ioutil.ReadFile(mfConfigFile)
+	if err != nil {
+		c.log.Warn().Err(err).Str("metric_filter_config", mfConfigFile).Msg("using defaults")
+		return defaults
+	}
+
+	var mf metricFilters
+	if err := json.Unmarshal(data, &mf); err != nil {
+		c.log.Warn().Err(err).Str("metric_filter_config", mfConfigFile).Msg("using defaults")
+		return defaults
+	}
+
+	return mf.Filters
 }
