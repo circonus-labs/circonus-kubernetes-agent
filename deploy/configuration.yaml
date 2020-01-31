@@ -38,14 +38,6 @@
       #circonus-check-create: "true"
       ## or, turn create off, and specify a check which has already been created
       #circonus-check-bundle-cid: ""
-      ## metrics filters control which metrics are passed on by the broker
-      ## NOTE: this ONLY applies when initially creating a check. After a check
-      ##       has already been created, use the UI to change the filters.
-      ## default, deny empty metric names, allow everything else:
-      ## circonus-check-metric_filters: '[["deny","^$",""],["allow","^.+$",""]]'
-      ## example: deny empty metric names or metrics with the tag "env:dev", allow everything else:
-      ## circonus-check-metric_filters: '[["deny","^$",""],["deny","^.+$","tags","and(env:dev)",""],["allow","^.+$",""]]'
-      #circonus-check-metric-filters: '[["deny","^$",""],["allow","^.+$",""]]'
       ## list of k:v tags to add to the check
       #circonus-check-tags: ""
       ## Use a static target to ensure that the agent can find the check
@@ -71,6 +63,10 @@
       kubernetes-enable-nodes: "true"
       ## expression to use for node labelSelector
       kubernetes-node-selector: ""
+      ## collect kublet /stats/summary performance metrics (e.g. cpu, memory, fs)
+      kubernetes-enable-node-stats: "true"
+      ## collect kublet /metrics observation metrics
+      kubernetes-enable-node-metrics: "true"
       ## include pod metrics, requires nodes to be enabled
       kubernetes-include-pod-metrics: "true"
       ## include only pods with this label key, blank = all pods
@@ -82,4 +78,28 @@
       ## collection interval, how often to collect metrics (note if a previous 
       ## collection is still in progress another will NOT be started)
       #kubernetes-collection-interval: "1m"
-
+      ##
+      ## Metric filters control which metrics are passed on by the broker
+      ## NOTE: This list ONLY applies when initially creating a check. After a
+      ##       check has been created, use the UI to change metric filters.
+      metric-filters.json: |
+        {
+          "metric_filters": [
+            ["allow","^[rt]x$","tags","and(resource:network,or(units:bytes,units::errors),not(container_name:*),not(sys_container:*))","utilization"],
+            ["allow","^used$","tags","and(units:bytes,or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))","utilization"],
+            ["allow","^usageNanoCores$","tags","and(not(container_name:*),not(sys_container:*))","utilization"],
+            ["allow","^kube_pod_container_status_(running|terminated|waiting|ready)$","containers"],
+            ["allow","^kube_deployment_(created|spec_replicas|status_replicas|status_replicas_updated|status_replicas_available|status_replicas_unavailable)$","deployments"],
+            ["allow","^kube_pod_start_time","pods"],
+            ["allow","^kube_pod_status_phase$","tags","and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))","pods"],
+            ["allow","^kube_pod_status_(ready|scheduled)$","tags","and(condition:true)","pods"],
+            ["allow","^kube_(service_labels|deployment_labels|pod_container_info)$","ksm inventory"],
+            ["allow","^(node|kubelet_running_pod_count|Ready)$","nodes"],
+            ["allow","^NetworkUnavailable$","nodes"],
+            ["allow","^(Disk|Memory|PID)Pressure$","nodes"],
+            ["allow","^kube_namespace_status_phase$","tags","and(or(phase:Active,phase:Terminating))","namespaces"],
+            ["allow","^collect_.*$","agent collection stats"],
+            ["allow","^events$","events"],
+            ["deny","^.+$","all other metrics"]
+          ]
+        }
