@@ -89,7 +89,7 @@ func (e *Events) Start(ctx context.Context, tlsConfig *tls.Config) {
 
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			e.submitEvent(obj.(*corev1.Event))
+			e.submitEvent(ctx, obj.(*corev1.Event))
 		},
 		// UpdateFunc: func(oldObj interface{}, newObj interface{}) {
 		// 	e.submitEvent(newObj.(*corev1.Event))
@@ -115,7 +115,7 @@ type abridgedEvent struct {
 	Message           string `json:"message"`
 }
 
-func (e *Events) submitEvent(event *corev1.Event) {
+func (e *Events) submitEvent(ctx context.Context, event *corev1.Event) {
 	ets := event.GetCreationTimestamp().UTC()
 	ae := abridgedEvent{
 		Namespace:         event.GetNamespace(),
@@ -143,7 +143,7 @@ func (e *Events) submitEvent(event *corev1.Event) {
 		e.log.Warn().Msg("no event to submit")
 		return
 	}
-	if err := e.check.SubmitStream(&buf, e.log.With().Str("type", "event").Logger()); err != nil {
+	if err := e.check.SubmitStream(ctx, &buf, e.log.With().Str("type", "event").Logger()); err != nil {
 		e.log.Warn().Err(err).Msg("submitting event")
 	}
 
