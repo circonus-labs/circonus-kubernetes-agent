@@ -66,20 +66,25 @@ func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.C
 
 	var wg sync.WaitGroup
 
-	wg.Add(3)
-
+	wg.Add(1)
 	go func() {
 		nc.meta(baseStreamTags, baseMeasurementTags) // from node list
 		wg.Done()
 	}()
-	go func() {
-		nc.summary(baseStreamTags, baseMeasurementTags) // from /stats/summary
-		wg.Done()
-	}()
-	go func() {
-		nc.nmetrics(baseStreamTags, baseMeasurementTags) // from /metrics
-		wg.Done()
-	}()
+	if nc.cfg.EnableNodeStats {
+		wg.Add(1)
+		go func() {
+			nc.summary(baseStreamTags, baseMeasurementTags) // from /stats/summary
+			wg.Done()
+		}()
+	}
+	if nc.cfg.EnableNodeMetrics {
+		wg.Add(1)
+		go func() {
+			nc.nmetrics(baseStreamTags, baseMeasurementTags) // from /metrics
+			wg.Done()
+		}()
+	}
 
 	wg.Wait()
 
@@ -141,7 +146,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 			nc.log.Warn().Msg("no telemetry to submit")
 			return
 		}
-		if err := nc.check.SubmitStream(&buf, nc.log.With().Str("type", "meta").Logger()); err != nil {
+		if err := nc.check.SubmitStream(nc.ctx, &buf, nc.log.With().Str("type", "meta").Logger()); err != nil {
 			nc.log.Warn().Err(err).Msg("submitting metrics")
 		}
 		return
@@ -191,7 +196,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 		nc.log.Warn().Msg("no telemetry to submit")
 		return
 	}
-	if err := nc.check.SubmitQueue(metrics, nc.log.With().Str("type", "meta").Logger()); err != nil {
+	if err := nc.check.SubmitQueue(nc.ctx, metrics, nc.log.With().Str("type", "meta").Logger()); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
 	}
 
@@ -347,7 +352,7 @@ func (nc *Collector) summaryNode(node *statsSummaryNode, parentStreamTags []stri
 			nc.log.Warn().Msg("no telemetry to submit")
 			return
 		}
-		if err := nc.check.SubmitStream(&buf, nc.log.With().Str("type", "/stats/summary").Logger()); err != nil {
+		if err := nc.check.SubmitStream(nc.ctx, &buf, nc.log.With().Str("type", "/stats/summary").Logger()); err != nil {
 			nc.log.Warn().Err(err).Msg("submitting metrics")
 		}
 		return
@@ -366,7 +371,7 @@ func (nc *Collector) summaryNode(node *statsSummaryNode, parentStreamTags []stri
 		nc.log.Warn().Msg("no telemetry to submit")
 		return
 	}
-	if err := nc.check.SubmitQueue(metrics, nc.log.With().Str("type", "/stats/summary").Logger()); err != nil {
+	if err := nc.check.SubmitQueue(nc.ctx, metrics, nc.log.With().Str("type", "/stats/summary").Logger()); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
 	}
 }
@@ -404,7 +409,7 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 			nc.log.Warn().Msg("no telemetry to submit")
 			return
 		}
-		if err := nc.check.SubmitStream(&buf, nc.log.With().Str("type", "system_containers").Logger()); err != nil {
+		if err := nc.check.SubmitStream(nc.ctx, &buf, nc.log.With().Str("type", "system_containers").Logger()); err != nil {
 			nc.log.Warn().Err(err).Msg("submitting metrics")
 		}
 		return
@@ -429,7 +434,7 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 		nc.log.Warn().Msg("no telemetry to submit")
 		return
 	}
-	if err := nc.check.SubmitQueue(metrics, nc.log.With().Str("type", "system_containers").Logger()); err != nil {
+	if err := nc.check.SubmitQueue(nc.ctx, metrics, nc.log.With().Str("type", "system_containers").Logger()); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
 	}
 
@@ -508,7 +513,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 			nc.log.Warn().Msg("no telemetry to submit")
 			return
 		}
-		if err := nc.check.SubmitStream(&buf, nc.log.With().Str("type", "pods").Logger()); err != nil {
+		if err := nc.check.SubmitStream(nc.ctx, &buf, nc.log.With().Str("type", "pods").Logger()); err != nil {
 			nc.log.Warn().Err(err).Msg("submitting metrics")
 		}
 		return
@@ -574,7 +579,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 		nc.log.Warn().Msg("no telemetry to submit")
 		return
 	}
-	if err := nc.check.SubmitQueue(metrics, nc.log.With().Str("type", "pods").Logger()); err != nil {
+	if err := nc.check.SubmitQueue(nc.ctx, metrics, nc.log.With().Str("type", "pods").Logger()); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
 	}
 }
@@ -621,37 +626,14 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 	}
 
 	if nc.check.StreamMetrics() {
-		var buf bytes.Buffer
-
-		if err := promtext.StreamMetrics(nc.ctx, &buf, nc.log, resp.Body, nc.check, parentStreamTags, parentMeasurementTags, nc.ts); err != nil {
+		if err := promtext.StreamMetrics(nc.ctx, nc.check, nc.log, resp.Body, nc.check, parentStreamTags, parentMeasurementTags, nc.ts); err != nil {
 			nc.log.Error().Err(err).Msg("parsing node metrics")
-			return
 		}
-
-		if buf.Len() > 0 {
-			if err := nc.check.SubmitStream(&buf, nc.log.With().Str("type", "/metrics").Logger()); err != nil {
-				nc.log.Warn().Err(err).Msg("submitting metrics")
-			}
-		} else {
-			nc.log.Warn().Msg("no telemetry to submit")
+	} else {
+		if err := promtext.QueueMetrics(nc.ctx, nc.check, nc.log, resp.Body, nc.check, parentStreamTags, parentMeasurementTags, nil); err != nil {
+			nc.log.Error().Err(err).Msg("parsing node metrics")
 		}
-
-		return
 	}
-
-	metrics := make(map[string]circonus.MetricSample)
-	if err := promtext.QueueMetrics(nc.ctx, metrics, nc.log, resp.Body, nc.check, parentStreamTags, parentMeasurementTags, nil); err != nil {
-		nc.log.Error().Err(err).Msg("parsing node metrics")
-		return
-	}
-	if len(metrics) == 0 {
-		nc.log.Warn().Msg("no telemetry to submit")
-		return
-	}
-	if err := nc.check.SubmitQueue(metrics, nc.log.With().Str("type", "/metrics").Logger()); err != nil {
-		nc.log.Warn().Err(err).Msg("submitting metrics")
-	}
-
 }
 
 type podSpec struct {
