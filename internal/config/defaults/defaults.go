@@ -70,6 +70,8 @@ const (
 	K8SEnableKubeStateMetrics = false
 	K8SEnableMetricsServer    = false
 	K8SEnableNodes            = true
+	K8SEnableNodeStats        = true
+	K8SEnableNodeMetrics      = true
 	K8SNodeSelector           = "" // blank=all
 	K8SIncludePods            = true
 	K8SPodLabelKey            = "" // blank=all
