@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -22,6 +23,8 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type Collector struct {
@@ -141,6 +144,46 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 					nc.ts)
 			}
 		}
+		{ // capacity and allocatable
+			var streamTags []string
+			streamTags = append(streamTags, parentStreamTags...)
+			if v, err := strconv.Atoi(nc.node.Status.Capacity.CPU); err == nil {
+				_ = nc.check.WriteMetricSample(
+					&buf,
+					"capacity_cpu",
+					circonus.MetricTypeUint64,
+					streamTags, parentMeasurementTags,
+					uint64(v),
+					nil)
+			} else {
+				nc.log.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.CPU).Msg("converting capacity.cpu")
+			}
+			if v, err := strconv.Atoi(nc.node.Status.Capacity.Pods); err == nil {
+				_ = nc.check.WriteMetricSample(
+					&buf,
+					"capacity_pods",
+					circonus.MetricTypeUint64,
+					streamTags, parentMeasurementTags,
+					uint64(v),
+					nil)
+			} else {
+				nc.log.Warn().Err(err).Str("pods", nc.node.Status.Capacity.Pods).Msg("converting capacity.pods")
+			}
+			if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Memory); err == nil {
+				if mem, ok := qty.AsInt64(); ok {
+					streamTags = append(streamTags, "units:bytes")
+					_ = nc.check.WriteMetricSample(
+						&buf,
+						"capacity_memory",
+						circonus.MetricTypeUint64,
+						streamTags, parentMeasurementTags,
+						uint64(mem),
+						nil)
+				}
+			} else {
+				nc.log.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory).Msg("parsing quantity capacity.memory")
+			}
+		}
 
 		if buf.Len() == 0 {
 			nc.log.Warn().Msg("no telemetry to submit")
@@ -189,6 +232,47 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 				streamTags, parentMeasurementTags,
 				cond.Message,
 				nil)
+		}
+	}
+
+	{ // capacity and allocatable
+		var streamTags []string
+		streamTags = append(streamTags, parentStreamTags...)
+		if v, err := strconv.Atoi(nc.node.Status.Capacity.CPU); err == nil {
+			_ = nc.check.QueueMetricSample(
+				metrics,
+				"capacity_cpu",
+				circonus.MetricTypeUint64,
+				streamTags, parentMeasurementTags,
+				uint64(v),
+				nil)
+		} else {
+			nc.log.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.CPU).Msg("converting capacity.cpu")
+		}
+		if v, err := strconv.Atoi(nc.node.Status.Capacity.Pods); err == nil {
+			_ = nc.check.QueueMetricSample(
+				metrics,
+				"capacity_pods",
+				circonus.MetricTypeUint64,
+				streamTags, parentMeasurementTags,
+				uint64(v),
+				nil)
+		} else {
+			nc.log.Warn().Err(err).Str("pods", nc.node.Status.Capacity.Pods).Msg("converting capacity.pods")
+		}
+		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Memory); err == nil {
+			if mem, ok := qty.AsInt64(); ok {
+				streamTags = append(streamTags, "units:bytes")
+				_ = nc.check.QueueMetricSample(
+					metrics,
+					"capacity_memory",
+					circonus.MetricTypeUint64,
+					streamTags, parentMeasurementTags,
+					uint64(mem),
+					nil)
+			}
+		} else {
+			nc.log.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory).Msg("parsing quantity capacity.memory")
 		}
 	}
 
