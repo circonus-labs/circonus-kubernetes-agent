@@ -1,3 +1,8 @@
+# v0.4.1
+
+* add: `collect_interval` metric
+* add: `default_streamtags` option to apply a set of tags to _all_ metrics
+
 # v0.4.0
 
 * upd: implement check `metric_filters` to collect only metrics in dashboard
