@@ -21,8 +21,16 @@ type NodeMetadata struct {
 }
 
 type NodeStatus struct {
-	Conditions []NodeCondition `json:"conditions"`
-	NodeInfo   NodeInfo        `json:"nodeInfo"`
+	Conditions  []NodeCondition `json:"conditions"`
+	NodeInfo    NodeInfo        `json:"nodeInfo"`
+	Capacity    NodeSizes       `json:"capacity"`
+	Allocatable NodeSizes       `json:"allocatable"`
+}
+
+type NodeSizes struct {
+	CPU    string `json:"cpu"`
+	Memory string `json:"memory"`
+	Pods   string `json:"pods"`
 }
 
 type NodeCondition struct {
