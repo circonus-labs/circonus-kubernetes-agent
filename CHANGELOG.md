@@ -1,3 +1,7 @@
+# v0.4.2
+
+* add: node capacity metrtics: `capacity_cpu`, `capacity_memory`, and `capacity_pods`
+
 # v0.4.1
 
 * add: `collect_interval` metric
