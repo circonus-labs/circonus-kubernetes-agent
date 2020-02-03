@@ -38,7 +38,7 @@
       #circonus-check-create: "true"
       ## or, turn create off, and specify a check which has already been created
       #circonus-check-bundle-cid: ""
-      ## list of k:v tags to add to the check
+      ## comman delimited list of k:v tags to add to the check
       #circonus-check-tags: ""
       ## Use a static target to ensure that the agent can find the check
       ## the next time the pod starts. Otherwise, the pod's hostname will
@@ -47,6 +47,8 @@
       circonus-check-target: ""
       ## set a custom display title for the check when it is created
       #circonus-check-title: ""
+      ## comma delimited list of k:v streamtags to add to every metric
+      #circonus-default-streamtags: ""
       ## set a name identifying the cluster, to be used in the check 
       ## title when it is created
       kubernetes-name: ""

@@ -58,9 +58,10 @@ type LabelFilters struct {
 
 // Circonus defines the circonus specific configuration options
 type Circonus struct {
-	API          API    `json:"api" toml:"api" yaml:"api"`
-	Check        Check  `json:"check" toml:"check" yaml:"check"`
-	TraceSubmits string `mapstructure:"trace_submits" json:"trace_submits" toml:"trace_submits" yaml:"trace_submits"` // trace metrics being sent to circonus
+	API               API    `json:"api" toml:"api" yaml:"api"`
+	Check             Check  `json:"check" toml:"check" yaml:"check"`
+	TraceSubmits      string `mapstructure:"trace_submits" json:"trace_submits" toml:"trace_submits" yaml:"trace_submits"` // trace metrics being sent to circonus
+	DefaultStreamtags string `mapstructure:"default_streamtags" json:"default_streamtags" toml:"default_streamtags" yaml:"default_streamtags"`
 	// hidden circonus settings for development and debugging
 	Base64Tags       bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"base64_tags" json:"base64_tags" toml:"base64_tags" yaml:"base64_tags"`
 	DryRun           bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"dry_run" json:"dry_run" toml:"dry_run" yaml:"dry_run"`                             // simulate sending metrics, print them to stdout
