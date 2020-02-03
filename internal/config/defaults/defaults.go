@@ -30,6 +30,7 @@ const (
 	CheckBrokerCAFile  = ""
 	CheckMetricFilters = ""
 	CheckTags          = ""
+	DefaultStreamtags  = ""
 	CheckTitle         = ""
 	TraceSubmits       = ""
 	// hidden circonus settings for development and debugging

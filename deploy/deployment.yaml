@@ -5,28 +5,28 @@
     name: circonus-kubernetes-agent
     labels:
       app.kubernetes.io/name: circonus-kubernetes-agent
-      app.kubernetes.io/version: v0.4.0
+      app.kubernetes.io/version: v0.4.1
   spec:
     selector:
       matchLabels:
         app.kubernetes.io/name: circonus-kubernetes-agent
-        app.kubernetes.io/version: v0.4.0
+        app.kubernetes.io/version: v0.4.1
     replicas: 1
     template:
       metadata:
         name: circonus-kubernetes-agent
         labels:
           app.kubernetes.io/name: circonus-kubernetes-agent
-          app.kubernetes.io/version: v0.4.0
+          app.kubernetes.io/version: v0.4.1
       spec:
         nodeSelector:
           kubernetes.io/os: linux
         serviceAccountName: circonus-kubernetes-agent
         containers:
           - name: circonus-kubernetes-agent
-            image: circonuslabs/circonus-kubernetes-agent:v0.4.0
+            image: circonuslabs/circonus-kubernetes-agent:v0.4.1
             ## for ARM64, remove line above and uncomment line below
-            #image: circonuslabs/circonus-kubernetes-agent-arm64:v0.4.0
+            #image: circonuslabs/circonus-kubernetes-agent-arm64:v0.4.1
             command: ["/circonus-kubernetes-agentd"]
             args: 
               #- --debug
@@ -103,6 +103,11 @@
               #     configMapKeyRef:
               #       name: cka-config-v1
               #       key: circonus-check-title
+              # - name: CKA_CIRCONUS_DEFAULT_STREAMTAGS
+              #   valueFrom:
+              #     configMapKeyRef:
+              #       name: cka-config-v1
+              #       key: circonus-default-streamtags
               - name: CKA_K8S_NAME
                 valueFrom:
                   configMapKeyRef:

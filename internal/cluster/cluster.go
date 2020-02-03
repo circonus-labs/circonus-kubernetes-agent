@@ -304,7 +304,13 @@ func (c *Cluster) Start(ctx context.Context) error {
 						streamTags, []string{},
 						dur.Milliseconds(),
 						nil)
-
+					_ = c.check.QueueMetricSample(
+						metrics,
+						"collect_interval",
+						circonus.MetricTypeUint64,
+						streamTags, []string{},
+						c.interval.Milliseconds(),
+						nil)
 				}
 				if err := c.check.SubmitQueue(ctx, metrics, c.logger.With().Str("type", "cstats").Logger()); err != nil {
 					c.logger.Warn().Err(err).Msg("submitting collection stats")

@@ -78,6 +78,9 @@ const (
 	// CheckTags a specific set of tags to use when creating a new check bundle
 	CheckTags = "circonus.check.tags"
 
+	// DefaultStreamtags a specific set of tags to include with _all_ metrics collected
+	DefaultStreamtags = "circonus.default_streamtags"
+
 	// TraceSubmits enables writing all metrics sent to circonus to files
 	TraceSubmits = "circonus.trace_submits"
 
