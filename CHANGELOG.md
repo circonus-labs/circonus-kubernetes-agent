@@ -1,3 +1,7 @@
+# v0.4.4
+
+* fix: typo in network errors rule
+
 # v0.4.3
 
 * upd: metric filter rule to include storage `capacity` for pod volumes
