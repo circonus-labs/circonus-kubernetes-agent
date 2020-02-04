@@ -28,9 +28,10 @@ type NodeStatus struct {
 }
 
 type NodeSizes struct {
-	CPU    string `json:"cpu"`
-	Memory string `json:"memory"`
-	Pods   string `json:"pods"`
+	CPU              string `json:"cpu"`
+	Memory           string `json:"memory"`
+	Pods             string `json:"pods"`
+	EphemeralStorage string `json:"ephemeral-storage"`
 }
 
 type NodeCondition struct {
