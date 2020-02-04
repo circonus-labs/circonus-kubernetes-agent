@@ -183,6 +183,20 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 			} else {
 				nc.log.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory).Msg("parsing quantity capacity.memory")
 			}
+			if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.EphemeralStorage); err == nil {
+				if storage, ok := qty.AsInt64(); ok {
+					streamTags = append(streamTags, "units:bytes")
+					_ = nc.check.WriteMetricSample(
+						&buf,
+						"capacity_ephemeral_storage",
+						circonus.MetricTypeUint64,
+						streamTags, parentMeasurementTags,
+						uint64(storage),
+						nil)
+				}
+			} else {
+				nc.log.Warn().Err(err).Str("ephemeral_storage", nc.node.Status.Capacity.EphemeralStorage).Msg("parsing quantity capacity.ephemeral-storage")
+			}
 		}
 
 		if buf.Len() == 0 {
@@ -273,6 +287,20 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 			}
 		} else {
 			nc.log.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory).Msg("parsing quantity capacity.memory")
+		}
+		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.EphemeralStorage); err == nil {
+			if storage, ok := qty.AsInt64(); ok {
+				streamTags = append(streamTags, "units:bytes")
+				_ = nc.check.QueueMetricSample(
+					metrics,
+					"capacity_ephemeral_storage",
+					circonus.MetricTypeUint64,
+					streamTags, parentMeasurementTags,
+					uint64(storage),
+					nil)
+			}
+		} else {
+			nc.log.Warn().Err(err).Str("ephemeral_storage", nc.node.Status.Capacity.EphemeralStorage).Msg("parsing quantity capacity.ephemeral-storage")
 		}
 	}
 
