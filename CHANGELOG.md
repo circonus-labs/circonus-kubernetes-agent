@@ -1,3 +1,9 @@
+# v0.4.3
+
+* upd: metric filter rule to include storage `capacity` for pod volumes
+* add: per-interface network metrics
+* add: node `capacity_ephemeral_storage` metric
+
 # v0.4.2
 
 * add: node capacity metrtics: `capacity_cpu`, `capacity_memory`, and `capacity_pods`
