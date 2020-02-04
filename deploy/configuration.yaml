@@ -87,7 +87,7 @@
       metric-filters.json: |
         {
           "metric_filters": [
-            ["allow","^[rt]x$","tags","and(resource:network,or(units:bytes,units::errors),not(container_name:*),not(sys_container:*))","utilization"],
+            ["allow","^[rt]x$","tags","and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))","utilization"],
             ["allow","^(used|capacity)$","tags","and(units:bytes,or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))","utilization"],
             ["allow","^usageNanoCores$","tags","and(not(container_name:*),not(sys_container:*))","utilization"],
             ["allow","^kube_pod_container_status_(running|terminated|waiting|ready)$","containers"],
