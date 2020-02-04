@@ -105,6 +105,23 @@ func (nc *Collector) queueNetwork(dest map[string]circonus.MetricSample, stats *
 		_ = nc.check.QueueMetricSample(dest, receive, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.RxErrors, nil)
 		_ = nc.check.QueueMetricSample(dest, transmit, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.TxErrors, nil)
 	}
+
+	for _, iface := range stats.Interfaces {
+		{ // units:bytes
+			var streamTags []string
+			streamTags = append(streamTags, parentStreamTags...)
+			streamTags = append(streamTags, []string{"resource:network", "units:bytes", "interface:" + iface.Name}...)
+			_ = nc.check.QueueMetricSample(dest, receive, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, iface.RxBytes, nil)
+			_ = nc.check.QueueMetricSample(dest, transmit, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, iface.TxBytes, nil)
+		}
+		{ // units:errors
+			var streamTags []string
+			streamTags = append(streamTags, parentStreamTags...)
+			streamTags = append(streamTags, []string{"resource:network", "units:errors", "interface:" + iface.Name}...)
+			_ = nc.check.QueueMetricSample(dest, receive, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, iface.RxErrors, nil)
+			_ = nc.check.QueueMetricSample(dest, transmit, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, iface.TxErrors, nil)
+		}
+	}
 }
 
 func (nc *Collector) streamNetwork(dest io.Writer, stats *network, parentStreamTags []string, parentMeasurementTags []string) {
@@ -124,6 +141,22 @@ func (nc *Collector) streamNetwork(dest io.Writer, stats *network, parentStreamT
 		streamTags = append(streamTags, []string{"resource:network", "units:errors"}...)
 		_ = nc.check.WriteMetricSample(dest, receive, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.RxErrors, nc.ts)
 		_ = nc.check.WriteMetricSample(dest, transmit, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.TxErrors, nc.ts)
+	}
+	for _, iface := range stats.Interfaces {
+		{ // units:bytes
+			var streamTags []string
+			streamTags = append(streamTags, parentStreamTags...)
+			streamTags = append(streamTags, []string{"resource:network", "units:bytes", "interface:" + iface.Name}...)
+			_ = nc.check.WriteMetricSample(dest, receive, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, iface.RxBytes, nil)
+			_ = nc.check.WriteMetricSample(dest, transmit, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, iface.TxBytes, nil)
+		}
+		{ // units:errors
+			var streamTags []string
+			streamTags = append(streamTags, parentStreamTags...)
+			streamTags = append(streamTags, []string{"resource:network", "units:errors", "interface:" + iface.Name}...)
+			_ = nc.check.WriteMetricSample(dest, receive, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, iface.RxErrors, nil)
+			_ = nc.check.WriteMetricSample(dest, transmit, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, iface.TxErrors, nil)
+		}
 	}
 }
 
