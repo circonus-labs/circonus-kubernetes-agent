@@ -454,7 +454,7 @@ func (nc *Collector) summaryNode(node *statsSummaryNode, parentStreamTags []stri
 		var buf bytes.Buffer
 
 		nc.streamCPU(&buf, &node.CPU, parentStreamTags, parentMeasurementTags)
-		nc.streamMemory(&buf, &node.Memory, parentStreamTags, parentMeasurementTags)
+		nc.streamMemory(&buf, &node.Memory, parentStreamTags, parentMeasurementTags, true)
 		nc.streamNetwork(&buf, &node.Network, parentStreamTags, parentMeasurementTags)
 		nc.streamFS(&buf, &node.FS, parentStreamTags, parentMeasurementTags)
 		nc.streamRuntimeImageFS(&buf, &node.Runtime.ImageFs, parentStreamTags, parentMeasurementTags)
@@ -473,7 +473,7 @@ func (nc *Collector) summaryNode(node *statsSummaryNode, parentStreamTags []stri
 	metrics := make(map[string]circonus.MetricSample)
 
 	nc.queueCPU(metrics, &node.CPU, parentStreamTags, parentMeasurementTags)
-	nc.queueMemory(metrics, &node.Memory, parentStreamTags, parentMeasurementTags)
+	nc.queueMemory(metrics, &node.Memory, parentStreamTags, parentMeasurementTags, true)
 	nc.queueNetwork(metrics, &node.Network, parentStreamTags, parentMeasurementTags)
 	nc.queueFS(metrics, &node.FS, parentStreamTags, parentMeasurementTags)
 	nc.queueRuntimeImageFS(metrics, &node.Runtime.ImageFs, parentStreamTags, parentMeasurementTags)
@@ -512,7 +512,7 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 			streamTags = append(streamTags, []string{"sys_container:" + container.Name}...)
 
 			nc.streamCPU(&buf, &container.CPU, streamTags, parentMeasurementTags)
-			nc.streamMemory(&buf, &container.Memory, streamTags, parentMeasurementTags)
+			nc.streamMemory(&buf, &container.Memory, streamTags, parentMeasurementTags, false)
 			nc.streamRootFS(&buf, &container.RootFS, streamTags, parentMeasurementTags)
 			nc.streamLogsFS(&buf, &container.Logs, streamTags, parentMeasurementTags)
 		}
@@ -537,7 +537,7 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 		streamTags = append(streamTags, parentStreamTags...)
 		streamTags = append(streamTags, []string{"sys_container:" + container.Name}...)
 		nc.queueCPU(metrics, &container.CPU, streamTags, parentMeasurementTags)
-		nc.queueMemory(metrics, &container.Memory, streamTags, parentMeasurementTags)
+		nc.queueMemory(metrics, &container.Memory, streamTags, parentMeasurementTags, false)
 		nc.queueRootFS(metrics, &container.RootFS, streamTags, parentMeasurementTags)
 		nc.queueLogsFS(metrics, &container.Logs, streamTags, parentMeasurementTags)
 	}
@@ -588,7 +588,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 			}...)
 
 			nc.streamCPU(&buf, &pod.CPU, podStreamTags, parentMeasurementTags)
-			nc.streamMemory(&buf, &pod.Memory, podStreamTags, parentMeasurementTags)
+			nc.streamMemory(&buf, &pod.Memory, podStreamTags, parentMeasurementTags, false)
 			nc.streamNetwork(&buf, &pod.Network, podStreamTags, parentMeasurementTags)
 
 			for _, volume := range pod.Volumes {
@@ -609,7 +609,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 					streamTagList = append(streamTagList, "container_name:"+container.Name)
 
 					nc.streamCPU(&buf, &container.CPU, streamTagList, parentMeasurementTags)
-					nc.streamMemory(&buf, &container.Memory, streamTagList, parentMeasurementTags)
+					nc.streamMemory(&buf, &container.Memory, streamTagList, parentMeasurementTags, false)
 					if container.RootFS.CapacityBytes > 0 { // rootfs
 						nc.streamRootFS(&buf, &container.RootFS, streamTagList, parentMeasurementTags)
 					}
@@ -654,7 +654,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 		}...)
 
 		nc.queueCPU(metrics, &pod.CPU, podStreamTags, parentMeasurementTags)
-		nc.queueMemory(metrics, &pod.Memory, podStreamTags, parentMeasurementTags)
+		nc.queueMemory(metrics, &pod.Memory, podStreamTags, parentMeasurementTags, false)
 		nc.queueNetwork(metrics, &pod.Network, podStreamTags, parentMeasurementTags)
 
 		for _, volume := range pod.Volumes {
@@ -675,7 +675,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 				streamTagList = append(streamTagList, "container_name:"+container.Name)
 
 				nc.queueCPU(metrics, &container.CPU, streamTagList, parentMeasurementTags)
-				nc.queueMemory(metrics, &container.Memory, streamTagList, parentMeasurementTags)
+				nc.queueMemory(metrics, &container.Memory, streamTagList, parentMeasurementTags, false)
 				if container.RootFS.CapacityBytes > 0 { // rootfs
 					nc.queueRootFS(metrics, &container.RootFS, streamTagList, parentMeasurementTags)
 				}
