@@ -35,7 +35,7 @@ func (nc *Collector) streamCPU(dest io.Writer, stats *cpu, parentStreamTags []st
 	_ = nc.check.WriteMetricSample(dest, seconds, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.UsageCoreNanoSeconds, nc.ts)
 }
 
-func (nc *Collector) queueMemory(dest map[string]circonus.MetricSample, stats *memory, parentStreamTags []string, parentMeasurementTags []string) {
+func (nc *Collector) queueMemory(dest map[string]circonus.MetricSample, stats *memory, parentStreamTags []string, parentMeasurementTags []string, isNode bool) {
 	available := "available"
 	used := "used"
 	workingSet := "workingSet"
@@ -47,7 +47,10 @@ func (nc *Collector) queueMemory(dest map[string]circonus.MetricSample, stats *m
 		var streamTags []string
 		streamTags = append(streamTags, parentStreamTags...)
 		streamTags = append(streamTags, []string{"resource:memory", "units:bytes"}...)
-		_ = nc.check.QueueMetricSample(dest, available, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.AvailableBytes, nil)
+		if isNode {
+			// pods don't have 'available'
+			_ = nc.check.QueueMetricSample(dest, available, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.AvailableBytes, nil)
+		}
 		_ = nc.check.QueueMetricSample(dest, used, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.UsageBytes, nil)
 		_ = nc.check.QueueMetricSample(dest, workingSet, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.WorkingSetBytes, nil)
 		_ = nc.check.QueueMetricSample(dest, rss, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.RSSBytes, nil)
@@ -61,7 +64,7 @@ func (nc *Collector) queueMemory(dest map[string]circonus.MetricSample, stats *m
 	}
 }
 
-func (nc *Collector) streamMemory(dest io.Writer, stats *memory, parentStreamTags []string, parentMeasurementTags []string) {
+func (nc *Collector) streamMemory(dest io.Writer, stats *memory, parentStreamTags []string, parentMeasurementTags []string, isNode bool) {
 	available := "available"
 	used := "used"
 	workingSet := "workingSet"
@@ -73,7 +76,9 @@ func (nc *Collector) streamMemory(dest io.Writer, stats *memory, parentStreamTag
 		var streamTags []string
 		streamTags = append(streamTags, parentStreamTags...)
 		streamTags = append(streamTags, []string{"resource:memory", "units:bytes"}...)
-		_ = nc.check.WriteMetricSample(dest, available, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.AvailableBytes, nc.ts)
+		if isNode {
+			_ = nc.check.WriteMetricSample(dest, available, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.AvailableBytes, nc.ts)
+		}
 		_ = nc.check.WriteMetricSample(dest, used, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.UsageBytes, nc.ts)
 		_ = nc.check.WriteMetricSample(dest, workingSet, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.WorkingSetBytes, nc.ts)
 		_ = nc.check.WriteMetricSample(dest, rss, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.RSSBytes, nc.ts)
