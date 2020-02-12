@@ -93,7 +93,7 @@ func New() (*Agent, error) {
 	}
 
 	if len(a.clusters) == 0 {
-		log.Fatal().Msg("no cluster(s) configured, must configure at least ONE")
+		log.Fatal().Msg("no cluster(s) initialized")
 	}
 
 	a.signalNotifySetup()
