@@ -170,18 +170,21 @@ func (c *Check) QueueMetricSample(
 		return errors.New("invalid metric type (empty)")
 	}
 
-	if len(streamTags)+len(measurementTags) > MaxTags {
+	streamTagList := strings.Split(c.config.DefaultStreamtags, ",")
+	streamTagList = append(streamTagList, streamTags...)
+
+	if len(streamTagList)+len(measurementTags) > MaxTags {
 		c.log.Warn().
 			Str("metric_name", metricName).
-			Strs("stream_tags", streamTags).
+			Strs("stream_tags", streamTagList).
 			Strs("measurement_tags", measurementTags).
-			Int("num_tags", len(streamTags)+len(measurementTags)).
+			Int("num_tags", len(streamTagList)+len(measurementTags)).
 			Int("max_tags", MaxTags).
 			Msg("max metric tags exceeded, discarding")
 		return nil
 	}
 
-	taggedMetricName := c.taggedName(metricName, streamTags, measurementTags)
+	taggedMetricName := c.taggedName(metricName, streamTagList, measurementTags)
 
 	if len(taggedMetricName) > MaxMetricNameLen {
 		c.log.Warn().
@@ -204,7 +207,7 @@ func (c *Check) QueueMetricSample(
 	if _, found := metrics[taggedMetricName]; found {
 		c.log.Warn().
 			Str("metric_name", metricName).
-			Strs("stream_tags", streamTags).
+			Strs("stream_tags", streamTagList).
 			Strs("measurement_tags", measurementTags).
 			Str("tagged_name", taggedMetricName).
 			Msg("already present, overwriting...")
