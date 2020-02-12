@@ -30,6 +30,9 @@
             command: ["/circonus-kubernetes-agentd"]
             args: 
               #- --debug
+              #
+              # controls how many concurrent node metric collectors are run
+              # increase for performance when collect_duration exceeds 60s
               - --k8s-pool-size=1
             env:
               ##

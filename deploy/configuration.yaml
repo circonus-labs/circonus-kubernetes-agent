@@ -1,3 +1,9 @@
+##
+## NOTE: Change settings here, in the corresonding
+##       Secret or ConfigMap entry. Ensure settings
+##       are uncommeted here AND deployment.yaml
+##       in order for it to take effect.
+##
 ---
     apiVersion: v1
     kind: Secret
