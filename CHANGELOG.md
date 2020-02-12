@@ -1,3 +1,9 @@
+# v0.4.5
+
+* fix: handle empty tag lists better, e.g. events with no tags
+* doc: elaborate on need for settings to be uncommented in both configuration and deployment
+* fix: remove `available` memory metric for pods and containers since it is not provided
+
 # v0.4.4
 
 * fix: typo in network errors rule
