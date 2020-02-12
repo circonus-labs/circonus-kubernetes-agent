@@ -36,14 +36,20 @@ func (c *Check) taggedName(name string, tagSets ...[]string) string {
 		streamTags := make([]string, len(tagSets[0]))
 		copy(streamTags, tagSets[0])
 		sort.Strings(streamTags)
-		metricName = fmt.Sprintf("%s|ST[%s]", metricName, encodeTags(streamTags, c.config.Base64Tags))
+		tagList := encodeTags(streamTags, c.config.Base64Tags)
+		if tagList != "" {
+			metricName = fmt.Sprintf("%s|ST[%s]", metricName, tagList)
+		}
 	}
 
 	if len(tagSets) > 1 && len(tagSets[1]) > 0 {
 		measurementTags := make([]string, len(tagSets[1]))
 		copy(measurementTags, tagSets[1])
 		sort.Strings(measurementTags)
-		metricName = fmt.Sprintf("%s|MT[%s]", metricName, encodeTags(measurementTags, c.config.Base64Tags))
+		tagList := encodeTags(measurementTags, c.config.Base64Tags)
+		if tagList != "" {
+			metricName = fmt.Sprintf("%s|MT[%s]", metricName, tagList)
+		}
 	}
 
 	return metricName
@@ -58,11 +64,15 @@ func encodeTags(tags []string, useBase64 bool) string {
 		return strings.Join(tags, ",")
 	}
 
-	tagList := make([]string, len(tags))
+	var tagList []string //nolint:prealloc
 	for i, tag := range tags {
 		if i >= MaxTags {
 			log.Warn().Int("num", len(tags)).Int("max", MaxTags).Interface("tags", tags).Msg("ignoring tags over max")
 			break
+		}
+
+		if !strings.Contains(tag, ":") {
+			continue
 		}
 
 		tagParts := strings.SplitN(tag, ":", 2)
@@ -82,7 +92,7 @@ func encodeTags(tags []string, useBase64 bool) string {
 			tv = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, tv))))
 		}
 
-		tagList[i] = tc + ":" + tv
+		tagList = append(tagList, tc+":"+tv)
 	}
 
 	return strings.Join(tagList, ",")

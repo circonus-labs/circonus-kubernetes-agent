@@ -12,7 +12,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
@@ -129,8 +128,8 @@ func (e *Events) submitEvent(ctx context.Context, event *corev1.Event) {
 		e.log.Error().Err(err).Str("data", string(data)).Msg("parsing event")
 		return
 	}
-	streamTags := []string{}
-	measurementTags := []string{}
+	var streamTags []string
+	var measurementTags []string
 	var buf bytes.Buffer
 	_ = e.check.WriteMetricSample(
 		&buf,
@@ -146,8 +145,6 @@ func (e *Events) submitEvent(ctx context.Context, event *corev1.Event) {
 	if err := e.check.SubmitStream(ctx, &buf, e.log.With().Str("type", "event").Logger()); err != nil {
 		e.log.Warn().Err(err).Msg("submitting event")
 	}
-
-	fmt.Println(buf.String())
 
 	// submit event
 	//e.log.Debug().RawJSON("event", data).Msg("submitting event")
