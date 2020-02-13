@@ -23,6 +23,7 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -158,8 +159,8 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	wg.Wait()
 
 	ksm.check.AddHistSample("collect_latency", cgm.Tags{
-		cgm.Tag{Category: "type", Value: "collect_kube-state-metrics"},
-		cgm.Tag{Category: "source", Value: "agent"},
+		cgm.Tag{Category: "source", Value: release.NAME},
+		cgm.Tag{Category: "op", Value: "collect_kube-state-metrics"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(collectStart).Milliseconds()))
 	ksm.log.Debug().Str("duration", time.Since(collectStart).String()).Msg("kube-state-metrics collect end")
@@ -238,16 +239,18 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 	resp, err := client.Do(req)
 	if err != nil {
 		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "type", Value: "metrics"},
-			cgm.Tag{Category: "source", Value: "api-server"},
-			cgm.Tag{Category: "origin", Value: "kube-state-metrics"}})
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "metrics"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "kube-state-metrics"}})
 		return err
 	}
 	defer resp.Body.Close()
 	ksm.check.AddHistSample("collect_latency", cgm.Tags{
-		cgm.Tag{Category: "type", Value: "metrics"},
-		cgm.Tag{Category: "source", Value: "api-server"},
-		cgm.Tag{Category: "origin", Value: "kube-state-metrics"},
+		cgm.Tag{Category: "source", Value: release.NAME},
+		cgm.Tag{Category: "request", Value: "metrics"},
+		cgm.Tag{Category: "proxy", Value: "api-server"},
+		cgm.Tag{Category: "target", Value: "kube-state-metrics"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
@@ -293,16 +296,18 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 	resp, err := client.Do(req)
 	if err != nil {
 		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "type", Value: "telemetry"},
-			cgm.Tag{Category: "source", Value: "api-server"},
-			cgm.Tag{Category: "origin", Value: "kube-state-metrics"}})
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "telemetry"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "kube-state-metrics"}})
 		return err
 	}
 	defer resp.Body.Close()
 	ksm.check.AddHistSample("collect_latency", cgm.Tags{
-		cgm.Tag{Category: "type", Value: "telemetry"},
-		cgm.Tag{Category: "source", Value: "api-server"},
-		cgm.Tag{Category: "origin", Value: "kube-state-metrics"},
+		cgm.Tag{Category: "source", Value: release.NAME},
+		cgm.Tag{Category: "request", Value: "telemetry"},
+		cgm.Tag{Category: "proxy", Value: "api-server"},
+		cgm.Tag{Category: "target", Value: "kube-state-metrics"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 

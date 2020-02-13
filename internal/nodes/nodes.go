@@ -22,6 +22,7 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/nodes/collector"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -198,16 +199,17 @@ func (n *Nodes) nodeList(tlsConfig *tls.Config) (*k8s.NodeList, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		n.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "type", Value: "node-list"},
-			cgm.Tag{Category: "source", Value: "api-server"},
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "node-list"},
+			cgm.Tag{Category: "target", Value: "api-server"},
 			cgm.Tag{Category: "units", Value: "milliseconds"},
 		})
 		return nil, err
 	}
 	defer resp.Body.Close()
 	n.check.AddHistSample("collect_latency", cgm.Tags{
-		cgm.Tag{Category: "type", Value: "node-list"},
-		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "request", Value: "node-list"},
+		cgm.Tag{Category: "target", Value: "api-server"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
