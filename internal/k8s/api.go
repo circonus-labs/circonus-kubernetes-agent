@@ -16,15 +16,20 @@ import (
 
 func NewAPIClient(tlscfg *tls.Config) (*http.Client, error) {
 
+	// set limit on how long to wait for each individual
+	// request to the api server
+	requestTimelimit := 10 * time.Second
+
 	var client *http.Client
 
 	if tlscfg != nil {
 		client = &http.Client{
+			Timeout: requestTimelimit,
 			Transport: &http.Transport{
 				Proxy: http.ProxyFromEnvironment,
 				DialContext: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
+					Timeout:   5 * time.Second,
+					KeepAlive: 3 * time.Second,
 					DualStack: true,
 				}).DialContext,
 				TLSClientConfig:     tlscfg,
@@ -36,11 +41,12 @@ func NewAPIClient(tlscfg *tls.Config) (*http.Client, error) {
 		}
 	} else {
 		client = &http.Client{
+			Timeout: requestTimelimit,
 			Transport: &http.Transport{
 				Proxy: http.ProxyFromEnvironment,
 				DialContext: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
+					Timeout:   5 * time.Second,
+					KeepAlive: 3 * time.Second,
 					DualStack: true,
 				}).DialContext,
 				DisableKeepAlives:   false,
