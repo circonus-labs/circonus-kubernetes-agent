@@ -222,6 +222,7 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 	retryClient.RetryMax = 10
 	retryClient.RequestLogHook = func(l retryablehttp.Logger, r *http.Request, attempt int) {
 		if attempt > 0 {
+			c.metrics.IncrementWithTags("collect_submit_reties", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}})
 			reqStart = time.Now()
 			c.log.Warn().Str("url", r.URL.String()).Int("attempt", attempt).Msg("retrying...")
 		}
@@ -233,6 +234,10 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 			cgm.Tag{Category: "units", Value: "milliseconds"},
 		}, float64(time.Since(reqStart).Milliseconds()))
 		if r.StatusCode != http.StatusOK {
+			c.metrics.IncrementWithTags("collect_submit_errors", cgm.Tags{
+				cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", r.StatusCode)},
+				cgm.Tag{Category: "source", Value: release.NAME},
+			})
 			c.log.Warn().Str("url", r.Request.URL.String()).Str("status", r.Status).Msg("non-200 response...")
 		}
 	}
@@ -251,9 +256,15 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		c.metrics.IncrementWithTags("collect_submit_fails", cgm.Tags{
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+			cgm.Tag{Category: "source", Value: release.NAME},
+		})
 		c.log.Error().Str("url", c.submissionURL).Str("status", resp.Status).Str("body", string(body)).Msg("submitting telemetry")
 		return errors.Errorf("submitting metrics (%s %s)", c.submissionURL, resp.Status)
 	}
+
+	c.metrics.IncrementWithTags("collect_submits", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}})
 
 	var result TrapResult
 	if err := json.Unmarshal(body, &result); err != nil {

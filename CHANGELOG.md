@@ -1,3 +1,7 @@
+# v0.5.2
+
+* add: collect submit counters (success,fail,error)
+
 # v0.5.1
 
 * upd: normalize collection metric tags for more clarity
