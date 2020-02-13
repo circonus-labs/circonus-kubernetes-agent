@@ -22,6 +22,7 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
@@ -96,8 +97,8 @@ func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.C
 	wg.Wait()
 
 	nc.check.AddHistSample("collect_latency", cgm.Tags{
-		cgm.Tag{Category: "type", Value: "collect_node"},
-		cgm.Tag{Category: "source", Value: "agent"},
+		cgm.Tag{Category: "op", Value: "collect_node"},
+		cgm.Tag{Category: "source", Value: release.NAME},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(collectStart).Milliseconds()))
 	nc.log.
@@ -426,16 +427,18 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 	resp, err := client.Do(req)
 	if err != nil {
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "type", Value: "stats/summary"},
-			cgm.Tag{Category: "source", Value: "api-server"},
-			cgm.Tag{Category: "origin", Value: "kubelet"}})
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "stats/summary"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "kubelet"}})
 		nc.log.Error().Err(err).Str("req_url", reqURL).Msg("fetching summary stats")
 		return
 	}
 	nc.check.AddHistSample("collect_latency", cgm.Tags{
-		cgm.Tag{Category: "type", Value: "stats/summary"},
-		cgm.Tag{Category: "source", Value: "api-server"},
-		cgm.Tag{Category: "origin", Value: "kubelet"},
+		cgm.Tag{Category: "source", Value: release.NAME},
+		cgm.Tag{Category: "request", Value: "stats/summary"},
+		cgm.Tag{Category: "proxy", Value: "api-server"},
+		cgm.Tag{Category: "target", Value: "kubelet"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
@@ -740,16 +743,17 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 	resp, err := client.Do(req)
 	if err != nil {
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "type", Value: "metrics"},
-			cgm.Tag{Category: "source", Value: "api-server"},
-			cgm.Tag{Category: "origin", Value: "kubelet"}})
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "metrics"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "kubelet"}})
 		nc.log.Error().Err(err).Str("url", reqURL).Msg("node metrics")
 		return
 	}
 	nc.check.AddHistSample("collect_latency", cgm.Tags{
-		cgm.Tag{Category: "type", Value: "metrics"},
-		cgm.Tag{Category: "source", Value: "api-server"},
-		cgm.Tag{Category: "origin", Value: "kubelet"},
+		cgm.Tag{Category: "request", Value: "metrics"},
+		cgm.Tag{Category: "proxy", Value: "api-server"},
+		cgm.Tag{Category: "target", Value: "kubelet"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
@@ -806,14 +810,16 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 	resp, err := client.Do(req)
 	if err != nil {
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "type", Value: "pod-labels"},
-			cgm.Tag{Category: "source", Value: "api-server"}})
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "pod-labels"},
+			cgm.Tag{Category: "target", Value: "api-server"}})
 		return collect, tags, err
 	}
 	defer resp.Body.Close()
 	nc.check.AddHistSample("collect_latency", cgm.Tags{
-		cgm.Tag{Category: "type", Value: "pod-labels"},
-		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "request", Value: "pod-labels"},
+		cgm.Tag{Category: "target", Value: "api-server"},
+		cgm.Tag{Category: "source", Value: release.NAME},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 

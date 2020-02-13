@@ -1,3 +1,7 @@
+# v0.5.1
+
+* upd: normalize collection metric tags for more clarity
+
 # v0.5.0
 
 * add: logging on submit retries and non-200 responses

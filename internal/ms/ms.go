@@ -20,6 +20,7 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -123,9 +124,10 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 	resp, err := client.Do(req)
 	if err != nil {
 		ms.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "type", Value: "metrics"},
-			cgm.Tag{Category: "source", Value: "api-server"},
-			cgm.Tag{Category: "origin", Value: "metric-server"}})
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "metrics"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "metric-server"}})
 		ms.log.Error().Err(err).Str("url", metricsURL).Msg("metrics")
 		ms.Lock()
 		ms.running = false
@@ -134,9 +136,10 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 	}
 	defer resp.Body.Close()
 	ms.check.AddHistSample("collect_latency", cgm.Tags{
-		cgm.Tag{Category: "type", Value: "metrics"},
-		cgm.Tag{Category: "source", Value: "api-server"},
-		cgm.Tag{Category: "origin", Value: "metric-server"},
+		cgm.Tag{Category: "source", Value: release.NAME},
+		cgm.Tag{Category: "request", Value: "metrics"},
+		cgm.Tag{Category: "proxy", Value: "api-server"},
+		cgm.Tag{Category: "target", Value: "metric-server"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
@@ -164,8 +167,8 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 	}
 
 	ms.check.AddHistSample("collect_latency", cgm.Tags{
-		cgm.Tag{Category: "type", Value: "collect_metrics-server"},
-		cgm.Tag{Category: "source", Value: "agent"},
+		cgm.Tag{Category: "source", Value: release.NAME},
+		cgm.Tag{Category: "opt", Value: "collect_metrics-server"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(collectStart).Milliseconds()))
 	ms.log.Debug().Str("duration", time.Since(collectStart).String()).Msg("metric-server collect end")
