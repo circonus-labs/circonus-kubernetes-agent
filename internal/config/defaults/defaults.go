@@ -78,6 +78,7 @@ const (
 	K8SPodLabelKey            = "" // blank=all
 	K8SPodLabelVal            = "" // blank=all
 	K8SIncludeContainers      = false
+	K8SAPITimelimit           = "10s"
 )
 
 var (

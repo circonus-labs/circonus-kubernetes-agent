@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 )
 
 const (
@@ -70,6 +72,34 @@ var (
 		MetricTypeCumulativeHistogram,
 	}, "") + `]$`)
 )
+
+// AddGauge to queue for submission
+func (c *Check) AddGauge(metricName string, tags cgm.Tags, value interface{}) {
+	if c.metrics != nil {
+		c.metrics.GaugeWithTags(metricName, tags, value)
+	}
+}
+
+// AddHistSample to queue for submission
+func (c *Check) AddHistSample(metricName string, tags cgm.Tags, value float64) {
+	if c.metrics != nil {
+		c.metrics.TimingWithTags(metricName, tags, value)
+	}
+}
+
+// AddText to queue for submission
+func (c *Check) AddText(metricName string, tags cgm.Tags, value string) {
+	if c.metrics != nil {
+		c.metrics.SetTextWithTags(metricName, tags, value)
+	}
+}
+
+// IncrementCounter to queue for submission
+func (c *Check) IncrementCounter(metricName string, tags cgm.Tags) {
+	if c.metrics != nil {
+		c.metrics.IncrementWithTags(metricName, tags)
+	}
+}
 
 // WriteMetricSample to queue for submission
 func (c *Check) WriteMetricSample(
@@ -170,18 +200,21 @@ func (c *Check) QueueMetricSample(
 		return errors.New("invalid metric type (empty)")
 	}
 
-	if len(streamTags)+len(measurementTags) > MaxTags {
+	streamTagList := strings.Split(c.config.DefaultStreamtags, ",")
+	streamTagList = append(streamTagList, streamTags...)
+
+	if len(streamTagList)+len(measurementTags) > MaxTags {
 		c.log.Warn().
 			Str("metric_name", metricName).
-			Strs("stream_tags", streamTags).
+			Strs("stream_tags", streamTagList).
 			Strs("measurement_tags", measurementTags).
-			Int("num_tags", len(streamTags)+len(measurementTags)).
+			Int("num_tags", len(streamTagList)+len(measurementTags)).
 			Int("max_tags", MaxTags).
 			Msg("max metric tags exceeded, discarding")
 		return nil
 	}
 
-	taggedMetricName := c.taggedName(metricName, streamTags, measurementTags)
+	taggedMetricName := c.taggedName(metricName, streamTagList, measurementTags)
 
 	if len(taggedMetricName) > MaxMetricNameLen {
 		c.log.Warn().
@@ -204,7 +237,7 @@ func (c *Check) QueueMetricSample(
 	if _, found := metrics[taggedMetricName]; found {
 		c.log.Warn().
 			Str("metric_name", metricName).
-			Strs("stream_tags", streamTags).
+			Strs("stream_tags", streamTagList).
 			Strs("measurement_tags", measurementTags).
 			Str("tagged_name", taggedMetricName).
 			Msg("already present, overwriting...")

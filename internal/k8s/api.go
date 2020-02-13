@@ -14,17 +14,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-func NewAPIClient(tlscfg *tls.Config) (*http.Client, error) {
+func NewAPIClient(tlscfg *tls.Config, reqTimeout time.Duration) (*http.Client, error) {
+	if reqTimeout == time.Duration(0) {
+		reqTimeout = 10 * time.Second
+	}
 
 	var client *http.Client
 
 	if tlscfg != nil {
 		client = &http.Client{
+			Timeout: reqTimeout,
 			Transport: &http.Transport{
 				Proxy: http.ProxyFromEnvironment,
 				DialContext: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
+					Timeout:   5 * time.Second,
+					KeepAlive: 3 * time.Second,
 					DualStack: true,
 				}).DialContext,
 				TLSClientConfig:     tlscfg,
@@ -36,11 +40,12 @@ func NewAPIClient(tlscfg *tls.Config) (*http.Client, error) {
 		}
 	} else {
 		client = &http.Client{
+			Timeout: reqTimeout,
 			Transport: &http.Transport{
 				Proxy: http.ProxyFromEnvironment,
 				DialContext: (&net.Dialer{
-					Timeout:   30 * time.Second,
-					KeepAlive: 30 * time.Second,
+					Timeout:   5 * time.Second,
+					KeepAlive: 3 * time.Second,
 					DualStack: true,
 				}).DialContext,
 				DisableKeepAlives:   false,

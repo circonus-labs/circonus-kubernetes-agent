@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bytefmt"
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-retryablehttp"
@@ -41,6 +42,21 @@ const (
 	compressionThreshold = 1024
 	traceTSFormat        = "20060102_150405.000000000"
 )
+
+func (c *Check) FlushCGM() {
+	if c.metrics != nil {
+		m := c.metrics.FlushMetrics()
+		// c.log.Info().Interface("metrics", m).Msg("sending metrics")
+		data, err := json.Marshal(m)
+		if err != nil {
+			c.log.Warn().Err(err).Msg("encoding metrics")
+			return
+		}
+		if err := c.SubmitStream(context.Background(), bytes.NewReader(data), c.log); err != nil {
+			c.log.Error().Err(err).Msg("submitting cgm metrics")
+		}
+	}
+}
 
 func (c *Check) ResetSubmitStats() {
 	c.statsmu.Lock()
@@ -96,7 +112,7 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 				Proxy: http.ProxyFromEnvironment,
 				DialContext: (&net.Dialer{
 					Timeout:   10 * time.Second,
-					KeepAlive: 30 * time.Second,
+					KeepAlive: 3 * time.Second,
 					DualStack: true,
 				}).DialContext,
 				TLSClientConfig:     c.brokerTLSConfig,
@@ -112,7 +128,7 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 				Proxy: http.ProxyFromEnvironment,
 				DialContext: (&net.Dialer{
 					Timeout:   10 * time.Second,
-					KeepAlive: 30 * time.Second,
+					KeepAlive: 3 * time.Second,
 					DualStack: true,
 				}).DialContext,
 				DisableKeepAlives:   false,
@@ -173,6 +189,8 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 
 	dataLen := subData.Len()
 
+	reqStart := time.Now()
+
 	req, err := retryablehttp.NewRequest("PUT", c.submissionURL, subData)
 	if err != nil {
 		return err
@@ -204,7 +222,18 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 	retryClient.RetryMax = 10
 	retryClient.RequestLogHook = func(l retryablehttp.Logger, r *http.Request, attempt int) {
 		if attempt > 0 {
-			l.Printf("[WARN] %s retry %d", r.URL, attempt)
+			reqStart = time.Now()
+			c.log.Warn().Str("url", r.URL.String()).Int("attempt", attempt).Msg("retrying...")
+		}
+	}
+	retryClient.ResponseLogHook = func(l retryablehttp.Logger, r *http.Response) {
+		c.AddHistSample("collect_latency", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "submit"},
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "units", Value: "milliseconds"},
+		}, float64(time.Since(reqStart).Milliseconds()))
+		if r.StatusCode != http.StatusOK {
+			c.log.Warn().Str("url", r.Request.URL.String()).Str("status", r.Status).Msg("non-200 response...")
 		}
 	}
 

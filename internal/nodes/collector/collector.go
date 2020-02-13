@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
@@ -28,17 +29,18 @@ import (
 )
 
 type Collector struct {
-	cfg        *config.Cluster
-	tlsConfig  *tls.Config
-	ctx        context.Context
-	check      *circonus.Check
-	node       *k8s.Node
-	baseLogger zerolog.Logger
-	log        zerolog.Logger
-	ts         *time.Time
+	cfg          *config.Cluster
+	tlsConfig    *tls.Config
+	ctx          context.Context
+	check        *circonus.Check
+	node         *k8s.Node
+	baseLogger   zerolog.Logger
+	log          zerolog.Logger
+	ts           *time.Time
+	apiTimelimit time.Duration
 }
 
-func New(cfg *config.Cluster, node *k8s.Node, logger zerolog.Logger, check *circonus.Check) (*Collector, error) {
+func New(cfg *config.Cluster, node *k8s.Node, logger zerolog.Logger, check *circonus.Check, apiTimeout time.Duration) (*Collector, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid cluster config (nil)")
 	}
@@ -48,11 +50,13 @@ func New(cfg *config.Cluster, node *k8s.Node, logger zerolog.Logger, check *circ
 	if check == nil {
 		return nil, errors.New("invalid check (nil)")
 	}
+
 	return &Collector{
-		cfg:        cfg,
-		check:      check,
-		node:       node,
-		baseLogger: logger.With().Str("node", node.Metadata.Name).Logger(),
+		cfg:          cfg,
+		check:        check,
+		node:         node,
+		apiTimelimit: apiTimeout,
+		baseLogger:   logger.With().Str("node", node.Metadata.Name).Logger(),
 	}, nil
 }
 
@@ -91,6 +95,11 @@ func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.C
 
 	wg.Wait()
 
+	nc.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "collect_node"},
+		cgm.Tag{Category: "source", Value: "agent"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(collectStart).Milliseconds()))
 	nc.log.
 		Debug().
 		Str("duration", time.Since(collectStart).String()).
@@ -399,7 +408,7 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 		return
 	}
 
-	client, err := k8s.NewAPIClient(nc.tlsConfig)
+	client, err := k8s.NewAPIClient(nc.tlsConfig, nc.apiTimelimit)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("abandoning collection")
 		return
@@ -413,11 +422,22 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 		return
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "stats/summary"},
+			cgm.Tag{Category: "source", Value: "api-server"},
+			cgm.Tag{Category: "origin", Value: "kubelet"}})
 		nc.log.Error().Err(err).Str("req_url", reqURL).Msg("fetching summary stats")
 		return
 	}
+	nc.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "stats/summary"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "origin", Value: "kubelet"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	defer resp.Body.Close()
 	if nc.done() {
@@ -702,7 +722,7 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 		return
 	}
 
-	client, err := k8s.NewAPIClient(nc.tlsConfig)
+	client, err := k8s.NewAPIClient(nc.tlsConfig, nc.apiTimelimit)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("abandoning /metrics collection")
 		return
@@ -716,11 +736,22 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 		return
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "metrics"},
+			cgm.Tag{Category: "source", Value: "api-server"},
+			cgm.Tag{Category: "origin", Value: "kubelet"}})
 		nc.log.Error().Err(err).Str("url", reqURL).Msg("node metrics")
 		return
 	}
+	nc.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "metrics"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "origin", Value: "kubelet"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	defer resp.Body.Close()
 	if nc.done() {
@@ -759,7 +790,7 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 	collect := false
 	tags := []string{}
 
-	client, err := k8s.NewAPIClient(nc.tlsConfig)
+	client, err := k8s.NewAPIClient(nc.tlsConfig, nc.apiTimelimit)
 	if err != nil {
 		return collect, tags, err
 	}
@@ -771,11 +802,20 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 		return collect, tags, err
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "pod-labels"},
+			cgm.Tag{Category: "source", Value: "api-server"}})
 		return collect, tags, err
 	}
 	defer resp.Body.Close()
+	nc.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "pod-labels"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
 		data, err := ioutil.ReadAll(resp.Body)

@@ -14,8 +14,10 @@ import (
 	"sync"
 	"time"
 
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
 	"github.com/pkg/errors"
@@ -23,10 +25,11 @@ import (
 )
 
 type MS struct {
-	config  *config.Cluster
-	check   *circonus.Check
-	log     zerolog.Logger
-	running bool
+	config       *config.Cluster
+	check        *circonus.Check
+	log          zerolog.Logger
+	running      bool
+	apiTimelimit time.Duration
 	sync.Mutex
 }
 
@@ -48,6 +51,23 @@ func New(cfg *config.Cluster, parentLog zerolog.Logger, check *circonus.Check) (
 		config: cfg,
 		check:  check,
 		log:    parentLog.With().Str("collector", "metrics-server").Logger(),
+	}
+
+	if cfg.APITimelimit != "" {
+		v, err := time.ParseDuration(cfg.APITimelimit)
+		if err != nil {
+			ms.log.Error().Err(err).Msg("parsing api timelimit, using default")
+		} else {
+			ms.apiTimelimit = v
+		}
+	}
+
+	if ms.apiTimelimit == time.Duration(0) {
+		v, err := time.ParseDuration(defaults.K8SAPITimelimit)
+		if err != nil {
+			ms.log.Fatal().Err(err).Msg("parsing DEFAULT api timelimit")
+		}
+		ms.apiTimelimit = v
 	}
 
 	return ms, nil
@@ -80,7 +100,7 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 
 	metricsURL := ms.config.URL + "/metrics"
 
-	client, err := k8s.NewAPIClient(tlsConfig)
+	client, err := k8s.NewAPIClient(tlsConfig, ms.apiTimelimit)
 	if err != nil {
 		ms.log.Error().Err(err).Str("url", metricsURL).Msg("metrics cli")
 		ms.Lock()
@@ -99,8 +119,13 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 		return
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		ms.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "metrics"},
+			cgm.Tag{Category: "source", Value: "api-server"},
+			cgm.Tag{Category: "origin", Value: "metric-server"}})
 		ms.log.Error().Err(err).Str("url", metricsURL).Msg("metrics")
 		ms.Lock()
 		ms.running = false
@@ -108,6 +133,12 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 		return
 	}
 	defer resp.Body.Close()
+	ms.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "metrics"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "origin", Value: "metric-server"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
 		data, err := ioutil.ReadAll(resp.Body)
@@ -132,6 +163,11 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 		}
 	}
 
+	ms.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "collect_metrics-server"},
+		cgm.Tag{Category: "source", Value: "agent"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(collectStart).Milliseconds()))
 	ms.log.Debug().Str("duration", time.Since(collectStart).String()).Msg("metric-server collect end")
 	ms.Lock()
 	ms.running = false

@@ -86,6 +86,8 @@
       ## collection interval, how often to collect metrics (note if a previous 
       ## collection is still in progress another will NOT be started)
       #kubernetes-collection-interval: "1m"
+      ## api request timelimit
+      #kubernetes-api-timelimit: "10s"
       ##
       ## Metric filters control which metrics are passed on by the broker
       ## NOTE: This list ONLY applies when initially creating a check. After a
@@ -101,7 +103,7 @@
             ["allow","^kube_pod_start_time","pods"],
             ["allow","^kube_pod_status_phase$","tags","and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))","pods"],
             ["allow","^kube_pod_status_(ready|scheduled)$","tags","and(condition:true)","pods"],
-            ["allow","^kube_(service_labels|deployment_labels|pod_container_info)$","ksm inventory"],
+            ["allow","^kube_(service_labels|deployment_labels|pod_container_info|pod_deleted)$","ksm inventory"],
             ["allow","^(node|kubelet_running_pod_count|Ready)$","nodes"],
             ["allow","^NetworkUnavailable$","node status"],
             ["allow","^(Disk|Memory|PID)Pressure$","node status"],

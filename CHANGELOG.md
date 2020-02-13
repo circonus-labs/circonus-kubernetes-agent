@@ -1,3 +1,14 @@
+# v0.5.0
+
+* add: logging on submit retries and non-200 responses
+* add: api request timelimit (default:10s)
+* add: `kube_pod_deleted` to metric filters
+* add: agent metric
+* add: api request error metrics
+* add: collection duration, api latency, and metric submission latency histograms
+* upd: failure message when cluster(s) can't be initialized resulting in 0 clusters
+* fix: ensure default tags used in queued metrics
+
 # v0.4.5
 
 * fix: handle empty tag lists better, e.g. events with no tags

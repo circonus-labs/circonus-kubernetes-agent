@@ -16,8 +16,10 @@ import (
 	"sync"
 	"time"
 
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/nodes/collector"
 	"github.com/pkg/errors"
@@ -25,10 +27,11 @@ import (
 )
 
 type Nodes struct {
-	check   *circonus.Check
-	config  *config.Cluster
-	log     zerolog.Logger
-	running bool
+	check        *circonus.Check
+	config       *config.Cluster
+	log          zerolog.Logger
+	running      bool
+	apiTimelimit time.Duration
 	sync.Mutex
 }
 
@@ -44,6 +47,23 @@ func New(cfg *config.Cluster, parentLog zerolog.Logger, check *circonus.Check) (
 		config: cfg,
 		check:  check,
 		log:    parentLog.With().Str("pkg", "nodes").Logger(),
+	}
+
+	if cfg.APITimelimit != "" {
+		v, err := time.ParseDuration(cfg.APITimelimit)
+		if err != nil {
+			nodes.log.Error().Err(err).Msg("parsing api timelimit, using default")
+		} else {
+			nodes.apiTimelimit = v
+		}
+	}
+
+	if nodes.apiTimelimit == time.Duration(0) {
+		v, err := time.ParseDuration(defaults.K8SAPITimelimit)
+		if err != nil {
+			nodes.log.Fatal().Err(err).Msg("parsing DEFAULT api timelimit")
+		}
+		nodes.apiTimelimit = v
 	}
 
 	return nodes, nil
@@ -117,7 +137,7 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 				continue
 			}
 			if cond.Status == "True" {
-				nc, err := collector.New(n.config, &node, n.log, n.check)
+				nc, err := collector.New(n.config, &node, n.log, n.check, n.apiTimelimit)
 				if err != nil {
 					n.log.Error().Err(err).Str("node", node.Metadata.Name).Msg("skipping...")
 					break
@@ -132,6 +152,12 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	}
 	close(nodeQueue)
 	wg.Wait() // wait for last one to finish
+
+	n.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "collect_nodes"},
+		cgm.Tag{Category: "source", Value: "agent"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(collectStart).Milliseconds()))
 
 	n.log.Debug().
 		Str("duration", time.Since(collectStart).String()).
@@ -156,7 +182,7 @@ func (n *Nodes) nodeList(tlsConfig *tls.Config) (*k8s.NodeList, error) {
 		u.RawQuery = q.Encode()
 	}
 
-	client, err := k8s.NewAPIClient(tlsConfig)
+	client, err := k8s.NewAPIClient(tlsConfig, n.apiTimelimit)
 	if err != nil {
 		return nil, errors.Wrap(err, "node list cli")
 	}
@@ -168,11 +194,22 @@ func (n *Nodes) nodeList(tlsConfig *tls.Config) (*k8s.NodeList, error) {
 		return nil, errors.Wrap(err, "node list req")
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		n.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "node-list"},
+			cgm.Tag{Category: "source", Value: "api-server"},
+			cgm.Tag{Category: "units", Value: "milliseconds"},
+		})
 		return nil, err
 	}
 	defer resp.Body.Close()
+	n.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "node-list"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
 		data, err := ioutil.ReadAll(resp.Body)

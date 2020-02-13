@@ -17,8 +17,10 @@ import (
 	"sync"
 	"time"
 
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
 	"github.com/pkg/errors"
@@ -26,10 +28,11 @@ import (
 )
 
 type KSM struct {
-	config  *config.Cluster
-	check   *circonus.Check
-	log     zerolog.Logger
-	running bool
+	config       *config.Cluster
+	check        *circonus.Check
+	log          zerolog.Logger
+	apiTimelimit time.Duration
+	running      bool
 	sync.Mutex
 	ts *time.Time
 }
@@ -52,6 +55,23 @@ func New(cfg *config.Cluster, parentLogger zerolog.Logger, check *circonus.Check
 		config: cfg,
 		check:  check,
 		log:    parentLogger.With().Str("collector", "kube-state-metrics").Logger(),
+	}
+
+	if cfg.APITimelimit != "" {
+		v, err := time.ParseDuration(cfg.APITimelimit)
+		if err != nil {
+			ksm.log.Error().Err(err).Msg("parsing api timelimit, using default")
+		} else {
+			ksm.apiTimelimit = v
+		}
+	}
+
+	if ksm.apiTimelimit == time.Duration(0) {
+		v, err := time.ParseDuration(defaults.K8SAPITimelimit)
+		if err != nil {
+			ksm.log.Fatal().Err(err).Msg("parsing DEFAULT api timelimit")
+		}
+		ksm.apiTimelimit = v
 	}
 
 	return ksm, nil
@@ -137,6 +157,11 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 
 	wg.Wait()
 
+	ksm.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "collect_kube-state-metrics"},
+		cgm.Tag{Category: "source", Value: "agent"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(collectStart).Milliseconds()))
 	ksm.log.Debug().Str("duration", time.Since(collectStart).String()).Msg("kube-state-metrics collect end")
 	ksm.Lock()
 	ksm.running = false
@@ -153,7 +178,7 @@ func (ksm *KSM) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error
 	q.Set("fieldSelector", "metadata.name=kube-state-metrics")
 	u.RawQuery = q.Encode()
 
-	client, err := k8s.NewAPIClient(tlsConfig)
+	client, err := k8s.NewAPIClient(tlsConfig, ksm.apiTimelimit)
 	if err != nil {
 		return nil, errors.Wrap(err, "service definition cli")
 	}
@@ -198,7 +223,7 @@ func (ksm *KSM) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error
 }
 
 func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL string) error {
-	client, err := k8s.NewAPIClient(tlsConfig)
+	client, err := k8s.NewAPIClient(tlsConfig, ksm.apiTimelimit)
 	if err != nil {
 		return errors.Wrap(err, "/metrics cli")
 	}
@@ -209,11 +234,22 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 		return errors.Wrap(err, "/metrics req")
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "metrics"},
+			cgm.Tag{Category: "source", Value: "api-server"},
+			cgm.Tag{Category: "origin", Value: "kube-state-metrics"}})
 		return err
 	}
 	defer resp.Body.Close()
+	ksm.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "metrics"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "origin", Value: "kube-state-metrics"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
 		data, err := ioutil.ReadAll(resp.Body)
@@ -242,7 +278,7 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 }
 
 func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryURL string) error {
-	client, err := k8s.NewAPIClient(tlsConfig)
+	client, err := k8s.NewAPIClient(tlsConfig, ksm.apiTimelimit)
 	if err != nil {
 		return errors.Wrap(err, "/telemetry cli")
 	}
@@ -253,11 +289,22 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 		return errors.Wrap(err, "/telemetry req")
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "telemetry"},
+			cgm.Tag{Category: "source", Value: "api-server"},
+			cgm.Tag{Category: "origin", Value: "kube-state-metrics"}})
 		return err
 	}
 	defer resp.Body.Close()
+	ksm.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "telemetry"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "origin", Value: "kube-state-metrics"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
 		data, err := ioutil.ReadAll(resp.Body)

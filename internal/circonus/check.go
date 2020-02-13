@@ -14,11 +14,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	stdlog "log"
 	"os"
 	"path"
 	"strings"
 	"sync"
 
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
@@ -48,6 +50,7 @@ type Check struct {
 	log             zerolog.Logger
 	stats           Stats
 	statsmu         sync.Mutex
+	metrics         *cgm.CirconusMetrics
 }
 
 func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error) {
@@ -88,6 +91,21 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 
 	if err := c.initializeCheckBundle(client); err != nil {
 		return nil, err
+	}
+
+	{
+
+		cfg := &cgm.Config{
+			Log:      stdlog.New(c.log.With().Str("pkg", "cgm").Logger(), "", 0),
+			Debug:    c.config.API.Debug,
+			Interval: "0",
+		}
+		cfg.CheckManager.Check.SubmissionURL = c.submissionURL
+		m, err := cgm.New(cfg)
+		if err != nil {
+			c.log.Warn().Err(err).Msg("unable to initialize internal metric submitter")
+		}
+		c.metrics = m
 	}
 
 	return c, nil
