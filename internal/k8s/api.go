@@ -14,17 +14,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-func NewAPIClient(tlscfg *tls.Config) (*http.Client, error) {
-
-	// set limit on how long to wait for each individual
-	// request to the api server
-	requestTimelimit := 10 * time.Second
+func NewAPIClient(tlscfg *tls.Config, reqTimeout time.Duration) (*http.Client, error) {
+	if reqTimeout == time.Duration(0) {
+		reqTimeout = 10 * time.Second
+	}
 
 	var client *http.Client
 
 	if tlscfg != nil {
 		client = &http.Client{
-			Timeout: requestTimelimit,
+			Timeout: reqTimeout,
 			Transport: &http.Transport{
 				Proxy: http.ProxyFromEnvironment,
 				DialContext: (&net.Dialer{
@@ -41,7 +40,7 @@ func NewAPIClient(tlscfg *tls.Config) (*http.Client, error) {
 		}
 	} else {
 		client = &http.Client{
-			Timeout: requestTimelimit,
+			Timeout: reqTimeout,
 			Transport: &http.Transport{
 				Proxy: http.ProxyFromEnvironment,
 				DialContext: (&net.Dialer{

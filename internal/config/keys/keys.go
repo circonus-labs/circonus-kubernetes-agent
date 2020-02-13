@@ -165,6 +165,9 @@ const (
 	// K8SNodePoolSize size of the node collector pool
 	K8SNodePoolSize = "kubernetes.node_pool_size"
 
+	// K8SAPITimelimit amount of time to wait for a complete response from api-server
+	K8SAPITimelimit = "kubernetes.api_timelimit"
+
 	//
 	// Kubernetes clusters (multiple, use either kubernetes or clusters, not both)
 	//

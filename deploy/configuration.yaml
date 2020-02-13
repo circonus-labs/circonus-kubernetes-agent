@@ -86,6 +86,8 @@
       ## collection interval, how often to collect metrics (note if a previous 
       ## collection is still in progress another will NOT be started)
       #kubernetes-collection-interval: "1m"
+      ## api request timelimit
+      #kubernetes-api-timelimit: "10s"
       ##
       ## Metric filters control which metrics are passed on by the broker
       ## NOTE: This list ONLY applies when initially creating a check. After a

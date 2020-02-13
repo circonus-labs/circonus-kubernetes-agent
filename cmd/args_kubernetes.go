@@ -358,4 +358,24 @@ func init() {
 		}
 		viper.SetDefault(key, defaultValue)
 	}
+
+	{
+		const (
+			key          = keys.K8SAPITimelimit
+			longOpt      = "k8s-api-timelimit"
+			envVar       = release.ENVPREFIX + "_K8S_API_TIMELIMIT"
+			description  = "Kubernetes API request timelimit"
+			defaultValue = defaults.K8SAPITimelimit
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+
 }

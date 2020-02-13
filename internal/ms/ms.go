@@ -17,6 +17,7 @@ import (
 	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
 	"github.com/pkg/errors"
@@ -24,10 +25,11 @@ import (
 )
 
 type MS struct {
-	config  *config.Cluster
-	check   *circonus.Check
-	log     zerolog.Logger
-	running bool
+	config       *config.Cluster
+	check        *circonus.Check
+	log          zerolog.Logger
+	running      bool
+	apiTimelimit time.Duration
 	sync.Mutex
 }
 
@@ -49,6 +51,23 @@ func New(cfg *config.Cluster, parentLog zerolog.Logger, check *circonus.Check) (
 		config: cfg,
 		check:  check,
 		log:    parentLog.With().Str("collector", "metrics-server").Logger(),
+	}
+
+	if cfg.APITimelimit != "" {
+		v, err := time.ParseDuration(cfg.APITimelimit)
+		if err != nil {
+			ms.log.Error().Err(err).Msg("parsing api timelimit, using default")
+		} else {
+			ms.apiTimelimit = v
+		}
+	}
+
+	if ms.apiTimelimit == time.Duration(0) {
+		v, err := time.ParseDuration(defaults.K8SAPITimelimit)
+		if err != nil {
+			ms.log.Fatal().Err(err).Msg("parsing DEFAULT api timelimit")
+		}
+		ms.apiTimelimit = v
 	}
 
 	return ms, nil
@@ -81,7 +100,7 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 
 	metricsURL := ms.config.URL + "/metrics"
 
-	client, err := k8s.NewAPIClient(tlsConfig)
+	client, err := k8s.NewAPIClient(tlsConfig, ms.apiTimelimit)
 	if err != nil {
 		ms.log.Error().Err(err).Str("url", metricsURL).Msg("metrics cli")
 		ms.Lock()

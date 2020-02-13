@@ -29,17 +29,18 @@ import (
 )
 
 type Collector struct {
-	cfg        *config.Cluster
-	tlsConfig  *tls.Config
-	ctx        context.Context
-	check      *circonus.Check
-	node       *k8s.Node
-	baseLogger zerolog.Logger
-	log        zerolog.Logger
-	ts         *time.Time
+	cfg          *config.Cluster
+	tlsConfig    *tls.Config
+	ctx          context.Context
+	check        *circonus.Check
+	node         *k8s.Node
+	baseLogger   zerolog.Logger
+	log          zerolog.Logger
+	ts           *time.Time
+	apiTimelimit time.Duration
 }
 
-func New(cfg *config.Cluster, node *k8s.Node, logger zerolog.Logger, check *circonus.Check) (*Collector, error) {
+func New(cfg *config.Cluster, node *k8s.Node, logger zerolog.Logger, check *circonus.Check, apiTimeout time.Duration) (*Collector, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid cluster config (nil)")
 	}
@@ -49,11 +50,13 @@ func New(cfg *config.Cluster, node *k8s.Node, logger zerolog.Logger, check *circ
 	if check == nil {
 		return nil, errors.New("invalid check (nil)")
 	}
+
 	return &Collector{
-		cfg:        cfg,
-		check:      check,
-		node:       node,
-		baseLogger: logger.With().Str("node", node.Metadata.Name).Logger(),
+		cfg:          cfg,
+		check:        check,
+		node:         node,
+		apiTimelimit: apiTimeout,
+		baseLogger:   logger.With().Str("node", node.Metadata.Name).Logger(),
 	}, nil
 }
 
@@ -405,7 +408,7 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 		return
 	}
 
-	client, err := k8s.NewAPIClient(nc.tlsConfig)
+	client, err := k8s.NewAPIClient(nc.tlsConfig, nc.apiTimelimit)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("abandoning collection")
 		return
@@ -715,7 +718,7 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 		return
 	}
 
-	client, err := k8s.NewAPIClient(nc.tlsConfig)
+	client, err := k8s.NewAPIClient(nc.tlsConfig, nc.apiTimelimit)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("abandoning /metrics collection")
 		return
@@ -779,7 +782,7 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 	collect := false
 	tags := []string{}
 
-	client, err := k8s.NewAPIClient(nc.tlsConfig)
+	client, err := k8s.NewAPIClient(nc.tlsConfig, nc.apiTimelimit)
 	if err != nil {
 		return collect, tags, err
 	}

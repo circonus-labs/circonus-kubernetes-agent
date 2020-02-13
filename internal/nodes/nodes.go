@@ -19,6 +19,7 @@ import (
 	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/nodes/collector"
 	"github.com/pkg/errors"
@@ -26,10 +27,11 @@ import (
 )
 
 type Nodes struct {
-	check   *circonus.Check
-	config  *config.Cluster
-	log     zerolog.Logger
-	running bool
+	check        *circonus.Check
+	config       *config.Cluster
+	log          zerolog.Logger
+	running      bool
+	apiTimelimit time.Duration
 	sync.Mutex
 }
 
@@ -45,6 +47,23 @@ func New(cfg *config.Cluster, parentLog zerolog.Logger, check *circonus.Check) (
 		config: cfg,
 		check:  check,
 		log:    parentLog.With().Str("pkg", "nodes").Logger(),
+	}
+
+	if cfg.APITimelimit != "" {
+		v, err := time.ParseDuration(cfg.APITimelimit)
+		if err != nil {
+			nodes.log.Error().Err(err).Msg("parsing api timelimit, using default")
+		} else {
+			nodes.apiTimelimit = v
+		}
+	}
+
+	if nodes.apiTimelimit == time.Duration(0) {
+		v, err := time.ParseDuration(defaults.K8SAPITimelimit)
+		if err != nil {
+			nodes.log.Fatal().Err(err).Msg("parsing DEFAULT api timelimit")
+		}
+		nodes.apiTimelimit = v
 	}
 
 	return nodes, nil
@@ -118,7 +137,7 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 				continue
 			}
 			if cond.Status == "True" {
-				nc, err := collector.New(n.config, &node, n.log, n.check)
+				nc, err := collector.New(n.config, &node, n.log, n.check, n.apiTimelimit)
 				if err != nil {
 					n.log.Error().Err(err).Str("node", node.Metadata.Name).Msg("skipping...")
 					break
@@ -163,7 +182,7 @@ func (n *Nodes) nodeList(tlsConfig *tls.Config) (*k8s.NodeList, error) {
 		u.RawQuery = q.Encode()
 	}
 
-	client, err := k8s.NewAPIClient(tlsConfig)
+	client, err := k8s.NewAPIClient(tlsConfig, n.apiTimelimit)
 	if err != nil {
 		return nil, errors.Wrap(err, "node list cli")
 	}

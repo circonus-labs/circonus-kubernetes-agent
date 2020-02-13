@@ -48,6 +48,7 @@ type Cluster struct {
 	NodePoolSize           uint   `mapstructure:"node_pool_size" json:"node_pool_size" toml:"node_pool_size" yaml:"node_pool_size"`
 	URL                    string `mapstructure:"api_url" json:"api_url" toml:"api_url" yaml:"api_url"`
 	CAFile                 string `mapstructure:"api_ca_file" json:"api_ca_file" toml:"api_ca_file" yaml:"api_ca_file"`
+	APITimelimit           string `mapstructure:"api_timelimit" json:"api_timelimit" toml:"api_timelimit" yaml:"api_timelimit"`
 }
 
 // LabelFilters defines labels to include and exclude
