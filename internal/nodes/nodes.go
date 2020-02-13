@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
@@ -133,6 +134,12 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	close(nodeQueue)
 	wg.Wait() // wait for last one to finish
 
+	n.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "collect_nodes"},
+		cgm.Tag{Category: "source", Value: "agent"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(collectStart).Milliseconds()))
+
 	n.log.Debug().
 		Str("duration", time.Since(collectStart).String()).
 		Int("nodes_queued", nodesQueued).
@@ -168,11 +175,17 @@ func (n *Nodes) nodeList(tlsConfig *tls.Config) (*k8s.NodeList, error) {
 		return nil, errors.Wrap(err, "node list req")
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	n.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "node-list"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
 		data, err := ioutil.ReadAll(resp.Body)

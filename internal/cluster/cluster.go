@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/events"
@@ -214,108 +215,52 @@ func (c *Cluster) Start(ctx context.Context) error {
 					}(collector)
 				}
 				wg.Wait()
+
 				cstats := c.check.SubmitStats()
+				c.check.ResetSubmitStats()
 				dur := time.Since(start)
-				c.logger.Info().
-					Interface("metrics_sent", cstats).
-					Str("duration", dur.String()).
-					Msg("collection complete")
-				baseStreamTags := []string{
-					"cluster:" + c.cfg.Name,
-					"source:ck8s-agent",
+
+				baseStreamTags := cgm.Tags{
+					cgm.Tag{Category: "cluster", Value: c.cfg.Name},
+					cgm.Tag{Category: "source", Value: release.NAME},
 				}
-				metrics := make(map[string]circonus.MetricSample)
-				_ = c.check.QueueMetricSample(
-					metrics,
-					"collect_metrics",
-					circonus.MetricTypeUint64,
-					baseStreamTags, []string{},
-					cstats.Metrics,
-					nil)
-				_ = c.check.QueueMetricSample(
-					metrics,
-					"collect_ngr",
-					circonus.MetricTypeUint64,
-					baseStreamTags, []string{},
-					runtime.NumGoroutine(),
-					nil)
+				c.check.AddText("collect_agent", baseStreamTags, release.NAME+"_"+release.VERSION)
+				c.check.AddGauge("collect_metrics", baseStreamTags, cstats.Metrics)
+				c.check.AddGauge("collect_ngr", baseStreamTags, uint64(runtime.NumGoroutine()))
+
 				{
-					var streamTags []string
+					var streamTags cgm.Tags
 					streamTags = append(streamTags, baseStreamTags...)
-					streamTags = append(streamTags, "units:bytes")
-					_ = c.check.QueueMetricSample(
-						metrics,
-						"collect_sent",
-						circonus.MetricTypeUint64,
-						streamTags, []string{},
-						cstats.SentBytes,
-						nil)
+					streamTags = append(streamTags, cgm.Tag{Category: "units", Value: "bytes"})
+					c.check.AddGauge("collect_sent", streamTags, cstats.SentBytes)
+
 					var ms runtime.MemStats
 					runtime.ReadMemStats(&ms)
-					_ = c.check.QueueMetricSample(
-						metrics,
-						"collect_heap_alloc",
-						circonus.MetricTypeUint64,
-						streamTags, []string{},
-						ms.HeapAlloc,
-						nil)
-					_ = c.check.QueueMetricSample(
-						metrics,
-						"collect_heap_relased",
-						circonus.MetricTypeUint64,
-						streamTags, []string{},
-						ms.HeapReleased,
-						nil)
-					_ = c.check.QueueMetricSample(
-						metrics,
-						"collect_stack_sys",
-						circonus.MetricTypeUint64,
-						streamTags, []string{},
-						ms.StackSys,
-						nil)
-					_ = c.check.QueueMetricSample(
-						metrics,
-						"collect_other_sys",
-						circonus.MetricTypeUint64,
-						streamTags, []string{},
-						ms.OtherSys,
-						nil)
+					c.check.AddGauge("collect_heap_alloc", streamTags, ms.HeapAlloc)
+					c.check.AddGauge("collect_heap_released", streamTags, ms.HeapReleased)
+					c.check.AddGauge("collect_stack_sys", streamTags, ms.StackSys)
+					c.check.AddGauge("collect_other_sys", streamTags, ms.OtherSys)
 					var mem syscall.Rusage
 					if err := syscall.Getrusage(syscall.RUSAGE_SELF, &mem); err == nil {
-						_ = c.check.QueueMetricSample(
-							metrics,
-							"collect_max_rss",
-							circonus.MetricTypeUint64,
-							streamTags, []string{},
-							mem.Maxrss*1024, // maxrss is resident set size in kilobytes
-							nil)
+						c.check.AddGauge("collect_max_rss", streamTags, uint64(mem.Maxrss*1024))
 					} else {
 						c.logger.Warn().Err(err).Msg("collecting rss from system")
 					}
 				}
 				{
-					var streamTags []string
+					var streamTags cgm.Tags
 					streamTags = append(streamTags, baseStreamTags...)
-					streamTags = append(streamTags, "units:milliseconds")
-					_ = c.check.QueueMetricSample(
-						metrics,
-						"collect_duration",
-						circonus.MetricTypeUint64,
-						streamTags, []string{},
-						dur.Milliseconds(),
-						nil)
-					_ = c.check.QueueMetricSample(
-						metrics,
-						"collect_interval",
-						circonus.MetricTypeUint64,
-						streamTags, []string{},
-						c.interval.Milliseconds(),
-						nil)
+					streamTags = append(streamTags, cgm.Tag{Category: "units", Value: "milliseconds"})
+					c.check.AddGauge("collect_duration", streamTags, uint64(dur.Milliseconds()))
+					c.check.AddGauge("collect_interval", streamTags, uint64(c.interval.Milliseconds()))
 				}
-				if err := c.check.SubmitQueue(ctx, metrics, c.logger.With().Str("type", "cstats").Logger()); err != nil {
-					c.logger.Warn().Err(err).Msg("submitting collection stats")
-				}
-				c.check.ResetSubmitStats()
+
+				c.check.FlushCGM()
+
+				c.logger.Info().
+					Interface("metrics_sent", cstats).
+					Str("duration", dur.String()).
+					Msg("collection complete")
 				c.Lock()
 				c.running = false
 				c.Unlock()

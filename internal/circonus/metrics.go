@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 )
 
 const (
@@ -70,6 +72,27 @@ var (
 		MetricTypeCumulativeHistogram,
 	}, "") + `]$`)
 )
+
+// AddGauge to queue for submission
+func (c *Check) AddGauge(metricName string, tags cgm.Tags, value interface{}) {
+	if c.metrics != nil {
+		c.metrics.GaugeWithTags(metricName, tags, value)
+	}
+}
+
+// AddHistSample to queue for submission
+func (c *Check) AddHistSample(metricName string, tags cgm.Tags, value float64) {
+	if c.metrics != nil {
+		c.metrics.TimingWithTags(metricName, tags, value)
+	}
+}
+
+// AddText to queue for submission
+func (c *Check) AddText(metricName string, tags cgm.Tags, value string) {
+	if c.metrics != nil {
+		c.metrics.SetTextWithTags(metricName, tags, value)
+	}
+}
 
 // WriteMetricSample to queue for submission
 func (c *Check) WriteMetricSample(

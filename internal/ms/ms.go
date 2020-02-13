@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
@@ -99,6 +100,7 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 		return
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
 		ms.log.Error().Err(err).Str("url", metricsURL).Msg("metrics")
@@ -108,6 +110,12 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 		return
 	}
 	defer resp.Body.Close()
+	ms.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "metrics"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "origin", Value: "metric-server"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
 		data, err := ioutil.ReadAll(resp.Body)
@@ -132,6 +140,11 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 		}
 	}
 
+	ms.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "collect_metrics-server"},
+		cgm.Tag{Category: "source", Value: "agent"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(collectStart).Milliseconds()))
 	ms.log.Debug().Str("duration", time.Since(collectStart).String()).Msg("metric-server collect end")
 	ms.Lock()
 	ms.running = false

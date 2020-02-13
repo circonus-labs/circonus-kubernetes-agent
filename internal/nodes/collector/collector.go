@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
@@ -91,6 +92,11 @@ func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.C
 
 	wg.Wait()
 
+	nc.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "collect_node"},
+		cgm.Tag{Category: "source", Value: "agent"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(collectStart).Milliseconds()))
 	nc.log.
 		Debug().
 		Str("duration", time.Since(collectStart).String()).
@@ -413,11 +419,18 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 		return
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
 		nc.log.Error().Err(err).Str("req_url", reqURL).Msg("fetching summary stats")
 		return
 	}
+	nc.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "stats/summary"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "origin", Value: "kubelet"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	defer resp.Body.Close()
 	if nc.done() {
@@ -716,11 +729,18 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 		return
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
 		nc.log.Error().Err(err).Str("url", reqURL).Msg("node metrics")
 		return
 	}
+	nc.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "metrics"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "origin", Value: "kubelet"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	defer resp.Body.Close()
 	if nc.done() {
@@ -771,11 +791,17 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 		return collect, tags, err
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
 		return collect, tags, err
 	}
 	defer resp.Body.Close()
+	nc.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "pod-labels"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
 		data, err := ioutil.ReadAll(resp.Body)

@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
@@ -137,6 +138,11 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 
 	wg.Wait()
 
+	ksm.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "collect_kube-state-metrics"},
+		cgm.Tag{Category: "source", Value: "agent"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(collectStart).Milliseconds()))
 	ksm.log.Debug().Str("duration", time.Since(collectStart).String()).Msg("kube-state-metrics collect end")
 	ksm.Lock()
 	ksm.running = false
@@ -209,11 +215,18 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 		return errors.Wrap(err, "/metrics req")
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+	ksm.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "metrics"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "origin", Value: "kube-state-metrics"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
 		data, err := ioutil.ReadAll(resp.Body)
@@ -253,11 +266,18 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 		return errors.Wrap(err, "/telemetry req")
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+	ksm.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "type", Value: "telemetry"},
+		cgm.Tag{Category: "source", Value: "api-server"},
+		cgm.Tag{Category: "origin", Value: "kube-state-metrics"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
 		data, err := ioutil.ReadAll(resp.Body)
