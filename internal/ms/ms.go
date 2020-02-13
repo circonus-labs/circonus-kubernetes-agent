@@ -122,6 +122,10 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		ms.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "metrics"},
+			cgm.Tag{Category: "source", Value: "api-server"},
+			cgm.Tag{Category: "origin", Value: "metric-server"}})
 		ms.log.Error().Err(err).Str("url", metricsURL).Msg("metrics")
 		ms.Lock()
 		ms.running = false

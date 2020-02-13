@@ -425,6 +425,10 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "stats/summary"},
+			cgm.Tag{Category: "source", Value: "api-server"},
+			cgm.Tag{Category: "origin", Value: "kubelet"}})
 		nc.log.Error().Err(err).Str("req_url", reqURL).Msg("fetching summary stats")
 		return
 	}
@@ -735,6 +739,10 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "metrics"},
+			cgm.Tag{Category: "source", Value: "api-server"},
+			cgm.Tag{Category: "origin", Value: "kubelet"}})
 		nc.log.Error().Err(err).Str("url", reqURL).Msg("node metrics")
 		return
 	}
@@ -797,6 +805,9 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "pod-labels"},
+			cgm.Tag{Category: "source", Value: "api-server"}})
 		return collect, tags, err
 	}
 	defer resp.Body.Close()

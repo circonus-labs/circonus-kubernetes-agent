@@ -94,6 +94,13 @@ func (c *Check) AddText(metricName string, tags cgm.Tags, value string) {
 	}
 }
 
+// IncrementCounter to queue for submission
+func (c *Check) IncrementCounter(metricName string, tags cgm.Tags) {
+	if c.metrics != nil {
+		c.metrics.IncrementWithTags(metricName, tags)
+	}
+}
+
 // WriteMetricSample to queue for submission
 func (c *Check) WriteMetricSample(
 	metricDest io.Writer,

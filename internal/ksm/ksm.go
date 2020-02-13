@@ -237,6 +237,10 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "metrics"},
+			cgm.Tag{Category: "source", Value: "api-server"},
+			cgm.Tag{Category: "origin", Value: "kube-state-metrics"}})
 		return err
 	}
 	defer resp.Body.Close()
@@ -288,6 +292,10 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "telemetry"},
+			cgm.Tag{Category: "source", Value: "api-server"},
+			cgm.Tag{Category: "origin", Value: "kube-state-metrics"}})
 		return err
 	}
 	defer resp.Body.Close()

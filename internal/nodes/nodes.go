@@ -197,6 +197,11 @@ func (n *Nodes) nodeList(tlsConfig *tls.Config) (*k8s.NodeList, error) {
 	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
+		n.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "type", Value: "node-list"},
+			cgm.Tag{Category: "source", Value: "api-server"},
+			cgm.Tag{Category: "units", Value: "milliseconds"},
+		})
 		return nil, err
 	}
 	defer resp.Body.Close()
