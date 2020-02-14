@@ -258,7 +258,7 @@ func (c *Check) createCheckBundle(client *apiclient.API, cfg *config.Circonus) (
 	checkConfig := &apiclient.CheckBundle{
 		Brokers: []string{cfg.Check.BrokerCID},
 		Config: apiclient.CheckBundleConfig{
-			"asynch_metrics": "false",
+			"asynch_metrics": "true",
 			"secret":         secret,
 		},
 		DisplayName:   cfg.Check.Title,

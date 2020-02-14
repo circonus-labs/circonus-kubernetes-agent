@@ -1,3 +1,9 @@
+# v0.5.3
+
+* fix: `async_metrics` (queue/stream)
+* fix: drain streamed metrics in bucket
+* fix: use cluster ctx to honor signals
+
 # v0.5.2
 
 * add: collect submit counters (success,fail,error)

@@ -43,7 +43,7 @@ const (
 	traceTSFormat        = "20060102_150405.000000000"
 )
 
-func (c *Check) FlushCGM() {
+func (c *Check) FlushCGM(ctx context.Context) {
 	if c.metrics != nil {
 		m := c.metrics.FlushMetrics()
 		// c.log.Info().Interface("metrics", m).Msg("sending metrics")
@@ -52,7 +52,7 @@ func (c *Check) FlushCGM() {
 			c.log.Warn().Err(err).Msg("encoding metrics")
 			return
 		}
-		if err := c.SubmitStream(context.Background(), bytes.NewReader(data), c.log); err != nil {
+		if err := c.SubmitStream(ctx, bytes.NewReader(data), c.log); err != nil {
 			c.log.Error().Err(err).Msg("submitting cgm metrics")
 		}
 	}

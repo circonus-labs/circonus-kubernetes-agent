@@ -255,7 +255,7 @@ func (c *Cluster) Start(ctx context.Context) error {
 					c.check.AddGauge("collect_interval", streamTags, uint64(c.interval.Milliseconds()))
 				}
 
-				c.check.FlushCGM()
+				c.check.FlushCGM(ctx)
 
 				c.logger.Info().
 					Interface("metrics_sent", cstats).

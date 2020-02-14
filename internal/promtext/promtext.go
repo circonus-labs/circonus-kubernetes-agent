@@ -326,6 +326,13 @@ func StreamMetrics(
 			}
 		}
 	}
+	// send any remaining metrics
+	if buf.Len() > 0 {
+		if err := targetCheck.SubmitStream(ctx, &buf, logger); err != nil {
+			logger.Warn().Err(err).Msg("submitting metrics")
+		}
+
+	}
 
 	return nil
 }
