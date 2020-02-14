@@ -195,9 +195,9 @@ func (ksm *KSM) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error
 	if err != nil {
 		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
-			cgm.Tag{Category: "request", Value: "service"},
-			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "kube-state-metrics"}})
+			cgm.Tag{Category: "request", Value: "kube-state-metrics_service"},
+			cgm.Tag{Category: "target", Value: "api-server"},
+		})
 		return nil, err
 	}
 	defer resp.Body.Close()
