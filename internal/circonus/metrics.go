@@ -101,6 +101,13 @@ func (c *Check) IncrementCounter(metricName string, tags cgm.Tags) {
 	}
 }
 
+// SetCounter to queue for submission
+func (c *Check) SetCounter(metricName string, tags cgm.Tags, value uint64) {
+	if c.metrics != nil {
+		c.metrics.SetWithTags(metricName, tags, value)
+	}
+}
+
 // WriteMetricSample to queue for submission
 func (c *Check) WriteMetricSample(
 	metricDest io.Writer,
