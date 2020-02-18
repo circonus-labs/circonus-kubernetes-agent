@@ -1,3 +1,10 @@
+# v0.5.4
+
+* add: liveness probe support `/health`
+* upd: increase default pool size to 2
+* upd: resource request/limit example (commented out)
+* add: ksm service error collect metric
+
 # v0.5.3
 
 * fix: `async_metrics` (queue/stream)

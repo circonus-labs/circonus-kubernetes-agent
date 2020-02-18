@@ -8,6 +8,8 @@ package agent
 
 import (
 	"context"
+	"expvar"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -99,14 +101,28 @@ func New() (*Agent, error) {
 	a.signalNotifySetup()
 
 	go func() {
-		err := http.ListenAndServe(":8080", nil)
+		// NOTE: http://addr:8080/stats - application stats
+		//       http://addr:8080/health - liveness probe
+		err := http.ListenAndServe(":8080",
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.Method {
+				case http.MethodGet:
+					switch r.URL.Path {
+					case "/stats", "/stats/":
+						expvar.Handler().ServeHTTP(w, r)
+					case "/health", "/health/":
+						w.WriteHeader(http.StatusOK)
+						fmt.Fprintf(w, "Alive")
+					default:
+						http.NotFound(w, r)
+					}
+				default:
+					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				}
+			}))
 		if err != nil && err != http.ErrServerClosed {
 			log.Fatal().Err(err).Msg("internal http server exited")
 		}
-		// TODO: add additional handlers for health and readiness checks from k8s
-		// NOTE: http://addr:8080/debug/vars for application information
-		//       http://addr:8080/health TBD
-		//       http://addr:8080/ready TBD
 	}()
 
 	return &a, nil

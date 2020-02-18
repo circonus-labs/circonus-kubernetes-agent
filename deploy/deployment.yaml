@@ -5,35 +5,35 @@
     name: circonus-kubernetes-agent
     labels:
       app.kubernetes.io/name: circonus-kubernetes-agent
-      app.kubernetes.io/version: v0.5.3
+      app.kubernetes.io/version: v0.5.4
   spec:
     selector:
       matchLabels:
         app.kubernetes.io/name: circonus-kubernetes-agent
-        app.kubernetes.io/version: v0.5.3
+        app.kubernetes.io/version: v0.5.4
     replicas: 1
     template:
       metadata:
         name: circonus-kubernetes-agent
         labels:
           app.kubernetes.io/name: circonus-kubernetes-agent
-          app.kubernetes.io/version: v0.5.3
+          app.kubernetes.io/version: v0.5.4
       spec:
         nodeSelector:
           kubernetes.io/os: linux
         serviceAccountName: circonus-kubernetes-agent
         containers:
           - name: circonus-kubernetes-agent
-            image: circonuslabs/circonus-kubernetes-agent:v0.5.3
+            image: circonuslabs/circonus-kubernetes-agent:v0.5.4
             ## for ARM64, remove line above and uncomment line below
-            #image: circonuslabs/circonus-kubernetes-agent-arm64:v0.5.3
+            #image: circonuslabs/circonus-kubernetes-agent-arm64:v0.5.4
             command: ["/circonus-kubernetes-agentd"]
             args: 
               #- --debug
               #
               # controls how many concurrent node metric collectors are run
               # increase for performance when collect_duration exceeds 60s
-              - --k8s-pool-size=1
+              - --k8s-pool-size=2
             env:
               ##
               ## NOTE: Change settings in configuration.yaml file, in the 
@@ -201,13 +201,18 @@
               #     configMapKeyRef:
               #       name: cka-config-v1
               #       key: kubernetes-api-timelimit
-            resources:
-              requests:
-                memory: "64Mi"
-                cpu: "250m"
-              limits:
-                memory: "512Mi"
-                cpu: "500m"                
+            # resources:
+            #   requests:
+            #     memory: "64Mi"
+            #     cpu: "250m"
+            #   limits:
+            #     memory: "512Mi"
+            #     cpu: "500m"
+            livenessProbe:
+              httpGet:
+                path: /health
+                port: 8080                
+              initialDelaySeconds: 30
             volumeMounts:
               - name: metric-filters
                 mountPath: /ck8sa
