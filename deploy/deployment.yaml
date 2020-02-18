@@ -33,7 +33,7 @@
               #
               # controls how many concurrent node metric collectors are run
               # increase for performance when collect_duration exceeds 60s
-              - --k8s-pool-size=1
+              - --k8s-pool-size=2
             env:
               ##
               ## NOTE: Change settings in configuration.yaml file, in the 
@@ -201,13 +201,18 @@
               #     configMapKeyRef:
               #       name: cka-config-v1
               #       key: kubernetes-api-timelimit
-            resources:
-              requests:
-                memory: "64Mi"
-                cpu: "250m"
-              limits:
-                memory: "512Mi"
-                cpu: "500m"                
+            # resources:
+            #   requests:
+            #     memory: "64Mi"
+            #     cpu: "250m"
+            #   limits:
+            #     memory: "512Mi"
+            #     cpu: "500m"
+            livenessProbe:
+              httpGet:
+                path: /health
+                port: 8080                
+              initialDelaySeconds: 30
             volumeMounts:
               - name: metric-filters
                 mountPath: /ck8sa
