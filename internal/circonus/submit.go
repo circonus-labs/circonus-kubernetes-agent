@@ -224,7 +224,7 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 		if attempt > 0 {
 			c.metrics.IncrementWithTags("collect_submit_reties", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}})
 			reqStart = time.Now()
-			c.log.Warn().Str("url", r.URL.String()).Int("attempt", attempt).Msg("retrying...")
+			resultLogger.Warn().Str("url", r.URL.String()).Int("attempt", attempt).Msg("retrying...")
 		}
 	}
 	retryClient.ResponseLogHook = func(l retryablehttp.Logger, r *http.Response) {
@@ -238,7 +238,7 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 				cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", r.StatusCode)},
 				cgm.Tag{Category: "source", Value: release.NAME},
 			})
-			c.log.Warn().Str("url", r.Request.URL.String()).Str("status", r.Status).Msg("non-200 response...")
+			resultLogger.Warn().Str("url", r.Request.URL.String()).Str("status", r.Status).Msg("non-200 response...")
 		}
 	}
 
@@ -260,7 +260,7 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
 			cgm.Tag{Category: "source", Value: release.NAME},
 		})
-		c.log.Error().Str("url", c.submissionURL).Str("status", resp.Status).Str("body", string(body)).Msg("submitting telemetry")
+		resultLogger.Error().Str("url", c.submissionURL).Str("status", resp.Status).Str("body", string(body)).Msg("submitting telemetry")
 		return errors.Errorf("submitting metrics (%s %s)", c.submissionURL, resp.Status)
 	}
 
