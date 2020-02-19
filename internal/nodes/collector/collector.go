@@ -432,7 +432,6 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 			cgm.Tag{Category: "request", Value: "stats/summary"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kubelet"},
-			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
 		})
 		nc.log.Error().Err(err).Str("req_url", reqURL).Msg("fetching summary stats")
 		return
@@ -451,6 +450,13 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "stats/summary"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "kubelet"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			nc.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
@@ -750,7 +756,6 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 			cgm.Tag{Category: "request", Value: "metrics"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kubelet"},
-			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
 		})
 		nc.log.Error().Err(err).Str("url", reqURL).Msg("node metrics")
 		return
@@ -768,6 +773,13 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "metrics"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "kubelet"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			nc.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
@@ -818,7 +830,6 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "pod-labels"},
 			cgm.Tag{Category: "target", Value: "api-server"},
-			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
 		})
 		return collect, tags, err
 	}
@@ -831,6 +842,12 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "pod-labels"},
+			cgm.Tag{Category: "target", Value: "api-server"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			nc.log.Error().Err(err).Str("url", reqURL).Msg("reading response")

@@ -203,6 +203,12 @@ func (ksm *KSM) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "kube-state-metrics_service"},
+			cgm.Tag{Category: "target", Value: "api-server"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			ksm.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
@@ -248,7 +254,6 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 			cgm.Tag{Category: "request", Value: "metrics"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
-			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
 		})
 		return err
 	}
@@ -262,6 +267,13 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
+		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "metrics"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			ksm.log.Error().Err(err).Str("url", metricURL).Msg("reading response")
@@ -307,7 +319,6 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 			cgm.Tag{Category: "request", Value: "telemetry"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
-			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
 		})
 		return err
 	}
@@ -321,6 +332,13 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
+		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "telemetry"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("reading response")

@@ -277,6 +277,9 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 	resp, err := retryClient.Do(req)
 	if err != nil {
 		resultLogger.Error().Err(err).Msg("making request")
+		c.metrics.IncrementWithTags("collect_submit_fails", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+		})
 		return err
 	}
 
