@@ -202,6 +202,9 @@ func (c *Cluster) Start(ctx context.Context) error {
 			c.running = true
 			c.Unlock()
 
+			// reset submit retries metric
+			c.check.SetCounter("collect_submit_retries", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, 0)
+
 			go func() {
 				var wg sync.WaitGroup
 				wg.Add(len(c.collectors))

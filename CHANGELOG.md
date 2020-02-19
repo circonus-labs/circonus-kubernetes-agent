@@ -1,3 +1,10 @@
+# v0.5.5
+
+* upd: increase metric bucket size to 1000
+* fix: typo in metric name
+* upd: use `resultLogger` to identify source of submission errors/retries
+* add: set `collect_submit_retries` to 0 at start of each collection run
+
 # v0.5.4
 
 * add: liveness probe support `/health`

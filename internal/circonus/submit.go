@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -140,11 +139,13 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 
 	submitUUID, err := uuid.NewRandom()
 	if err != nil {
+		resultLogger.Error().Err(err).Msg("creating new submit ID")
 		return errors.Wrap(err, "creating new submit ID")
 	}
 
 	rawData, err := ioutil.ReadAll(metrics)
 	if err != nil {
+		resultLogger.Error().Err(err).Msg("reading metric data")
 		return errors.Wrap(err, "reading metric data")
 	}
 
@@ -156,12 +157,15 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 		zw := gzip.NewWriter(subData)
 		n, err := zw.Write(rawData)
 		if err != nil {
+			resultLogger.Error().Err(err).Msg("compressing metrics")
 			return errors.Wrap(err, "compressing metrics")
 		}
 		if n != len(rawData) {
+			resultLogger.Error().Err(err).Int("data_len", len(rawData)).Int("written", n).Msg("gzip write length mismatch")
 			return errors.Errorf("write length mismatch data length %d != written length %d", len(rawData), n)
 		}
 		if err := zw.Close(); err != nil {
+			resultLogger.Error().Err(err).Msg("closing gzip writer")
 			return errors.Wrap(err, "closing gzip writer")
 		}
 		payloadIsCompressed = true
@@ -179,10 +183,10 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 			c.log.Error().Err(err).Str("file", fn).Msg("skipping submit trace")
 		} else {
 			if _, err := fh.Write(subData.Bytes()); err != nil {
-				c.log.Error().Err(err).Msg("writing metric trace")
+				resultLogger.Error().Err(err).Msg("writing metric trace")
 			}
 			if err := fh.Close(); err != nil {
-				c.log.Error().Err(err).Str("file", fn).Msg("closing metric trace")
+				resultLogger.Error().Err(err).Str("file", fn).Msg("closing metric trace")
 			}
 		}
 	}
@@ -193,6 +197,7 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 
 	req, err := retryablehttp.NewRequest("PUT", c.submissionURL, subData)
 	if err != nil {
+		resultLogger.Error().Err(err).Msg("creating submission request")
 		return err
 	}
 	req = req.WithContext(ctx)
@@ -208,7 +213,8 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 	if c.DebugSubmissions() {
 		dump, err := httputil.DumpRequestOut(req.Request, !payloadIsCompressed)
 		if err != nil {
-			log.Fatal(err)
+			resultLogger.Error().Err(err).Msg("dumping request")
+			return err
 		}
 
 		fmt.Println(string(dump))
@@ -222,9 +228,9 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 	retryClient.RetryMax = 10
 	retryClient.RequestLogHook = func(l retryablehttp.Logger, r *http.Request, attempt int) {
 		if attempt > 0 {
-			c.metrics.IncrementWithTags("collect_submit_reties", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}})
+			c.metrics.IncrementWithTags("collect_submit_retries", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}})
 			reqStart = time.Now()
-			c.log.Warn().Str("url", r.URL.String()).Int("attempt", attempt).Msg("retrying...")
+			resultLogger.Warn().Str("url", r.URL.String()).Int("attempt", attempt).Msg("retrying...")
 		}
 	}
 	retryClient.ResponseLogHook = func(l retryablehttp.Logger, r *http.Response) {
@@ -238,7 +244,7 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 				cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", r.StatusCode)},
 				cgm.Tag{Category: "source", Value: release.NAME},
 			})
-			c.log.Warn().Str("url", r.Request.URL.String()).Str("status", r.Status).Msg("non-200 response...")
+			resultLogger.Warn().Str("url", r.Request.URL.String()).Str("status", r.Status).Msg("non-200 response...")
 		}
 	}
 
@@ -246,12 +252,14 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 
 	resp, err := retryClient.Do(req)
 	if err != nil {
+		resultLogger.Error().Err(err).Msg("making request")
 		return err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	_ = resp.Body.Close()
 	if err != nil {
+		resultLogger.Error().Err(err).Msg("reading body")
 		return err
 	}
 
@@ -260,7 +268,7 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
 			cgm.Tag{Category: "source", Value: release.NAME},
 		})
-		c.log.Error().Str("url", c.submissionURL).Str("status", resp.Status).Str("body", string(body)).Msg("submitting telemetry")
+		resultLogger.Error().Str("url", c.submissionURL).Str("status", resp.Status).Str("body", string(body)).Msg("submitting telemetry")
 		return errors.Errorf("submitting metrics (%s %s)", c.submissionURL, resp.Status)
 	}
 
@@ -268,6 +276,7 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 
 	var result TrapResult
 	if err := json.Unmarshal(body, &result); err != nil {
+		resultLogger.Error().Err(err).Str("body", string(body)).Msg("parsing response")
 		return errors.Wrapf(err, "parsing response (%s)", string(body))
 	}
 
