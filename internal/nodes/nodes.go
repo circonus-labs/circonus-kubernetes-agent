@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -202,7 +203,7 @@ func (n *Nodes) nodeList(tlsConfig *tls.Config) (*k8s.NodeList, error) {
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "node-list"},
 			cgm.Tag{Category: "target", Value: "api-server"},
-			cgm.Tag{Category: "units", Value: "milliseconds"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
 		})
 		return nil, err
 	}

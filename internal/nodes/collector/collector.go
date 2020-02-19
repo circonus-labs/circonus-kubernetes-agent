@@ -11,6 +11,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -430,7 +431,9 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "stats/summary"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "kubelet"}})
+			cgm.Tag{Category: "target", Value: "kubelet"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		nc.log.Error().Err(err).Str("req_url", reqURL).Msg("fetching summary stats")
 		return
 	}
@@ -746,7 +749,9 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "metrics"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "kubelet"}})
+			cgm.Tag{Category: "target", Value: "kubelet"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		nc.log.Error().Err(err).Str("url", reqURL).Msg("node metrics")
 		return
 	}
@@ -812,7 +817,9 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "pod-labels"},
-			cgm.Tag{Category: "target", Value: "api-server"}})
+			cgm.Tag{Category: "target", Value: "api-server"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		return collect, tags, err
 	}
 	defer resp.Body.Close()

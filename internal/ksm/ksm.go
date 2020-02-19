@@ -247,7 +247,9 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "metrics"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "kube-state-metrics"}})
+			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		return err
 	}
 	defer resp.Body.Close()
@@ -304,7 +306,9 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "telemetry"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "kube-state-metrics"}})
+			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		return err
 	}
 	defer resp.Body.Close()

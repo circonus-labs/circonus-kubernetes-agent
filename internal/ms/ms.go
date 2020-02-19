@@ -9,6 +9,7 @@ package ms
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sync"
@@ -127,7 +128,9 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "metrics"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "metric-server"}})
+			cgm.Tag{Category: "target", Value: "metric-server"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		ms.log.Error().Err(err).Str("url", metricsURL).Msg("metrics")
 		ms.Lock()
 		ms.running = false
