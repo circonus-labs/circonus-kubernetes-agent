@@ -27,8 +27,6 @@ const (
 	//       happy with the support the gating flag logic can be removed and the code simplifed.
 	emitHistogramBuckets    = false
 	circCumulativeHistogram = true
-	// max metrics to queue before submitting them
-	maxMetrics = 1000
 )
 
 // QueueMetrics is a generic function to digest prometheus text format metrics and
@@ -36,10 +34,9 @@ const (
 // Formats supported: https://prometheus.io/docs/instrumenting/exposition_formats/
 func QueueMetrics(
 	ctx context.Context,
-	targetCheck *circonus.Check,
+	check *circonus.Check,
 	logger zerolog.Logger,
 	data io.Reader,
-	check *circonus.Check,
 	parentStreamTags []string,
 	parentMeasurementTags []string,
 	ts *time.Time) error {
@@ -58,14 +55,15 @@ func QueueMetrics(
 	}
 
 	metrics := make(map[string]circonus.MetricSample)
+	maxMetrics := check.MaxMetricBucketSize()
 
 	for mn, mf := range metricFamilies {
 		if done(ctx) {
 			return nil
 		}
 		for _, m := range mf.Metric {
-			if len(metrics) >= maxMetrics {
-				if err := targetCheck.SubmitQueue(ctx, metrics, logger); err != nil {
+			if maxMetrics > 0 && len(metrics) >= maxMetrics {
+				if err := check.SubmitQueue(ctx, metrics, logger); err != nil {
 					logger.Warn().Err(err).Msg("submitting metrics")
 				}
 				metrics = make(map[string]circonus.MetricSample)
@@ -175,7 +173,7 @@ func QueueMetrics(
 
 	// send any remaining metrics
 	if len(metrics) > 0 {
-		if err := targetCheck.SubmitQueue(ctx, metrics, logger); err != nil {
+		if err := check.SubmitQueue(ctx, metrics, logger); err != nil {
 			logger.Warn().Err(err).Msg("submitting metrics")
 		}
 	}
@@ -188,10 +186,9 @@ func QueueMetrics(
 // Formats supported: https://prometheus.io/docs/instrumenting/exposition_formats/
 func StreamMetrics(
 	ctx context.Context,
-	targetCheck *circonus.Check,
+	check *circonus.Check,
 	logger zerolog.Logger,
 	data io.Reader,
-	check *circonus.Check,
 	parentStreamTags []string,
 	parentMeasurementTags []string,
 	ts *time.Time) error {
@@ -211,6 +208,7 @@ func StreamMetrics(
 
 	var buf bytes.Buffer
 	metricsQueued := 0
+	maxMetrics := check.MaxMetricBucketSize()
 
 	for mn, mf := range metricFamilies {
 		if done(ctx) {
@@ -220,8 +218,8 @@ func StreamMetrics(
 			if done(ctx) {
 				return nil
 			}
-			if metricsQueued >= maxMetrics {
-				if err := targetCheck.SubmitStream(ctx, &buf, logger); err != nil {
+			if maxMetrics > 0 && metricsQueued >= maxMetrics {
+				if err := check.SubmitStream(ctx, &buf, logger); err != nil {
 					logger.Warn().Err(err).Msg("submitting metrics")
 				}
 				buf.Reset()
@@ -337,7 +335,7 @@ func StreamMetrics(
 	}
 	// send any remaining metrics
 	if buf.Len() > 0 {
-		if err := targetCheck.SubmitStream(ctx, &buf, logger); err != nil {
+		if err := check.SubmitStream(ctx, &buf, logger); err != nil {
 			logger.Warn().Err(err).Msg("submitting metrics")
 		}
 
