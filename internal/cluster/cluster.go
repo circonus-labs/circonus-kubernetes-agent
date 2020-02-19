@@ -165,8 +165,7 @@ func (c *Cluster) Start(ctx context.Context) error {
 		go eventWatcher.Start(ctx, c.tlsConfig)
 	}
 
-	if c.check.ConcurrentSubmissions() {
-		// start the metric submitter
+	if !c.check.ConcurrentSubmissions() {
 		go c.check.Submitter(ctx)
 	}
 
