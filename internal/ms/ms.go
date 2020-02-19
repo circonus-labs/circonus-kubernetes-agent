@@ -157,11 +157,11 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 	measurementTags := []string{}
 
 	if ms.check.StreamMetrics() {
-		if err := promtext.StreamMetrics(ctx, ms.check, ms.log, resp.Body, ms.check, streamTags, measurementTags, ts); err != nil {
+		if err := promtext.StreamMetrics(ctx, ms.check, ms.log, resp.Body, streamTags, measurementTags, ts); err != nil {
 			ms.log.Error().Err(err).Msg("formatting metrics")
 		}
 	} else {
-		if err := promtext.QueueMetrics(ctx, ms.check, ms.log, resp.Body, ms.check, streamTags, measurementTags, ts); err != nil {
+		if err := promtext.QueueMetrics(ctx, ms.check, ms.log, resp.Body, streamTags, measurementTags, ts); err != nil {
 			ms.log.Error().Err(err).Msg("formatting metrics")
 		}
 	}

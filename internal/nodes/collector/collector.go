@@ -773,11 +773,11 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 	}
 
 	if nc.check.StreamMetrics() {
-		if err := promtext.StreamMetrics(nc.ctx, nc.check, nc.log, resp.Body, nc.check, parentStreamTags, parentMeasurementTags, nc.ts); err != nil {
+		if err := promtext.StreamMetrics(nc.ctx, nc.check, nc.log, resp.Body, parentStreamTags, parentMeasurementTags, nc.ts); err != nil {
 			nc.log.Error().Err(err).Msg("parsing node metrics")
 		}
 	} else {
-		if err := promtext.QueueMetrics(nc.ctx, nc.check, nc.log, resp.Body, nc.check, parentStreamTags, parentMeasurementTags, nil); err != nil {
+		if err := promtext.QueueMetrics(nc.ctx, nc.check, nc.log, resp.Body, parentStreamTags, parentMeasurementTags, nil); err != nil {
 			nc.log.Error().Err(err).Msg("parsing node metrics")
 		}
 	}

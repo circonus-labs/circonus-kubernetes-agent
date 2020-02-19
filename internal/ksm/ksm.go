@@ -273,11 +273,11 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 	measurementTags := []string{}
 
 	if ksm.check.StreamMetrics() {
-		if err := promtext.StreamMetrics(ctx, ksm.check, ksm.log, resp.Body, ksm.check, streamTags, measurementTags, ksm.ts); err != nil {
+		if err := promtext.StreamMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
 			return err
 		}
 	} else {
-		if err := promtext.QueueMetrics(ctx, ksm.check, ksm.log, resp.Body, ksm.check, streamTags, measurementTags, nil); err != nil {
+		if err := promtext.QueueMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, nil); err != nil {
 			return err
 		}
 	}
@@ -330,11 +330,11 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 	measurementTags := []string{}
 
 	if ksm.check.StreamMetrics() {
-		if err := promtext.StreamMetrics(ctx, ksm.check, ksm.log, resp.Body, ksm.check, streamTags, measurementTags, ksm.ts); err != nil {
+		if err := promtext.StreamMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
 			return err
 		}
 	} else {
-		if err := promtext.QueueMetrics(ctx, ksm.check, ksm.log, resp.Body, ksm.check, streamTags, measurementTags, nil); err != nil {
+		if err := promtext.QueueMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, nil); err != nil {
 			return err
 		}
 	}
