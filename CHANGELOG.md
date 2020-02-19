@@ -1,3 +1,14 @@
+# v0.5.6
+
+* upd: sequential to use contextual logger for messages when submitting
+* add: use sequential for stream if not concurrent
+* add: status code to api response errors
+* add: sequential metric submitter (gaps)
+* add: option for concurrent metric submission
+* add: option for max metric bucket size for promtext
+* upd: use config option for max metric bucket size
+* fix: remove redundant call parameter for promtext
+
 # v0.5.5
 
 * upd: increase metric bucket size to 1000
