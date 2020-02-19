@@ -51,6 +51,7 @@ type Check struct {
 	stats           Stats
 	statsmu         sync.Mutex
 	metrics         *cgm.CirconusMetrics
+	metricQueue     chan []byte
 }
 
 func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error) {
@@ -58,29 +59,36 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 		return nil, errors.New("invalid circonus config (nil)")
 	}
 	c := &Check{
-		config: cfg,
-		log:    parentLogger.With().Str("pkg", "circonus.check").Logger(),
+		config:      cfg,
+		log:         parentLogger.With().Str("pkg", "circonus.check").Logger(),
+		metricQueue: make(chan []byte),
 	}
 
 	// output debug messages for hidden settings which are not DEFAULT
 	if cfg.Base64Tags != defaults.Base64Tags {
-		c.log.Debug().Bool("enabled", cfg.Base64Tags).Msg("base64 tag encoding")
+		c.log.Info().Bool("enabled", cfg.Base64Tags).Msg("base64 tag encoding")
 	}
 	if cfg.UseGZIP != defaults.UseGZIP {
-		c.log.Debug().Bool("enabled", cfg.UseGZIP).Msg("gzip submit compression")
+		c.log.Info().Bool("enabled", cfg.UseGZIP).Msg("gzip submit compression")
 	}
 	if cfg.DryRun != defaults.DryRun {
-		c.log.Debug().Bool("enabled", cfg.DryRun).Msg("dry run")
+		c.log.Info().Bool("enabled", cfg.DryRun).Msg("dry run")
 	}
 	if cfg.StreamMetrics != defaults.StreamMetrics {
-		c.log.Debug().Bool("enabled", cfg.StreamMetrics).Msg("streaming metrics format")
+		c.log.Info().Bool("enabled", cfg.StreamMetrics).Msg("streaming metrics format")
 	}
 	if cfg.DebugSubmissions != defaults.DebugSubmissions {
-		c.log.Debug().Bool("enabled", cfg.DebugSubmissions).Msg("debug submissions")
+		c.log.Info().Bool("enabled", cfg.DebugSubmissions).Msg("debug submissions")
+	}
+	if cfg.ConcurrentSubmissions != defaults.ConcurrentSubmissions {
+		c.log.Info().Bool("enabled", cfg.ConcurrentSubmissions).Msg("concurrent submissions")
+	}
+	if cfg.MaxMetricBucketSize != defaults.MaxMetricBucketSize {
+		c.log.Info().Int("max_metric_bucket_size", cfg.MaxMetricBucketSize).Msg("max metric bucket size")
 	}
 
 	if cfg.DryRun {
-		c.log.Debug().Msg("dry run enabled, no check required")
+		c.log.Info().Msg("dry run enabled, no check required")
 		return c, nil // not sending metrics to circonus
 	}
 
@@ -109,6 +117,17 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 	}
 
 	return c, nil
+}
+
+// MaxMetricBucketSize used by promtext parser to bucket metrics for submissions (may stabilize memory with large prom output)
+func (c *Check) MaxMetricBucketSize() int {
+	return c.config.MaxMetricBucketSize
+}
+
+// ConcurrentSubmissions enable sending metrics to circonus concurrently
+// when disabled collection time is increased, when enabled may produce gaps
+func (c *Check) ConcurrentSubmissions() bool {
+	return c.config.ConcurrentSubmissions
 }
 
 // UseCompression indicates whether the data being sent should be compressed

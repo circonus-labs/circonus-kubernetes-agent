@@ -42,17 +42,36 @@ const (
 	traceTSFormat        = "20060102_150405.000000000"
 )
 
+func (c *Check) AddMetricSet(metrics []byte) {
+	c.metricQueue <- metrics
+}
+func (c *Check) Submitter(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case metrics := <-c.metricQueue:
+			if err := c.SubmitStream(ctx, bytes.NewReader(metrics), c.log); err != nil {
+				c.log.Error().Err(err).Msg("submitting metric set")
+			}
+		}
+	}
+}
+
 func (c *Check) FlushCGM(ctx context.Context) {
 	if c.metrics != nil {
 		m := c.metrics.FlushMetrics()
-		// c.log.Info().Interface("metrics", m).Msg("sending metrics")
 		data, err := json.Marshal(m)
 		if err != nil {
 			c.log.Warn().Err(err).Msg("encoding metrics")
 			return
 		}
-		if err := c.SubmitStream(ctx, bytes.NewReader(data), c.log); err != nil {
-			c.log.Error().Err(err).Msg("submitting cgm metrics")
+		if c.ConcurrentSubmissions() {
+			if err := c.SubmitStream(ctx, bytes.NewReader(data), c.log); err != nil {
+				c.log.Error().Err(err).Msg("submitting cgm metrics")
+			}
+		} else {
+			c.AddMetricSet(data)
 		}
 	}
 }
@@ -84,7 +103,12 @@ func (c *Check) SubmitQueue(ctx context.Context, metrics map[string]MetricSample
 		return errors.Wrap(err, "marshaling metrics")
 	}
 
-	return c.SubmitStream(ctx, bytes.NewReader(data), resultLogger)
+	if c.ConcurrentSubmissions() {
+		return c.SubmitStream(ctx, bytes.NewReader(data), resultLogger)
+	}
+
+	c.AddMetricSet(data)
+	return nil
 }
 
 // SubmitStream sends metrics to a circonus trap
