@@ -228,7 +228,7 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 	retryClient.RetryMax = 10
 	retryClient.RequestLogHook = func(l retryablehttp.Logger, r *http.Request, attempt int) {
 		if attempt > 0 {
-			c.metrics.IncrementWithTags("collect_submit_reties", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}})
+			c.metrics.IncrementWithTags("collect_submit_retries", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}})
 			reqStart = time.Now()
 			resultLogger.Warn().Str("url", r.URL.String()).Int("attempt", attempt).Msg("retrying...")
 		}
