@@ -42,17 +42,17 @@ const (
 	traceTSFormat        = "20060102_150405.000000000"
 )
 
-func (c *Check) AddMetricSet(metrics []byte) {
-	c.metricQueue <- metrics
+func (c *Check) AddMetricSet(metrics []byte, logger zerolog.Logger) {
+	c.metricQueue <- MetricSet{Metrics: metrics, Logger: logger}
 }
 func (c *Check) Submitter(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case metrics := <-c.metricQueue:
-			if err := c.SubmitStream(ctx, bytes.NewReader(metrics), c.log); err != nil {
-				c.log.Error().Err(err).Msg("submitting metric set")
+		case ms := <-c.metricQueue:
+			if err := c.Submit(ctx, bytes.NewReader(ms.Metrics), ms.Logger); err != nil {
+				ms.Logger.Error().Err(err).Msg("submitting metric set")
 			}
 		}
 	}
@@ -67,11 +67,11 @@ func (c *Check) FlushCGM(ctx context.Context) {
 			return
 		}
 		if c.ConcurrentSubmissions() {
-			if err := c.SubmitStream(ctx, bytes.NewReader(data), c.log); err != nil {
+			if err := c.Submit(ctx, bytes.NewReader(data), c.log); err != nil {
 				c.log.Error().Err(err).Msg("submitting cgm metrics")
 			}
 		} else {
-			c.AddMetricSet(data)
+			c.AddMetricSet(data, c.log)
 		}
 	}
 }
@@ -104,15 +104,34 @@ func (c *Check) SubmitQueue(ctx context.Context, metrics map[string]MetricSample
 	}
 
 	if c.ConcurrentSubmissions() {
-		return c.SubmitStream(ctx, bytes.NewReader(data), resultLogger)
+		return c.Submit(ctx, bytes.NewReader(data), resultLogger)
 	}
 
-	c.AddMetricSet(data)
+	c.AddMetricSet(data, resultLogger)
 	return nil
 }
 
 // SubmitStream sends metrics to a circonus trap
 func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
+	if metrics == nil {
+		return errors.New("invalid metrics (nil)")
+	}
+
+	data, err := ioutil.ReadAll(metrics)
+	if err != nil {
+		return errors.Wrap(err, "reading metrics")
+	}
+
+	if c.ConcurrentSubmissions() {
+		return c.Submit(ctx, bytes.NewReader(data), resultLogger)
+	}
+
+	c.AddMetricSet(data, resultLogger)
+	return nil
+}
+
+// Submit sends metrics to a circonus trap
+func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
 	if metrics == nil {
 		return errors.New("invalid metrics (nil)")
 	}

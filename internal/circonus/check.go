@@ -41,6 +41,11 @@ type Stats struct {
 	SentSize  string
 }
 
+type MetricSet struct {
+	Metrics []byte
+	Logger  zerolog.Logger
+}
+
 type Check struct {
 	config          *config.Circonus
 	brokerTLSConfig *tls.Config
@@ -51,7 +56,7 @@ type Check struct {
 	stats           Stats
 	statsmu         sync.Mutex
 	metrics         *cgm.CirconusMetrics
-	metricQueue     chan []byte
+	metricQueue     chan MetricSet
 }
 
 func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error) {
@@ -61,7 +66,7 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 	c := &Check{
 		config:      cfg,
 		log:         parentLogger.With().Str("pkg", "circonus.check").Logger(),
-		metricQueue: make(chan []byte),
+		metricQueue: make(chan MetricSet),
 	}
 
 	// output debug messages for hidden settings which are not DEFAULT
