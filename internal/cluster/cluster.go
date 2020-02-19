@@ -165,6 +165,10 @@ func (c *Cluster) Start(ctx context.Context) error {
 		go eventWatcher.Start(ctx, c.tlsConfig)
 	}
 
+	if !c.check.ConcurrentSubmissions() {
+		go c.check.Submitter(ctx)
+	}
+
 	c.logger.Info().Str("collection_interval", c.interval.String()).Time("next_collection", time.Now().Add(c.interval)).Msg("client started")
 
 	ticker := time.NewTicker(c.interval)

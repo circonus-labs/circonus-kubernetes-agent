@@ -9,6 +9,7 @@ package ms
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sync"
@@ -127,7 +128,8 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "metrics"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "metric-server"}})
+			cgm.Tag{Category: "target", Value: "metric-server"},
+		})
 		ms.log.Error().Err(err).Str("url", metricsURL).Msg("metrics")
 		ms.Lock()
 		ms.running = false
@@ -144,6 +146,13 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
+		ms.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "metrics"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "metric-server"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			ms.log.Error().Err(err).Str("url", metricsURL).Msg("reading response")
@@ -157,11 +166,11 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 	measurementTags := []string{}
 
 	if ms.check.StreamMetrics() {
-		if err := promtext.StreamMetrics(ctx, ms.check, ms.log, resp.Body, ms.check, streamTags, measurementTags, ts); err != nil {
+		if err := promtext.StreamMetrics(ctx, ms.check, ms.log, resp.Body, streamTags, measurementTags, ts); err != nil {
 			ms.log.Error().Err(err).Msg("formatting metrics")
 		}
 	} else {
-		if err := promtext.QueueMetrics(ctx, ms.check, ms.log, resp.Body, ms.check, streamTags, measurementTags, ts); err != nil {
+		if err := promtext.QueueMetrics(ctx, ms.check, ms.log, resp.Body, streamTags, measurementTags, ts); err != nil {
 			ms.log.Error().Err(err).Msg("formatting metrics")
 		}
 	}

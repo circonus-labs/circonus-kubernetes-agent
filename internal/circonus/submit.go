@@ -42,17 +42,36 @@ const (
 	traceTSFormat        = "20060102_150405.000000000"
 )
 
+func (c *Check) AddMetricSet(metrics []byte, logger zerolog.Logger) {
+	c.metricQueue <- MetricSet{Metrics: metrics, Logger: logger}
+}
+func (c *Check) Submitter(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case ms := <-c.metricQueue:
+			if err := c.Submit(ctx, bytes.NewReader(ms.Metrics), ms.Logger); err != nil {
+				ms.Logger.Error().Err(err).Msg("submitting metric set")
+			}
+		}
+	}
+}
+
 func (c *Check) FlushCGM(ctx context.Context) {
 	if c.metrics != nil {
 		m := c.metrics.FlushMetrics()
-		// c.log.Info().Interface("metrics", m).Msg("sending metrics")
 		data, err := json.Marshal(m)
 		if err != nil {
 			c.log.Warn().Err(err).Msg("encoding metrics")
 			return
 		}
-		if err := c.SubmitStream(ctx, bytes.NewReader(data), c.log); err != nil {
-			c.log.Error().Err(err).Msg("submitting cgm metrics")
+		if c.ConcurrentSubmissions() {
+			if err := c.Submit(ctx, bytes.NewReader(data), c.log); err != nil {
+				c.log.Error().Err(err).Msg("submitting cgm metrics")
+			}
+		} else {
+			c.AddMetricSet(data, c.log)
 		}
 	}
 }
@@ -84,11 +103,35 @@ func (c *Check) SubmitQueue(ctx context.Context, metrics map[string]MetricSample
 		return errors.Wrap(err, "marshaling metrics")
 	}
 
-	return c.SubmitStream(ctx, bytes.NewReader(data), resultLogger)
+	if c.ConcurrentSubmissions() {
+		return c.Submit(ctx, bytes.NewReader(data), resultLogger)
+	}
+
+	c.AddMetricSet(data, resultLogger)
+	return nil
 }
 
 // SubmitStream sends metrics to a circonus trap
 func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
+	if metrics == nil {
+		return errors.New("invalid metrics (nil)")
+	}
+
+	data, err := ioutil.ReadAll(metrics)
+	if err != nil {
+		return errors.Wrap(err, "reading metrics")
+	}
+
+	if c.ConcurrentSubmissions() {
+		return c.Submit(ctx, bytes.NewReader(data), resultLogger)
+	}
+
+	c.AddMetricSet(data, resultLogger)
+	return nil
+}
+
+// Submit sends metrics to a circonus trap
+func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
 	if metrics == nil {
 		return errors.New("invalid metrics (nil)")
 	}
@@ -253,6 +296,9 @@ func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogge
 	resp, err := retryClient.Do(req)
 	if err != nil {
 		resultLogger.Error().Err(err).Msg("making request")
+		c.metrics.IncrementWithTags("collect_submit_fails", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+		})
 		return err
 	}
 

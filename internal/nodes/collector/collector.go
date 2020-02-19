@@ -11,6 +11,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -430,7 +431,8 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "stats/summary"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "kubelet"}})
+			cgm.Tag{Category: "target", Value: "kubelet"},
+		})
 		nc.log.Error().Err(err).Str("req_url", reqURL).Msg("fetching summary stats")
 		return
 	}
@@ -448,6 +450,13 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "stats/summary"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "kubelet"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			nc.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
@@ -746,7 +755,8 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "metrics"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "kubelet"}})
+			cgm.Tag{Category: "target", Value: "kubelet"},
+		})
 		nc.log.Error().Err(err).Str("url", reqURL).Msg("node metrics")
 		return
 	}
@@ -763,6 +773,13 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "metrics"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "kubelet"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			nc.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
@@ -773,11 +790,11 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 	}
 
 	if nc.check.StreamMetrics() {
-		if err := promtext.StreamMetrics(nc.ctx, nc.check, nc.log, resp.Body, nc.check, parentStreamTags, parentMeasurementTags, nc.ts); err != nil {
+		if err := promtext.StreamMetrics(nc.ctx, nc.check, nc.log, resp.Body, parentStreamTags, parentMeasurementTags, nc.ts); err != nil {
 			nc.log.Error().Err(err).Msg("parsing node metrics")
 		}
 	} else {
-		if err := promtext.QueueMetrics(nc.ctx, nc.check, nc.log, resp.Body, nc.check, parentStreamTags, parentMeasurementTags, nil); err != nil {
+		if err := promtext.QueueMetrics(nc.ctx, nc.check, nc.log, resp.Body, parentStreamTags, parentMeasurementTags, nil); err != nil {
 			nc.log.Error().Err(err).Msg("parsing node metrics")
 		}
 	}
@@ -812,7 +829,8 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "pod-labels"},
-			cgm.Tag{Category: "target", Value: "api-server"}})
+			cgm.Tag{Category: "target", Value: "api-server"},
+		})
 		return collect, tags, err
 	}
 	defer resp.Body.Close()
@@ -824,6 +842,12 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 	}, float64(time.Since(start).Milliseconds()))
 
 	if resp.StatusCode != http.StatusOK {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "pod-labels"},
+			cgm.Tag{Category: "target", Value: "api-server"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
 		data, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			nc.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
