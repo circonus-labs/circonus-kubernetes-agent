@@ -7,7 +7,6 @@
 package events
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -130,22 +129,15 @@ func (e *Events) submitEvent(ctx context.Context, event *corev1.Event) {
 	}
 	var streamTags []string
 	var measurementTags []string
-	var buf bytes.Buffer
-	_ = e.check.WriteMetricSample(
-		&buf,
+	metrics := make(map[string]circonus.MetricSample)
+	_ = e.check.QueueMetricSample(
+		metrics,
 		"events",
 		circonus.MetricTypeString,
 		streamTags, measurementTags,
 		string(data),
 		&ets)
-	if buf.Len() == 0 {
-		e.log.Warn().Msg("no event to submit")
-		return
-	}
-	if err := e.check.SubmitStream(ctx, &buf, e.log.With().Str("type", "event").Logger()); err != nil {
+	if err := e.check.SubmitQueue(ctx, metrics, e.log.With().Str("type", "event").Logger()); err != nil {
 		e.log.Warn().Err(err).Msg("submitting event")
 	}
-
-	// submit event
-	//e.log.Debug().RawJSON("event", data).Msg("submitting event")
 }
