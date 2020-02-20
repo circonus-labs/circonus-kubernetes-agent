@@ -7,7 +7,6 @@
 package collector
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -114,111 +113,111 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 		return
 	}
 
-	if nc.check.StreamMetrics() {
+	// if nc.check.StreamMetrics() {
 
-		var buf bytes.Buffer
+	// 	var buf bytes.Buffer
 
-		{ // meta
-			var streamTags []string
-			streamTags = append(streamTags, parentStreamTags...)
-			streamTags = append(streamTags, []string{
-				"kernel_version:" + nc.node.Status.NodeInfo.KernelVersion,
-				"os_image:" + nc.node.Status.NodeInfo.OSImage,
-				"kublet_version:" + nc.node.Status.NodeInfo.KubeletVersion,
-			}...)
-			for k, v := range nc.node.Metadata.Labels {
-				streamTags = append(streamTags, k+":"+v)
-			}
-			_ = nc.check.WriteMetricSample(
-				&buf,
-				"node",
-				circonus.MetricTypeString,
-				streamTags, parentMeasurementTags,
-				nc.node.Metadata.Name,
-				nc.ts)
-		}
+	// 	{ // meta
+	// 		var streamTags []string
+	// 		streamTags = append(streamTags, parentStreamTags...)
+	// 		streamTags = append(streamTags, []string{
+	// 			"kernel_version:" + nc.node.Status.NodeInfo.KernelVersion,
+	// 			"os_image:" + nc.node.Status.NodeInfo.OSImage,
+	// 			"kublet_version:" + nc.node.Status.NodeInfo.KubeletVersion,
+	// 		}...)
+	// 		for k, v := range nc.node.Metadata.Labels {
+	// 			streamTags = append(streamTags, k+":"+v)
+	// 		}
+	// 		_ = nc.check.WriteMetricSample(
+	// 			&buf,
+	// 			"node",
+	// 			circonus.MetricTypeString,
+	// 			streamTags, parentMeasurementTags,
+	// 			nc.node.Metadata.Name,
+	// 			nc.ts)
+	// 	}
 
-		{ // conditions
-			var streamTags []string
-			streamTags = append(streamTags, parentStreamTags...)
-			streamTags = append(streamTags, "status:condition")
-			for _, cond := range nc.node.Status.Conditions {
-				if nc.done() {
-					break
-				}
-				_ = nc.check.WriteMetricSample(
-					&buf,
-					cond.Type,
-					circonus.MetricTypeString,
-					streamTags, parentMeasurementTags,
-					cond.Message,
-					nc.ts)
-			}
-		}
-		{ // capacity and allocatable
-			var streamTags []string
-			streamTags = append(streamTags, parentStreamTags...)
-			if v, err := strconv.Atoi(nc.node.Status.Capacity.CPU); err == nil {
-				_ = nc.check.WriteMetricSample(
-					&buf,
-					"capacity_cpu",
-					circonus.MetricTypeUint64,
-					streamTags, parentMeasurementTags,
-					uint64(v),
-					nc.ts)
-			} else {
-				nc.log.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.CPU).Msg("converting capacity.cpu")
-			}
-			if v, err := strconv.Atoi(nc.node.Status.Capacity.Pods); err == nil {
-				_ = nc.check.WriteMetricSample(
-					&buf,
-					"capacity_pods",
-					circonus.MetricTypeUint64,
-					streamTags, parentMeasurementTags,
-					uint64(v),
-					nc.ts)
-			} else {
-				nc.log.Warn().Err(err).Str("pods", nc.node.Status.Capacity.Pods).Msg("converting capacity.pods")
-			}
-			if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Memory); err == nil {
-				if mem, ok := qty.AsInt64(); ok {
-					streamTags = append(streamTags, "units:bytes")
-					_ = nc.check.WriteMetricSample(
-						&buf,
-						"capacity_memory",
-						circonus.MetricTypeUint64,
-						streamTags, parentMeasurementTags,
-						uint64(mem),
-						nc.ts)
-				}
-			} else {
-				nc.log.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory).Msg("parsing quantity capacity.memory")
-			}
-			if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.EphemeralStorage); err == nil {
-				if storage, ok := qty.AsInt64(); ok {
-					streamTags = append(streamTags, "units:bytes")
-					_ = nc.check.WriteMetricSample(
-						&buf,
-						"capacity_ephemeral_storage",
-						circonus.MetricTypeUint64,
-						streamTags, parentMeasurementTags,
-						uint64(storage),
-						nc.ts)
-				}
-			} else {
-				nc.log.Warn().Err(err).Str("ephemeral_storage", nc.node.Status.Capacity.EphemeralStorage).Msg("parsing quantity capacity.ephemeral-storage")
-			}
-		}
+	// 	{ // conditions
+	// 		var streamTags []string
+	// 		streamTags = append(streamTags, parentStreamTags...)
+	// 		streamTags = append(streamTags, "status:condition")
+	// 		for _, cond := range nc.node.Status.Conditions {
+	// 			if nc.done() {
+	// 				break
+	// 			}
+	// 			_ = nc.check.WriteMetricSample(
+	// 				&buf,
+	// 				cond.Type,
+	// 				circonus.MetricTypeString,
+	// 				streamTags, parentMeasurementTags,
+	// 				cond.Message,
+	// 				nc.ts)
+	// 		}
+	// 	}
+	// 	{ // capacity and allocatable
+	// 		var streamTags []string
+	// 		streamTags = append(streamTags, parentStreamTags...)
+	// 		if v, err := strconv.Atoi(nc.node.Status.Capacity.CPU); err == nil {
+	// 			_ = nc.check.WriteMetricSample(
+	// 				&buf,
+	// 				"capacity_cpu",
+	// 				circonus.MetricTypeUint64,
+	// 				streamTags, parentMeasurementTags,
+	// 				uint64(v),
+	// 				nc.ts)
+	// 		} else {
+	// 			nc.log.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.CPU).Msg("converting capacity.cpu")
+	// 		}
+	// 		if v, err := strconv.Atoi(nc.node.Status.Capacity.Pods); err == nil {
+	// 			_ = nc.check.WriteMetricSample(
+	// 				&buf,
+	// 				"capacity_pods",
+	// 				circonus.MetricTypeUint64,
+	// 				streamTags, parentMeasurementTags,
+	// 				uint64(v),
+	// 				nc.ts)
+	// 		} else {
+	// 			nc.log.Warn().Err(err).Str("pods", nc.node.Status.Capacity.Pods).Msg("converting capacity.pods")
+	// 		}
+	// 		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Memory); err == nil {
+	// 			if mem, ok := qty.AsInt64(); ok {
+	// 				streamTags = append(streamTags, "units:bytes")
+	// 				_ = nc.check.WriteMetricSample(
+	// 					&buf,
+	// 					"capacity_memory",
+	// 					circonus.MetricTypeUint64,
+	// 					streamTags, parentMeasurementTags,
+	// 					uint64(mem),
+	// 					nc.ts)
+	// 			}
+	// 		} else {
+	// 			nc.log.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory).Msg("parsing quantity capacity.memory")
+	// 		}
+	// 		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.EphemeralStorage); err == nil {
+	// 			if storage, ok := qty.AsInt64(); ok {
+	// 				streamTags = append(streamTags, "units:bytes")
+	// 				_ = nc.check.WriteMetricSample(
+	// 					&buf,
+	// 					"capacity_ephemeral_storage",
+	// 					circonus.MetricTypeUint64,
+	// 					streamTags, parentMeasurementTags,
+	// 					uint64(storage),
+	// 					nc.ts)
+	// 			}
+	// 		} else {
+	// 			nc.log.Warn().Err(err).Str("ephemeral_storage", nc.node.Status.Capacity.EphemeralStorage).Msg("parsing quantity capacity.ephemeral-storage")
+	// 		}
+	// 	}
 
-		if buf.Len() == 0 {
-			nc.log.Warn().Msg("no telemetry to submit")
-			return
-		}
-		if err := nc.check.SubmitStream(nc.ctx, &buf, nc.log.With().Str("type", "meta").Logger()); err != nil {
-			nc.log.Warn().Err(err).Msg("submitting metrics")
-		}
-		return
-	}
+	// 	if buf.Len() == 0 {
+	// 		nc.log.Warn().Msg("no telemetry to submit")
+	// 		return
+	// 	}
+	// 	if err := nc.check.SubmitStream(nc.ctx, &buf, nc.log.With().Str("type", "meta").Logger()); err != nil {
+	// 		nc.log.Warn().Err(err).Msg("submitting metrics")
+	// 	}
+	// 	return
+	// }
 
 	metrics := make(map[string]circonus.MetricSample)
 
@@ -482,25 +481,25 @@ func (nc *Collector) summaryNode(node *statsSummaryNode, parentStreamTags []stri
 		return
 	}
 
-	if nc.check.StreamMetrics() {
-		var buf bytes.Buffer
+	// if nc.check.StreamMetrics() {
+	// 	var buf bytes.Buffer
 
-		nc.streamCPU(&buf, &node.CPU, parentStreamTags, parentMeasurementTags)
-		nc.streamMemory(&buf, &node.Memory, parentStreamTags, parentMeasurementTags, true)
-		nc.streamNetwork(&buf, &node.Network, parentStreamTags, parentMeasurementTags)
-		nc.streamFS(&buf, &node.FS, parentStreamTags, parentMeasurementTags)
-		nc.streamRuntimeImageFS(&buf, &node.Runtime.ImageFs, parentStreamTags, parentMeasurementTags)
-		nc.streamRlimit(&buf, &node.Rlimit, parentStreamTags, parentMeasurementTags)
+	// 	nc.streamCPU(&buf, &node.CPU, parentStreamTags, parentMeasurementTags)
+	// 	nc.streamMemory(&buf, &node.Memory, parentStreamTags, parentMeasurementTags, true)
+	// 	nc.streamNetwork(&buf, &node.Network, parentStreamTags, parentMeasurementTags)
+	// 	nc.streamFS(&buf, &node.FS, parentStreamTags, parentMeasurementTags)
+	// 	nc.streamRuntimeImageFS(&buf, &node.Runtime.ImageFs, parentStreamTags, parentMeasurementTags)
+	// 	nc.streamRlimit(&buf, &node.Rlimit, parentStreamTags, parentMeasurementTags)
 
-		if buf.Len() == 0 {
-			nc.log.Warn().Msg("no telemetry to submit")
-			return
-		}
-		if err := nc.check.SubmitStream(nc.ctx, &buf, nc.log.With().Str("type", "/stats/summary").Logger()); err != nil {
-			nc.log.Warn().Err(err).Msg("submitting metrics")
-		}
-		return
-	}
+	// 	if buf.Len() == 0 {
+	// 		nc.log.Warn().Msg("no telemetry to submit")
+	// 		return
+	// 	}
+	// 	if err := nc.check.SubmitStream(nc.ctx, &buf, nc.log.With().Str("type", "/stats/summary").Logger()); err != nil {
+	// 		nc.log.Warn().Err(err).Msg("submitting metrics")
+	// 	}
+	// 	return
+	// }
 
 	metrics := make(map[string]circonus.MetricSample)
 
@@ -532,32 +531,32 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 		return
 	}
 
-	if nc.check.StreamMetrics() {
-		var buf bytes.Buffer
+	// if nc.check.StreamMetrics() {
+	// 	var buf bytes.Buffer
 
-		for _, container := range node.SystemContainers {
-			if nc.done() {
-				break
-			}
-			var streamTags []string
-			streamTags = append(streamTags, parentStreamTags...)
-			streamTags = append(streamTags, []string{"sys_container:" + container.Name}...)
+	// 	for _, container := range node.SystemContainers {
+	// 		if nc.done() {
+	// 			break
+	// 		}
+	// 		var streamTags []string
+	// 		streamTags = append(streamTags, parentStreamTags...)
+	// 		streamTags = append(streamTags, []string{"sys_container:" + container.Name}...)
 
-			nc.streamCPU(&buf, &container.CPU, streamTags, parentMeasurementTags)
-			nc.streamMemory(&buf, &container.Memory, streamTags, parentMeasurementTags, false)
-			nc.streamRootFS(&buf, &container.RootFS, streamTags, parentMeasurementTags)
-			nc.streamLogsFS(&buf, &container.Logs, streamTags, parentMeasurementTags)
-		}
+	// 		nc.streamCPU(&buf, &container.CPU, streamTags, parentMeasurementTags)
+	// 		nc.streamMemory(&buf, &container.Memory, streamTags, parentMeasurementTags, false)
+	// 		nc.streamRootFS(&buf, &container.RootFS, streamTags, parentMeasurementTags)
+	// 		nc.streamLogsFS(&buf, &container.Logs, streamTags, parentMeasurementTags)
+	// 	}
 
-		if buf.Len() == 0 {
-			nc.log.Warn().Msg("no telemetry to submit")
-			return
-		}
-		if err := nc.check.SubmitStream(nc.ctx, &buf, nc.log.With().Str("type", "system_containers").Logger()); err != nil {
-			nc.log.Warn().Err(err).Msg("submitting metrics")
-		}
-		return
-	}
+	// 	if buf.Len() == 0 {
+	// 		nc.log.Warn().Msg("no telemetry to submit")
+	// 		return
+	// 	}
+	// 	if err := nc.check.SubmitStream(nc.ctx, &buf, nc.log.With().Str("type", "system_containers").Logger()); err != nil {
+	// 		nc.log.Warn().Err(err).Msg("submitting metrics")
+	// 	}
+	// 	return
+	// }
 
 	metrics := make(map[string]circonus.MetricSample)
 
@@ -596,72 +595,72 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 		return
 	}
 
-	if nc.check.StreamMetrics() {
-		var buf bytes.Buffer
+	// if nc.check.StreamMetrics() {
+	// 	var buf bytes.Buffer
 
-		for _, pod := range stats.Pods {
-			if nc.done() {
-				break
-			}
-			collect, podLabels, err := nc.getPodLabels(pod.PodRef.Namespace, pod.PodRef.Name)
-			if err != nil {
-				nc.log.Warn().Err(err).Str("pod", pod.PodRef.Name).Str("ns", pod.PodRef.Namespace).Msg("fetching pod labels")
-			}
-			if !collect {
-				continue
-			}
-			var podStreamTags []string
-			podStreamTags = append(podStreamTags, parentStreamTags...)
-			podStreamTags = append(podStreamTags, podLabels...)
-			podStreamTags = append(podStreamTags, []string{
-				"pod:" + pod.PodRef.Name,
-				"namespace:" + pod.PodRef.Namespace,
-				"__rollup:false", // prevent high cardinality metrics from rolling up
-			}...)
+	// 	for _, pod := range stats.Pods {
+	// 		if nc.done() {
+	// 			break
+	// 		}
+	// 		collect, podLabels, err := nc.getPodLabels(pod.PodRef.Namespace, pod.PodRef.Name)
+	// 		if err != nil {
+	// 			nc.log.Warn().Err(err).Str("pod", pod.PodRef.Name).Str("ns", pod.PodRef.Namespace).Msg("fetching pod labels")
+	// 		}
+	// 		if !collect {
+	// 			continue
+	// 		}
+	// 		var podStreamTags []string
+	// 		podStreamTags = append(podStreamTags, parentStreamTags...)
+	// 		podStreamTags = append(podStreamTags, podLabels...)
+	// 		podStreamTags = append(podStreamTags, []string{
+	// 			"pod:" + pod.PodRef.Name,
+	// 			"namespace:" + pod.PodRef.Namespace,
+	// 			"__rollup:false", // prevent high cardinality metrics from rolling up
+	// 		}...)
 
-			nc.streamCPU(&buf, &pod.CPU, podStreamTags, parentMeasurementTags)
-			nc.streamMemory(&buf, &pod.Memory, podStreamTags, parentMeasurementTags, false)
-			nc.streamNetwork(&buf, &pod.Network, podStreamTags, parentMeasurementTags)
+	// 		nc.streamCPU(&buf, &pod.CPU, podStreamTags, parentMeasurementTags)
+	// 		nc.streamMemory(&buf, &pod.Memory, podStreamTags, parentMeasurementTags, false)
+	// 		nc.streamNetwork(&buf, &pod.Network, podStreamTags, parentMeasurementTags)
 
-			for _, volume := range pod.Volumes {
-				if nc.done() {
-					break
-				}
-				volume := volume
-				nc.streamVolume(&buf, &volume, podStreamTags, parentMeasurementTags)
-			}
+	// 		for _, volume := range pod.Volumes {
+	// 			if nc.done() {
+	// 				break
+	// 			}
+	// 			volume := volume
+	// 			nc.streamVolume(&buf, &volume, podStreamTags, parentMeasurementTags)
+	// 		}
 
-			if nc.cfg.IncludeContainers {
-				for _, container := range pod.Containers {
-					if nc.done() {
-						break
-					}
-					var streamTagList []string
-					streamTagList = append(streamTagList, podStreamTags...)
-					streamTagList = append(streamTagList, "container_name:"+container.Name)
+	// 		if nc.cfg.IncludeContainers {
+	// 			for _, container := range pod.Containers {
+	// 				if nc.done() {
+	// 					break
+	// 				}
+	// 				var streamTagList []string
+	// 				streamTagList = append(streamTagList, podStreamTags...)
+	// 				streamTagList = append(streamTagList, "container_name:"+container.Name)
 
-					nc.streamCPU(&buf, &container.CPU, streamTagList, parentMeasurementTags)
-					nc.streamMemory(&buf, &container.Memory, streamTagList, parentMeasurementTags, false)
-					if container.RootFS.CapacityBytes > 0 { // rootfs
-						nc.streamRootFS(&buf, &container.RootFS, streamTagList, parentMeasurementTags)
-					}
+	// 				nc.streamCPU(&buf, &container.CPU, streamTagList, parentMeasurementTags)
+	// 				nc.streamMemory(&buf, &container.Memory, streamTagList, parentMeasurementTags, false)
+	// 				if container.RootFS.CapacityBytes > 0 { // rootfs
+	// 					nc.streamRootFS(&buf, &container.RootFS, streamTagList, parentMeasurementTags)
+	// 				}
 
-					if container.Logs.CapacityBytes > 0 { // logs
-						nc.streamLogsFS(&buf, &container.Logs, streamTagList, parentMeasurementTags)
-					}
-				}
-			}
-		}
+	// 				if container.Logs.CapacityBytes > 0 { // logs
+	// 					nc.streamLogsFS(&buf, &container.Logs, streamTagList, parentMeasurementTags)
+	// 				}
+	// 			}
+	// 		}
+	// 	}
 
-		if buf.Len() == 0 {
-			nc.log.Warn().Msg("no telemetry to submit")
-			return
-		}
-		if err := nc.check.SubmitStream(nc.ctx, &buf, nc.log.With().Str("type", "pods").Logger()); err != nil {
-			nc.log.Warn().Err(err).Msg("submitting metrics")
-		}
-		return
-	}
+	// 	if buf.Len() == 0 {
+	// 		nc.log.Warn().Msg("no telemetry to submit")
+	// 		return
+	// 	}
+	// 	if err := nc.check.SubmitStream(nc.ctx, &buf, nc.log.With().Str("type", "pods").Logger()); err != nil {
+	// 		nc.log.Warn().Err(err).Msg("submitting metrics")
+	// 	}
+	// 	return
+	// }
 
 	metrics := make(map[string]circonus.MetricSample)
 
@@ -789,15 +788,15 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 		return
 	}
 
-	if nc.check.StreamMetrics() {
-		if err := promtext.StreamMetrics(nc.ctx, nc.check, nc.log, resp.Body, parentStreamTags, parentMeasurementTags, nc.ts); err != nil {
-			nc.log.Error().Err(err).Msg("parsing node metrics")
-		}
-	} else {
-		if err := promtext.QueueMetrics(nc.ctx, nc.check, nc.log, resp.Body, parentStreamTags, parentMeasurementTags, nil); err != nil {
-			nc.log.Error().Err(err).Msg("parsing node metrics")
-		}
+	// if nc.check.StreamMetrics() {
+	// 	if err := promtext.StreamMetrics(nc.ctx, nc.check, nc.log, resp.Body, parentStreamTags, parentMeasurementTags, nc.ts); err != nil {
+	// 		nc.log.Error().Err(err).Msg("parsing node metrics")
+	// 	}
+	// } else {
+	if err := promtext.QueueMetrics(nc.ctx, nc.check, nc.log, resp.Body, parentStreamTags, parentMeasurementTags, nil); err != nil {
+		nc.log.Error().Err(err).Msg("parsing node metrics")
 	}
+	// }
 }
 
 type podSpec struct {

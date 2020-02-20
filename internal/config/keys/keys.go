@@ -105,7 +105,7 @@ const (
 	DryRun = "circonus.dry_run"
 
 	// StreamMetrics use streaming metric submission format
-	StreamMetrics = "circonus.stream_metrics"
+	// StreamMetrics = "circonus.stream_metrics"
 
 	// UseGZIP when submitting
 	UseGZIP = "circonus.use_gzip"

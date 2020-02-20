@@ -123,24 +123,24 @@ func (c *Check) SubmitQueue(ctx context.Context, metrics map[string]MetricSample
 	return nil
 }
 
-// SubmitStream sends metrics to a circonus trap
-func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
-	if metrics == nil {
-		return errors.New("invalid metrics (nil)")
-	}
+// // SubmitStream sends metrics to a circonus trap
+// func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
+// 	if metrics == nil {
+// 		return errors.New("invalid metrics (nil)")
+// 	}
 
-	data, err := ioutil.ReadAll(metrics)
-	if err != nil {
-		return errors.Wrap(err, "reading metrics")
-	}
+// 	data, err := ioutil.ReadAll(metrics)
+// 	if err != nil {
+// 		return errors.Wrap(err, "reading metrics")
+// 	}
 
-	if c.ConcurrentSubmissions() {
-		return c.Submit(ctx, bytes.NewReader(data), resultLogger)
-	}
+// 	if c.ConcurrentSubmissions() {
+// 		return c.Submit(ctx, bytes.NewReader(data), resultLogger)
+// 	}
 
-	c.AddMetricSet(data, resultLogger)
-	return nil
-}
+// 	c.AddMetricSet(data, resultLogger)
+// 	return nil
+// }
 
 // Submit sends metrics to a circonus trap
 func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
