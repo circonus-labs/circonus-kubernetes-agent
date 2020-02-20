@@ -94,7 +94,7 @@ func QueueMetrics(
 						metrics, metricName,
 						circonus.MetricTypeFloat64,
 						qtags, parentMeasurementTags,
-						qv, nil)
+						qv, ts)
 				}
 			case dto.MetricType_HISTOGRAM:
 				_ = check.QueueMetricSample(
@@ -249,7 +249,7 @@ func StreamMetrics(
 						&buf, metricName,
 						circonus.MetricTypeFloat64,
 						qtags, parentMeasurementTags,
-						qv, nil)
+						qv, ts)
 					metricsQueued++
 				}
 			case dto.MetricType_HISTOGRAM:

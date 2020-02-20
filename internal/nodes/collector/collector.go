@@ -165,7 +165,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 					circonus.MetricTypeUint64,
 					streamTags, parentMeasurementTags,
 					uint64(v),
-					nil)
+					nc.ts)
 			} else {
 				nc.log.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.CPU).Msg("converting capacity.cpu")
 			}
@@ -176,7 +176,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 					circonus.MetricTypeUint64,
 					streamTags, parentMeasurementTags,
 					uint64(v),
-					nil)
+					nc.ts)
 			} else {
 				nc.log.Warn().Err(err).Str("pods", nc.node.Status.Capacity.Pods).Msg("converting capacity.pods")
 			}
@@ -189,7 +189,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 						circonus.MetricTypeUint64,
 						streamTags, parentMeasurementTags,
 						uint64(mem),
-						nil)
+						nc.ts)
 				}
 			} else {
 				nc.log.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory).Msg("parsing quantity capacity.memory")
@@ -203,7 +203,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 						circonus.MetricTypeUint64,
 						streamTags, parentMeasurementTags,
 						uint64(storage),
-						nil)
+						nc.ts)
 				}
 			} else {
 				nc.log.Warn().Err(err).Str("ephemeral_storage", nc.node.Status.Capacity.EphemeralStorage).Msg("parsing quantity capacity.ephemeral-storage")
@@ -239,7 +239,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 			circonus.MetricTypeString,
 			streamTags, parentMeasurementTags,
 			nc.node.Metadata.Name,
-			nil)
+			nc.ts)
 	}
 
 	{ // conditions
@@ -256,7 +256,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 				circonus.MetricTypeString,
 				streamTags, parentMeasurementTags,
 				cond.Message,
-				nil)
+				nc.ts)
 		}
 	}
 
@@ -270,7 +270,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 				circonus.MetricTypeUint64,
 				streamTags, parentMeasurementTags,
 				uint64(v),
-				nil)
+				nc.ts)
 		} else {
 			nc.log.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.CPU).Msg("converting capacity.cpu")
 		}
@@ -281,7 +281,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 				circonus.MetricTypeUint64,
 				streamTags, parentMeasurementTags,
 				uint64(v),
-				nil)
+				nc.ts)
 		} else {
 			nc.log.Warn().Err(err).Str("pods", nc.node.Status.Capacity.Pods).Msg("converting capacity.pods")
 		}
@@ -294,7 +294,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 					circonus.MetricTypeUint64,
 					streamTags, parentMeasurementTags,
 					uint64(mem),
-					nil)
+					nc.ts)
 			}
 		} else {
 			nc.log.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory).Msg("parsing quantity capacity.memory")
@@ -308,7 +308,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 					circonus.MetricTypeUint64,
 					streamTags, parentMeasurementTags,
 					uint64(storage),
-					nil)
+					nc.ts)
 			}
 		} else {
 			nc.log.Warn().Err(err).Str("ephemeral_storage", nc.node.Status.Capacity.EphemeralStorage).Msg("parsing quantity capacity.ephemeral-storage")

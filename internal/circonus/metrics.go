@@ -163,7 +163,7 @@ func (c *Check) WriteMetricSample(
 	}
 
 	var metricSample string
-	if timestamp != nil {
+	if timestamp != nil && (metricType != MetricTypeHistogram && metricType != MetricTypeCumulativeHistogram) {
 		metricSample = fmt.Sprintf(
 			`{"%s":{"_type":"%s","_value":%v,"_ts":%d}}`,
 			taggedMetricName,
@@ -255,7 +255,7 @@ func (c *Check) QueueMetricSample(
 		Value: val,
 	}
 
-	if timestamp != nil {
+	if timestamp != nil && (metricType != MetricTypeHistogram && metricType != MetricTypeCumulativeHistogram) {
 		metricSample.Timestamp = makeTimestamp(timestamp)
 	}
 
