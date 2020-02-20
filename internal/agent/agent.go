@@ -117,7 +117,7 @@ func New() (*Agent, error) {
 						expvar.Handler().ServeHTTP(w, r)
 					case "/health", "/health/":
 						w.WriteHeader(http.StatusOK)
-						fmt.Fprintf(w, "Alive")
+						fmt.Fprintln(w, "Alive")
 					default:
 						http.NotFound(w, r)
 					}
