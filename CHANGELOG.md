@@ -1,3 +1,12 @@
+# v0.5.7
+
+* add: option `--serial-submissions` to disable concurrent submissions
+* upd: default to concurrent submissions w/timestamp metrics
+* upd: deprecate streaming metrics as an option
+* fix: use metric queue for events
+* fix: ensure all metrics have timestamp, address drift on retries
+* fix: `/health` output
+
 # v0.5.6
 
 * upd: sequential to use contextual logger for messages when submitting

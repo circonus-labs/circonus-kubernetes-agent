@@ -79,14 +79,14 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 	if cfg.DryRun != defaults.DryRun {
 		c.log.Info().Bool("enabled", cfg.DryRun).Msg("dry run")
 	}
-	if cfg.StreamMetrics != defaults.StreamMetrics {
-		c.log.Info().Bool("enabled", cfg.StreamMetrics).Msg("streaming metrics format")
-	}
+	// if cfg.StreamMetrics != defaults.StreamMetrics {
+	// 	c.log.Info().Bool("enabled", cfg.StreamMetrics).Msg("streaming metrics format")
+	// }
 	if cfg.DebugSubmissions != defaults.DebugSubmissions {
 		c.log.Info().Bool("enabled", cfg.DebugSubmissions).Msg("debug submissions")
 	}
-	if cfg.ConcurrentSubmissions != defaults.ConcurrentSubmissions {
-		c.log.Info().Bool("enabled", cfg.ConcurrentSubmissions).Msg("concurrent submissions")
+	if cfg.SerialSubmissions != defaults.SerialSubmissions {
+		c.log.Info().Bool("enabled", cfg.SerialSubmissions).Msg("serial submissions")
 	}
 	if cfg.MaxMetricBucketSize != defaults.MaxMetricBucketSize {
 		c.log.Info().Int("max_metric_bucket_size", cfg.MaxMetricBucketSize).Msg("max metric bucket size")
@@ -140,10 +140,10 @@ func (c *Check) UseCompression() bool {
 	return c.config.UseGZIP
 }
 
-// StreamMetrics indicates whether to stream metrics (use when multiple samples for same metric name with different timestamps)
-func (c *Check) StreamMetrics() bool {
-	return c.config.StreamMetrics
-}
+// // StreamMetrics indicates whether to stream metrics (use when multiple samples for same metric name with different timestamps)
+// func (c *Check) StreamMetrics() bool {
+// 	return c.config.StreamMetrics
+// }
 
 // DebugSubmissions will dump the submission request to stdout
 func (c *Check) DebugSubmissions() bool {

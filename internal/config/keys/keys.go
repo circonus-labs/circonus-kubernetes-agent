@@ -88,6 +88,8 @@ const (
 
 	// ConcurrentSubmissions submit metrics to circonus concurrently
 	ConcurrentSubmissions = "circonus.concurrent_submissions"
+	// SerialSubmissions submit metrics serially
+	SerialSubmissions = "circonus.serial_submissions"
 
 	// MaxMetricBucketSize defines a bucket size for parsing prom output - can save on memory
 	// to not queue up all of the metric-server metrics at one time and send them in smaller chunks
@@ -103,7 +105,7 @@ const (
 	DryRun = "circonus.dry_run"
 
 	// StreamMetrics use streaming metric submission format
-	StreamMetrics = "circonus.stream_metrics"
+	// StreamMetrics = "circonus.stream_metrics"
 
 	// UseGZIP when submitting
 	UseGZIP = "circonus.use_gzip"

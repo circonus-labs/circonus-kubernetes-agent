@@ -58,10 +58,22 @@ func (c *Check) Submitter(ctx context.Context) {
 	}
 }
 
-func (c *Check) FlushCGM(ctx context.Context) {
+func (c *Check) FlushCGM(ctx context.Context, ts *time.Time) {
 	if c.metrics != nil {
-		m := c.metrics.FlushMetrics()
-		data, err := json.Marshal(m)
+		// TODO: add timestamp support to CGM (e.g. FlushMetricsWithTimestamp(ts))
+		metrics := make(map[string]MetricSample)
+		for mn, mv := range *(c.metrics.FlushMetrics()) {
+			ms := MetricSample{
+				Value: mv.Value,
+				Type:  mv.Type,
+			}
+			if ms.Type != MetricTypeHistogram {
+				ms.Timestamp = makeTimestamp(ts)
+			}
+			metrics[mn] = ms
+		}
+
+		data, err := json.Marshal(metrics)
 		if err != nil {
 			c.log.Warn().Err(err).Msg("encoding metrics")
 			return
@@ -111,24 +123,24 @@ func (c *Check) SubmitQueue(ctx context.Context, metrics map[string]MetricSample
 	return nil
 }
 
-// SubmitStream sends metrics to a circonus trap
-func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
-	if metrics == nil {
-		return errors.New("invalid metrics (nil)")
-	}
+// // SubmitStream sends metrics to a circonus trap
+// func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
+// 	if metrics == nil {
+// 		return errors.New("invalid metrics (nil)")
+// 	}
 
-	data, err := ioutil.ReadAll(metrics)
-	if err != nil {
-		return errors.Wrap(err, "reading metrics")
-	}
+// 	data, err := ioutil.ReadAll(metrics)
+// 	if err != nil {
+// 		return errors.Wrap(err, "reading metrics")
+// 	}
 
-	if c.ConcurrentSubmissions() {
-		return c.Submit(ctx, bytes.NewReader(data), resultLogger)
-	}
+// 	if c.ConcurrentSubmissions() {
+// 		return c.Submit(ctx, bytes.NewReader(data), resultLogger)
+// 	}
 
-	c.AddMetricSet(data, resultLogger)
-	return nil
-}
+// 	c.AddMetricSet(data, resultLogger)
+// 	return nil
+// }
 
 // Submit sends metrics to a circonus trap
 func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
@@ -267,13 +279,13 @@ func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zero
 	retryClient.HTTPClient = client
 	retryClient.Logger = logshim{logh: c.log.With().Str("pkg", "retryablehttp").Logger()}
 	retryClient.RetryWaitMin = 50 * time.Millisecond
-	retryClient.RetryWaitMax = 2 * time.Second
+	retryClient.RetryWaitMax = 1 * time.Second
 	retryClient.RetryMax = 10
 	retryClient.RequestLogHook = func(l retryablehttp.Logger, r *http.Request, attempt int) {
 		if attempt > 0 {
 			c.metrics.IncrementWithTags("collect_submit_retries", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}})
 			reqStart = time.Now()
-			resultLogger.Warn().Str("url", r.URL.String()).Int("attempt", attempt).Msg("retrying...")
+			resultLogger.Warn().Str("url", r.URL.String()).Int("retry", attempt).Msg("retrying...")
 		}
 	}
 	retryClient.ResponseLogHook = func(l retryablehttp.Logger, r *http.Response) {

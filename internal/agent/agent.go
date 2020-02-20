@@ -63,7 +63,12 @@ func New() (*Agent, error) {
 	}
 
 	// Set the hidden settings based on viper
-	cfg.Circonus.ConcurrentSubmissions = viper.GetBool(keys.ConcurrentSubmissions)
+	cfg.Circonus.ConcurrentSubmissions = defaults.ConcurrentSubmissions
+	cfg.Circonus.SerialSubmissions = defaults.SerialSubmissions
+	if viper.GetBool(keys.SerialSubmissions) != defaults.SerialSubmissions {
+		cfg.Circonus.SerialSubmissions = true
+		cfg.Circonus.ConcurrentSubmissions = false
+	}
 	cfg.Circonus.MaxMetricBucketSize = defaults.MaxMetricBucketSize
 	if viper.GetUint(keys.MaxMetricBucketSize) != defaults.MaxMetricBucketSize {
 		cfg.Circonus.MaxMetricBucketSize = viper.GetInt(keys.MaxMetricBucketSize)
@@ -77,7 +82,7 @@ func New() (*Agent, error) {
 		cfg.Circonus.UseGZIP = false
 	}
 	cfg.Circonus.DryRun = viper.GetBool(keys.DryRun)
-	cfg.Circonus.StreamMetrics = viper.GetBool(keys.StreamMetrics)
+	// cfg.Circonus.StreamMetrics = viper.GetBool(keys.StreamMetrics)
 	cfg.Circonus.DebugSubmissions = viper.GetBool(keys.DebugSubmissions)
 
 	if len(cfg.Clusters) > 0 { // multiple clusters
@@ -117,7 +122,7 @@ func New() (*Agent, error) {
 						expvar.Handler().ServeHTTP(w, r)
 					case "/health", "/health/":
 						w.WriteHeader(http.StatusOK)
-						fmt.Fprintf(w, "Alive")
+						fmt.Fprintln(w, "Alive")
 					default:
 						http.NotFound(w, r)
 					}

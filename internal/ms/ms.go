@@ -165,15 +165,15 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 	streamTags := []string{"source:metrics-server"}
 	measurementTags := []string{}
 
-	if ms.check.StreamMetrics() {
-		if err := promtext.StreamMetrics(ctx, ms.check, ms.log, resp.Body, streamTags, measurementTags, ts); err != nil {
-			ms.log.Error().Err(err).Msg("formatting metrics")
-		}
-	} else {
-		if err := promtext.QueueMetrics(ctx, ms.check, ms.log, resp.Body, streamTags, measurementTags, ts); err != nil {
-			ms.log.Error().Err(err).Msg("formatting metrics")
-		}
+	// if ms.check.StreamMetrics() {
+	// 	if err := promtext.StreamMetrics(ctx, ms.check, ms.log, resp.Body, streamTags, measurementTags, ts); err != nil {
+	// 		ms.log.Error().Err(err).Msg("formatting metrics")
+	// 	}
+	// } else {
+	if err := promtext.QueueMetrics(ctx, ms.check, ms.log, resp.Body, streamTags, measurementTags, ts); err != nil {
+		ms.log.Error().Err(err).Msg("formatting metrics")
 	}
+	// }
 
 	ms.check.AddHistSample("collect_latency", cgm.Tags{
 		cgm.Tag{Category: "source", Value: release.NAME},

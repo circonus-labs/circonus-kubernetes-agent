@@ -7,7 +7,6 @@
 package promtext
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -94,7 +93,7 @@ func QueueMetrics(
 						metrics, metricName,
 						circonus.MetricTypeFloat64,
 						qtags, parentMeasurementTags,
-						qv, nil)
+						qv, ts)
 				}
 			case dto.MetricType_HISTOGRAM:
 				_ = check.QueueMetricSample(
@@ -181,168 +180,168 @@ func QueueMetrics(
 	return nil
 }
 
-// StreamMetrics is a generic function to digest prometheus text format metrics and
-// emit circonus formatted metrics.
-// Formats supported: https://prometheus.io/docs/instrumenting/exposition_formats/
-func StreamMetrics(
-	ctx context.Context,
-	check *circonus.Check,
-	logger zerolog.Logger,
-	data io.Reader,
-	parentStreamTags []string,
-	parentMeasurementTags []string,
-	ts *time.Time) error {
+// // StreamMetrics is a generic function to digest prometheus text format metrics and
+// // emit circonus formatted metrics.
+// // Formats supported: https://prometheus.io/docs/instrumenting/exposition_formats/
+// func StreamMetrics(
+// 	ctx context.Context,
+// 	check *circonus.Check,
+// 	logger zerolog.Logger,
+// 	data io.Reader,
+// 	parentStreamTags []string,
+// 	parentMeasurementTags []string,
+// 	ts *time.Time) error {
 
-	var baseStreamTags []string
-	if len(parentStreamTags) > 0 {
-		baseStreamTags = make([]string, len(parentStreamTags))
-		copy(baseStreamTags, parentStreamTags)
-	}
+// 	var baseStreamTags []string
+// 	if len(parentStreamTags) > 0 {
+// 		baseStreamTags = make([]string, len(parentStreamTags))
+// 		copy(baseStreamTags, parentStreamTags)
+// 	}
 
-	var parser expfmt.TextParser
+// 	var parser expfmt.TextParser
 
-	metricFamilies, err := parser.TextToMetricFamilies(data)
-	if err != nil {
-		return err
-	}
+// 	metricFamilies, err := parser.TextToMetricFamilies(data)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	var buf bytes.Buffer
-	metricsQueued := 0
-	maxMetrics := check.MaxMetricBucketSize()
+// 	var buf bytes.Buffer
+// 	metricsQueued := 0
+// 	maxMetrics := check.MaxMetricBucketSize()
 
-	for mn, mf := range metricFamilies {
-		if done(ctx) {
-			return nil
-		}
-		for _, m := range mf.Metric {
-			if done(ctx) {
-				return nil
-			}
-			if maxMetrics > 0 && metricsQueued >= maxMetrics {
-				if err := check.SubmitStream(ctx, &buf, logger); err != nil {
-					logger.Warn().Err(err).Msg("submitting metrics")
-				}
-				buf.Reset()
-			}
-			metricName := mn
-			streamTags := getLabels(m)
-			streamTags = append(streamTags, baseStreamTags...)
-			switch mf.GetType() {
-			case dto.MetricType_SUMMARY:
-				_ = check.WriteMetricSample(
-					&buf, metricName+"_count",
-					circonus.MetricTypeUint64,
-					streamTags, parentMeasurementTags,
-					m.GetSummary().GetSampleCount(), ts)
-				metricsQueued++
-				_ = check.WriteMetricSample(
-					&buf, metricName+"_sum",
-					circonus.MetricTypeFloat64,
-					streamTags, parentMeasurementTags,
-					m.GetSummary().GetSampleSum(), ts)
-				metricsQueued++
-				for qn, qv := range getQuantiles(m) {
-					var qtags []string
-					qtags = append(qtags, streamTags...)
-					qtags = append(qtags, "quantile:"+qn)
-					_ = check.WriteMetricSample(
-						&buf, metricName,
-						circonus.MetricTypeFloat64,
-						qtags, parentMeasurementTags,
-						qv, nil)
-					metricsQueued++
-				}
-			case dto.MetricType_HISTOGRAM:
-				_ = check.WriteMetricSample(
-					&buf, metricName+"_count",
-					circonus.MetricTypeUint64,
-					streamTags, parentMeasurementTags,
-					m.GetHistogram().GetSampleCount(), ts)
-				metricsQueued++
-				_ = check.WriteMetricSample(
-					&buf, metricName+"_sum",
-					circonus.MetricTypeFloat64,
-					streamTags, parentMeasurementTags,
-					m.GetHistogram().GetSampleSum(), ts)
-				metricsQueued++
-				if emitHistogramBuckets {
-					if circCumulativeHistogram {
-						var htags []string
-						htags = append(htags, streamTags...)
-						histo := promHistoBucketsToCircHisto(m)
-						if len(histo) > 0 {
-							_ = check.WriteMetricSample(
-								&buf, metricName,
-								circonus.MetricTypeCumulativeHistogram,
-								htags, parentMeasurementTags,
-								strings.Join(histo, ","), ts)
-							metricsQueued++
-						}
-					} else {
-						for bn, bv := range getBuckets(m) {
-							var htags []string
-							htags = append(htags, streamTags...)
-							htags = append(htags, "bucket:"+bn)
-							_ = check.WriteMetricSample(
-								&buf, metricName,
-								circonus.MetricTypeUint64,
-								htags, parentMeasurementTags,
-								bv, ts)
-							metricsQueued++
-						}
-					}
-				}
-			default:
-				switch {
-				case m.Gauge != nil:
-					if m.GetGauge().Value != nil {
-						_ = check.WriteMetricSample(
-							&buf, metricName,
-							circonus.MetricTypeFloat64,
-							streamTags, parentMeasurementTags,
-							*m.GetGauge().Value, ts)
-						metricsQueued++
-					}
-				case m.Counter != nil:
-					if m.GetCounter().Value != nil {
-						_ = check.WriteMetricSample(
-							&buf, metricName,
-							circonus.MetricTypeFloat64,
-							streamTags, parentMeasurementTags,
-							*m.GetCounter().Value, ts)
-						metricsQueued++
-					}
-				case m.Untyped != nil:
-					if m.GetUntyped().Value != nil {
-						if *m.GetUntyped().Value == math.Inf(+1) {
-							logger.Warn().
-								Str("metric", metricName).
-								Str("type", mf.GetType().String()).
-								Str("value", (*m).GetUntyped().String()).
-								Msg("cannot coerce +Inf to uint64")
-							continue
-						}
-						_ = check.WriteMetricSample(
-							&buf, metricName,
-							circonus.MetricTypeFloat64,
-							streamTags, parentMeasurementTags,
-							*m.GetUntyped().Value, ts)
-						metricsQueued++
-					}
-				}
-			}
-		}
-	}
-	// send any remaining metrics
-	if buf.Len() > 0 {
-		if err := check.SubmitStream(ctx, &buf, logger); err != nil {
-			logger.Warn().Err(err).Msg("submitting metrics")
-		}
+// 	for mn, mf := range metricFamilies {
+// 		if done(ctx) {
+// 			return nil
+// 		}
+// 		for _, m := range mf.Metric {
+// 			if done(ctx) {
+// 				return nil
+// 			}
+// 			if maxMetrics > 0 && metricsQueued >= maxMetrics {
+// 				if err := check.SubmitStream(ctx, &buf, logger); err != nil {
+// 					logger.Warn().Err(err).Msg("submitting metrics")
+// 				}
+// 				buf.Reset()
+// 			}
+// 			metricName := mn
+// 			streamTags := getLabels(m)
+// 			streamTags = append(streamTags, baseStreamTags...)
+// 			switch mf.GetType() {
+// 			case dto.MetricType_SUMMARY:
+// 				_ = check.WriteMetricSample(
+// 					&buf, metricName+"_count",
+// 					circonus.MetricTypeUint64,
+// 					streamTags, parentMeasurementTags,
+// 					m.GetSummary().GetSampleCount(), ts)
+// 				metricsQueued++
+// 				_ = check.WriteMetricSample(
+// 					&buf, metricName+"_sum",
+// 					circonus.MetricTypeFloat64,
+// 					streamTags, parentMeasurementTags,
+// 					m.GetSummary().GetSampleSum(), ts)
+// 				metricsQueued++
+// 				for qn, qv := range getQuantiles(m) {
+// 					var qtags []string
+// 					qtags = append(qtags, streamTags...)
+// 					qtags = append(qtags, "quantile:"+qn)
+// 					_ = check.WriteMetricSample(
+// 						&buf, metricName,
+// 						circonus.MetricTypeFloat64,
+// 						qtags, parentMeasurementTags,
+// 						qv, ts)
+// 					metricsQueued++
+// 				}
+// 			case dto.MetricType_HISTOGRAM:
+// 				_ = check.WriteMetricSample(
+// 					&buf, metricName+"_count",
+// 					circonus.MetricTypeUint64,
+// 					streamTags, parentMeasurementTags,
+// 					m.GetHistogram().GetSampleCount(), ts)
+// 				metricsQueued++
+// 				_ = check.WriteMetricSample(
+// 					&buf, metricName+"_sum",
+// 					circonus.MetricTypeFloat64,
+// 					streamTags, parentMeasurementTags,
+// 					m.GetHistogram().GetSampleSum(), ts)
+// 				metricsQueued++
+// 				if emitHistogramBuckets {
+// 					if circCumulativeHistogram {
+// 						var htags []string
+// 						htags = append(htags, streamTags...)
+// 						histo := promHistoBucketsToCircHisto(m)
+// 						if len(histo) > 0 {
+// 							_ = check.WriteMetricSample(
+// 								&buf, metricName,
+// 								circonus.MetricTypeCumulativeHistogram,
+// 								htags, parentMeasurementTags,
+// 								strings.Join(histo, ","), ts)
+// 							metricsQueued++
+// 						}
+// 					} else {
+// 						for bn, bv := range getBuckets(m) {
+// 							var htags []string
+// 							htags = append(htags, streamTags...)
+// 							htags = append(htags, "bucket:"+bn)
+// 							_ = check.WriteMetricSample(
+// 								&buf, metricName,
+// 								circonus.MetricTypeUint64,
+// 								htags, parentMeasurementTags,
+// 								bv, ts)
+// 							metricsQueued++
+// 						}
+// 					}
+// 				}
+// 			default:
+// 				switch {
+// 				case m.Gauge != nil:
+// 					if m.GetGauge().Value != nil {
+// 						_ = check.WriteMetricSample(
+// 							&buf, metricName,
+// 							circonus.MetricTypeFloat64,
+// 							streamTags, parentMeasurementTags,
+// 							*m.GetGauge().Value, ts)
+// 						metricsQueued++
+// 					}
+// 				case m.Counter != nil:
+// 					if m.GetCounter().Value != nil {
+// 						_ = check.WriteMetricSample(
+// 							&buf, metricName,
+// 							circonus.MetricTypeFloat64,
+// 							streamTags, parentMeasurementTags,
+// 							*m.GetCounter().Value, ts)
+// 						metricsQueued++
+// 					}
+// 				case m.Untyped != nil:
+// 					if m.GetUntyped().Value != nil {
+// 						if *m.GetUntyped().Value == math.Inf(+1) {
+// 							logger.Warn().
+// 								Str("metric", metricName).
+// 								Str("type", mf.GetType().String()).
+// 								Str("value", (*m).GetUntyped().String()).
+// 								Msg("cannot coerce +Inf to uint64")
+// 							continue
+// 						}
+// 						_ = check.WriteMetricSample(
+// 							&buf, metricName,
+// 							circonus.MetricTypeFloat64,
+// 							streamTags, parentMeasurementTags,
+// 							*m.GetUntyped().Value, ts)
+// 						metricsQueued++
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// 	// send any remaining metrics
+// 	if buf.Len() > 0 {
+// 		if err := check.SubmitStream(ctx, &buf, logger); err != nil {
+// 			logger.Warn().Err(err).Msg("submitting metrics")
+// 		}
 
-	}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func getLabels(m *dto.Metric) []string {
 	labels := []string{}

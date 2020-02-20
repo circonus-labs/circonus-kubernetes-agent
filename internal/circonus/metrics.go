@@ -8,7 +8,6 @@ package circonus
 import (
 	"errors"
 	"fmt"
-	"io"
 	"regexp"
 	"strings"
 	"time"
@@ -108,84 +107,84 @@ func (c *Check) SetCounter(metricName string, tags cgm.Tags, value uint64) {
 	}
 }
 
-// WriteMetricSample to queue for submission
-func (c *Check) WriteMetricSample(
-	metricDest io.Writer,
-	metricName,
-	metricType string,
-	streamTags,
-	measurementTags []string,
-	value interface{},
-	timestamp *time.Time) error {
+// // WriteMetricSample to queue for submission
+// func (c *Check) WriteMetricSample(
+// 	metricDest io.Writer,
+// 	metricName,
+// 	metricType string,
+// 	streamTags,
+// 	measurementTags []string,
+// 	value interface{},
+// 	timestamp *time.Time) error {
 
-	if metricDest == nil {
-		return errors.New("invalid metric destination (nil)")
-	}
-	if metricName == "" {
-		return errors.New("invalid metric name (empty)")
-	}
-	if metricType == "" {
-		return errors.New("invalid metric type (empty)")
-	}
+// 	if metricDest == nil {
+// 		return errors.New("invalid metric destination (nil)")
+// 	}
+// 	if metricName == "" {
+// 		return errors.New("invalid metric name (empty)")
+// 	}
+// 	if metricType == "" {
+// 		return errors.New("invalid metric type (empty)")
+// 	}
 
-	streamTagList := strings.Split(c.config.DefaultStreamtags, ",")
-	streamTagList = append(streamTagList, streamTags...)
+// 	streamTagList := strings.Split(c.config.DefaultStreamtags, ",")
+// 	streamTagList = append(streamTagList, streamTags...)
 
-	if len(streamTagList)+len(measurementTags) > MaxTags {
-		c.log.Warn().
-			Str("metric_name", metricName).
-			Strs("stream_tags", streamTagList).
-			Strs("measurement_tags", measurementTags).
-			Int("num_tags", len(streamTagList)+len(measurementTags)).
-			Int("max_tags", MaxTags).
-			Msg("max metric tags exceeded, discarding")
-		return nil
-	}
+// 	if len(streamTagList)+len(measurementTags) > MaxTags {
+// 		c.log.Warn().
+// 			Str("metric_name", metricName).
+// 			Strs("stream_tags", streamTagList).
+// 			Strs("measurement_tags", measurementTags).
+// 			Int("num_tags", len(streamTagList)+len(measurementTags)).
+// 			Int("max_tags", MaxTags).
+// 			Msg("max metric tags exceeded, discarding")
+// 		return nil
+// 	}
 
-	taggedMetricName := c.taggedName(metricName, streamTagList, measurementTags)
+// 	taggedMetricName := c.taggedName(metricName, streamTagList, measurementTags)
 
-	if len(taggedMetricName) > MaxMetricNameLen {
-		c.log.Warn().
-			Str("metric_name", taggedMetricName).
-			Int("encoded_len", len(taggedMetricName)).
-			Int("max_len", MaxMetricNameLen).
-			Msg("max metric name length exceeded, discarding")
-		return nil
-	}
+// 	if len(taggedMetricName) > MaxMetricNameLen {
+// 		c.log.Warn().
+// 			Str("metric_name", taggedMetricName).
+// 			Int("encoded_len", len(taggedMetricName)).
+// 			Int("max_len", MaxMetricNameLen).
+// 			Msg("max metric name length exceeded, discarding")
+// 		return nil
+// 	}
 
-	if !metricTypeRx.MatchString(metricType) {
-		return fmt.Errorf("unrecognized circonus metric type (%s)", metricType)
-	}
+// 	if !metricTypeRx.MatchString(metricType) {
+// 		return fmt.Errorf("unrecognized circonus metric type (%s)", metricType)
+// 	}
 
-	val := value
-	if metricType == "s" {
-		val = fmt.Sprintf("%q", value.(string))
-	}
+// 	val := value
+// 	if metricType == "s" {
+// 		val = fmt.Sprintf("%q", value.(string))
+// 	}
 
-	var metricSample string
-	if timestamp != nil {
-		metricSample = fmt.Sprintf(
-			`{"%s":{"_type":"%s","_value":%v,"_ts":%d}}`,
-			taggedMetricName,
-			metricType,
-			val,
-			makeTimestamp(timestamp),
-		)
-	} else {
-		metricSample = fmt.Sprintf(
-			`{"%s":{"_type":"%s","_value":%v}}`,
-			taggedMetricName,
-			metricType,
-			val,
-		)
-	}
+// 	var metricSample string
+// 	if timestamp != nil && (metricType != MetricTypeHistogram && metricType != MetricTypeCumulativeHistogram) {
+// 		metricSample = fmt.Sprintf(
+// 			`{"%s":{"_type":"%s","_value":%v,"_ts":%d}}`,
+// 			taggedMetricName,
+// 			metricType,
+// 			val,
+// 			makeTimestamp(timestamp),
+// 		)
+// 	} else {
+// 		metricSample = fmt.Sprintf(
+// 			`{"%s":{"_type":"%s","_value":%v}}`,
+// 			taggedMetricName,
+// 			metricType,
+// 			val,
+// 		)
+// 	}
 
-	_, err := fmt.Fprintln(metricDest, metricSample)
-	if err != nil {
-		return err
-	}
-	return nil
-}
+// 	_, err := fmt.Fprintln(metricDest, metricSample)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
 // QueueMetricSample to queue for submission
 func (c *Check) QueueMetricSample(
@@ -255,7 +254,7 @@ func (c *Check) QueueMetricSample(
 		Value: val,
 	}
 
-	if timestamp != nil {
+	if timestamp != nil && (metricType != MetricTypeHistogram && metricType != MetricTypeCumulativeHistogram) {
 		metricSample.Timestamp = makeTimestamp(timestamp)
 	}
 

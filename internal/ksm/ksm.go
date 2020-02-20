@@ -286,15 +286,15 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 	streamTags := []string{"source:kube-state-metrics", "source_type:metrics"}
 	measurementTags := []string{}
 
-	if ksm.check.StreamMetrics() {
-		if err := promtext.StreamMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
-			return err
-		}
-	} else {
-		if err := promtext.QueueMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, nil); err != nil {
-			return err
-		}
+	// if ksm.check.StreamMetrics() {
+	// 	if err := promtext.StreamMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
+	// 		return err
+	// 	}
+	// } else {
+	if err := promtext.QueueMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
+		return err
 	}
+	// }
 
 	return nil
 }
@@ -351,15 +351,15 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 	streamTags := []string{"source:kube-state-metrics", "source_type:telemetry"}
 	measurementTags := []string{}
 
-	if ksm.check.StreamMetrics() {
-		if err := promtext.StreamMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
-			return err
-		}
-	} else {
-		if err := promtext.QueueMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, nil); err != nil {
-			return err
-		}
+	// if ksm.check.StreamMetrics() {
+	// 	if err := promtext.StreamMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
+	// 		return err
+	// 	}
+	// } else {
+	if err := promtext.QueueMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
+		return err
 	}
+	// }
 
 	return nil
 }

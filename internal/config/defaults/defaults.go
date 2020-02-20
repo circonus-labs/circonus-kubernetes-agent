@@ -34,11 +34,12 @@ const (
 	CheckTitle         = ""
 	TraceSubmits       = ""
 	// hidden circonus settings for development and debugging
-	DryRun        = false
-	StreamMetrics = false
+	DryRun = false
+	// StreamMetrics = false
 	// these hidden settings are mainly for debugging
 	// the features default to ON and can be toggled OFF
-	ConcurrentSubmissions = false
+	ConcurrentSubmissions = true
+	SerialSubmissions     = false
 	MaxMetricBucketSize   = 0
 	NoBase64              = false
 	Base64Tags            = true
