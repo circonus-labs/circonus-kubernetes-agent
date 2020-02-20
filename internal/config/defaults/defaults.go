@@ -39,7 +39,7 @@ const (
 	// these hidden settings are mainly for debugging
 	// the features default to ON and can be toggled OFF
 	ConcurrentSubmissions = true
-	SerialSubmissons      = false
+	SerialSubmissions     = false
 	MaxMetricBucketSize   = 0
 	NoBase64              = false
 	Base64Tags            = true
