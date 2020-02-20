@@ -38,7 +38,8 @@ const (
 	StreamMetrics = false
 	// these hidden settings are mainly for debugging
 	// the features default to ON and can be toggled OFF
-	ConcurrentSubmissions = false
+	ConcurrentSubmissions = true
+	SerialSubmissons      = false
 	MaxMetricBucketSize   = 0
 	NoBase64              = false
 	Base64Tags            = true

@@ -389,13 +389,33 @@ func init() {
 		}
 		viper.SetDefault(key, defaultValue)
 	}
+	// {
+	// 	const (
+	// 		key          = keys.ConcurrentSubmissions
+	// 		longOpt      = "concurrent-submissions"
+	// 		envVar       = release.ENVPREFIX + "_CONCURRENT_SUBMISSIONS"
+	// 		description  = "Submit metrics concurrently (disable if gaps appear)"
+	// 		defaultValue = defaults.ConcurrentSubmissions
+	// 	)
+
+	// 	rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
+	// 	flag := rootCmd.PersistentFlags().Lookup(longOpt)
+	// 	flag.Hidden = true
+	// 	if err := viper.BindPFlag(key, flag); err != nil {
+	// 		bindFlagError(longOpt, err)
+	// 	}
+	// 	if err := viper.BindEnv(key, envVar); err != nil {
+	// 		bindEnvError(envVar, err)
+	// 	}
+	// 	viper.SetDefault(key, defaultValue)
+	// }
 	{
 		const (
-			key          = keys.ConcurrentSubmissions
-			longOpt      = "concurrent-submissions"
-			envVar       = release.ENVPREFIX + "_CONCURRENT_SUBMISSIONS"
-			description  = "Submit metrics concurrently (disable if gaps appear)"
-			defaultValue = defaults.ConcurrentSubmissions
+			key          = keys.SerialSubmissions
+			longOpt      = "serial-submissions"
+			envVar       = release.ENVPREFIX + "_SERIAL_SUBMISSIONS"
+			description  = "Submit metrics serially (enable if gaps appear)"
+			defaultValue = defaults.SerialSubmissions
 		)
 
 		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))

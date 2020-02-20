@@ -63,7 +63,10 @@ func New() (*Agent, error) {
 	}
 
 	// Set the hidden settings based on viper
-	cfg.Circonus.ConcurrentSubmissions = viper.GetBool(keys.ConcurrentSubmissions)
+	cfg.Circonus.ConcurrentSubmissions = defaults.ConcurrentSubmissions
+	if cfg.Circonus.SerialSubmissions {
+		cfg.Circonus.ConcurrentSubmissions = false
+	}
 	cfg.Circonus.MaxMetricBucketSize = defaults.MaxMetricBucketSize
 	if viper.GetUint(keys.MaxMetricBucketSize) != defaults.MaxMetricBucketSize {
 		cfg.Circonus.MaxMetricBucketSize = viper.GetInt(keys.MaxMetricBucketSize)

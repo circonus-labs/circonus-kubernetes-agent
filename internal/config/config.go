@@ -70,6 +70,7 @@ type Circonus struct {
 	UseGZIP               bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"use_gzip" json:"use_gzip" toml:"use_gzip" yaml:"use_gzip"`                         // compress metrics using gzip when submitting (broker may not support)
 	DebugSubmissions      bool `json:"-" toml:"-" yaml:"-"`
 	ConcurrentSubmissions bool `json:"-" toml:"-" yaml:"-"`
+	SerialSubmissions     bool `json:"-" toml:"-" yaml:"-"`
 	MaxMetricBucketSize   int  `json:"-" toml:"-" yaml:"-"`
 }
 
