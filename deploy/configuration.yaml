@@ -75,6 +75,8 @@
       kubernetes-enable-node-stats: "true"
       ## collect kublet /metrics observation metrics
       kubernetes-enable-node-metrics: "true"
+      ## enable kubelet cadvisor metrics
+      kubernetes-enable-cadvisor-metrics: "false"
       ## include pod metrics, requires nodes to be enabled
       kubernetes-include-pod-metrics: "true"
       ## include only pods with this label key, blank = all pods

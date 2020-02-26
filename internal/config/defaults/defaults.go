@@ -76,6 +76,7 @@ const (
 	K8SEnableNodes            = true
 	K8SEnableNodeStats        = true
 	K8SEnableNodeMetrics      = true
+	K8SEnableCadvisorMetrics  = false
 	K8SNodeSelector           = "" // blank=all
 	K8SIncludePods            = true
 	K8SPodLabelKey            = "" // blank=all

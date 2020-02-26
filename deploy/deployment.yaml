@@ -5,28 +5,28 @@
     name: circonus-kubernetes-agent
     labels:
       app.kubernetes.io/name: circonus-kubernetes-agent
-      app.kubernetes.io/version: v0.5.7
+      app.kubernetes.io/version: v0.5.8
   spec:
     selector:
       matchLabels:
         app.kubernetes.io/name: circonus-kubernetes-agent
-        app.kubernetes.io/version: v0.5.7
+        app.kubernetes.io/version: v0.5.8
     replicas: 1
     template:
       metadata:
         name: circonus-kubernetes-agent
         labels:
           app.kubernetes.io/name: circonus-kubernetes-agent
-          app.kubernetes.io/version: v0.5.7
+          app.kubernetes.io/version: v0.5.8
       spec:
         nodeSelector:
           kubernetes.io/os: linux
         serviceAccountName: circonus-kubernetes-agent
         containers:
           - name: circonus-kubernetes-agent
-            image: circonuslabs/circonus-kubernetes-agent:v0.5.7
+            image: circonuslabs/circonus-kubernetes-agent:v0.5.8
             ## for ARM64, remove line above and uncomment line below
-            #image: circonuslabs/circonus-kubernetes-agent-arm64:v0.5.7
+            #image: circonuslabs/circonus-kubernetes-agent-arm64:v0.5.8
             command: ["/circonus-kubernetes-agentd"]
             args: 
               #- --debug
@@ -171,6 +171,11 @@
                   configMapKeyRef:
                     name: cka-config-v1
                     key: kubernetes-enable-node-metrics
+              - name: CKA_K8S_ENABLE_CADVISOR_METRICS
+                valueFrom:
+                  configMapKeyRef:
+                    name: cka-config-v1
+                    key: kubernetes-enable-cadvisor-metrics
               - name: CKA_K8S_INCLUDE_CONTAINER_METRICS
                 valueFrom:
                   configMapKeyRef:
