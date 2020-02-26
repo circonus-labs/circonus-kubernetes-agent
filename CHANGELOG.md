@@ -1,3 +1,7 @@
+# v0.5.8
+
+* add: optional collection of cadvisor metrics from kubelet
+
 # v0.5.7
 
 * add: option `--serial-submissions` to disable concurrent submissions
