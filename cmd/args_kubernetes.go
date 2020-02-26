@@ -266,6 +266,25 @@ func init() {
 
 	{
 		const (
+			key          = keys.K8SEnableCadvisorMetrics
+			longOpt      = "k8s-enable-cadvisor-metrics"
+			envVar       = release.ENVPREFIX + "_K8S_ENABLE_CADVISOR_METRICS"
+			description  = "Kubernetes enable collection of kubelet cadvisor metrics"
+			defaultValue = defaults.K8SEnableCadvisorMetrics
+		)
+
+		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		const (
 			key          = keys.K8SIncludePods
 			longOpt      = "k8s-include-pods"
 			envVar       = release.ENVPREFIX + "_K8S_INCLUDE_PODS"

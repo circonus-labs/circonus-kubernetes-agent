@@ -347,9 +347,14 @@ func getLabels(m *dto.Metric) []string {
 	labels := []string{}
 
 	for _, label := range m.Label {
-		if label.Name != nil && label.Value != nil {
-			labels = append(labels, *label.Name+":"+*label.Value)
+		if label.Name == nil || *label.Name == "" {
+			continue
 		}
+		if label.Value == nil || *label.Value == "" {
+			continue
+		}
+
+		labels = append(labels, *label.Name+":"+*label.Value)
 	}
 
 	return labels

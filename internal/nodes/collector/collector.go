@@ -93,6 +93,13 @@ func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.C
 			wg.Done()
 		}()
 	}
+	if nc.cfg.EnableCadvisorMetrics {
+		wg.Add(1)
+		go func() {
+			nc.cadvisor(baseStreamTags, baseMeasurementTags) // from /metrics/cadvisor
+			wg.Done()
+		}()
+	}
 
 	wg.Wait()
 
@@ -797,6 +804,72 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 		nc.log.Error().Err(err).Msg("parsing node metrics")
 	}
 	// }
+}
+
+// cadvisor emits metrics from the node /metrics/cadvisor endpoint
+func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags []string) {
+	if nc.done() {
+		return
+	}
+
+	client, err := k8s.NewAPIClient(nc.tlsConfig, nc.apiTimelimit)
+	if err != nil {
+		nc.log.Error().Err(err).Msg("abandoning /metrics/cadvisor collection")
+		return
+	}
+	defer client.CloseIdleConnections()
+
+	reqURL := nc.cfg.URL + nc.node.Metadata.SelfLink + "/proxy/metrics/cadvisor"
+	req, err := k8s.NewAPIRequest(nc.cfg.BearerToken, reqURL)
+	if err != nil {
+		nc.log.Error().Err(err).Msg("abandoning /metrics/cadvisor collection")
+		return
+	}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	if err != nil {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "metrics/cadvisor"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "kubelet"},
+		})
+		nc.log.Error().Err(err).Str("url", reqURL).Msg("node metrics/cadvisor")
+		return
+	}
+	nc.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "request", Value: "metrics/cadvsior"},
+		cgm.Tag{Category: "proxy", Value: "api-server"},
+		cgm.Tag{Category: "target", Value: "kubelet"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
+
+	defer resp.Body.Close()
+	if nc.done() {
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "metrics/cadvisor"},
+			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "target", Value: "kubelet"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
+		data, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			nc.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
+			return
+		}
+		nc.log.Warn().Str("url", reqURL).Str("status", resp.Status).RawJSON("response", data).Msg("error from API server")
+		return
+	}
+
+	if err := promtext.QueueMetrics(nc.ctx, nc.check, nc.log, resp.Body, parentStreamTags, parentMeasurementTags, nil); err != nil {
+		nc.log.Error().Err(err).Msg("parsing node metrics/cadvisor")
+	}
 }
 
 type podSpec struct {
