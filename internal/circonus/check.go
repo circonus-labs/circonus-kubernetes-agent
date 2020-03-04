@@ -32,7 +32,8 @@ import (
 
 const (
 	checkStatusActive = "active"
-	checkType         = "httptrap"
+	altCheckType      = "httptrap"
+	checkType         = "httptrap:kubernetes"
 )
 
 type Stats struct {
@@ -140,11 +141,6 @@ func (c *Check) UseCompression() bool {
 	return c.config.UseGZIP
 }
 
-// // StreamMetrics indicates whether to stream metrics (use when multiple samples for same metric name with different timestamps)
-// func (c *Check) StreamMetrics() bool {
-// 	return c.config.StreamMetrics
-// }
-
 // DebugSubmissions will dump the submission request to stdout
 func (c *Check) DebugSubmissions() bool {
 	return c.config.DebugSubmissions
@@ -237,6 +233,19 @@ func (c *Check) findOrCreateCheckBundle(client *apiclient.API, cfg *config.Circo
 	}
 
 	if len(*bundles) == 0 {
+		c.log.Warn().Str("criteria", string(searchCriteria)).Str("alt_type", altCheckType).Msg("no checks found, searching for alternate check type")
+		sc := apiclient.SearchQueryType(fmt.Sprintf(`(active:1)(type:"%s")(host:%s)`, altCheckType, cfg.Check.Target))
+
+		b, err := client.SearchCheckBundles(&sc, nil)
+		if err != nil {
+			return nil, errors.Wrapf(err, "searching for fallback check (%s)", sc)
+		}
+
+		bundles = b
+	}
+
+	if len(*bundles) == 0 {
+		c.log.Warn().Str("target", cfg.Check.Target).Str("type", checkType).Msg("no active checks found, creating new check")
 		return c.createCheckBundle(client, cfg)
 	}
 
@@ -257,6 +266,12 @@ func (c *Check) findOrCreateCheckBundle(client *apiclient.API, cfg *config.Circo
 	}
 
 	bundle := (*bundles)[checkIdx]
+
+	// if the check found was an httptrap instead of httptrap:kubernetes, alert
+	if bundle.Type == altCheckType {
+		c.log.Warn().Str("alt_type", altCheckType).Str("bundle_cid", bundle.CID).Str("check_uuid", bundle.CheckUUIDs[0]).Msg("found alternate check type, using")
+	}
+
 	return &bundle, nil
 }
 
@@ -273,8 +288,8 @@ func (c *Check) createCheckBundle(client *apiclient.API, cfg *config.Circonus) (
 	checkMetricFilters := c.loadMetricFilters()
 	if cfg.Check.MetricFilters != "" {
 		var filters [][]string
-		if err := json.Unmarshal([]byte(cfg.Check.MetricFilters), &filters); err != nil {
-			return nil, errors.Wrap(err, "parsing check bundle metric filters")
+		if e := json.Unmarshal([]byte(cfg.Check.MetricFilters), &filters); e != nil {
+			return nil, errors.Wrap(e, "parsing check bundle metric filters")
 		}
 		checkMetricFilters = filters
 	}
@@ -324,22 +339,23 @@ type metricFilters struct {
 
 func (c *Check) loadMetricFilters() [][]string {
 	defaults := [][]string{
-		{"allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units::errors),not(container_name:*),not(sys_container:*))", "utilization"},
-		{"allow", "^used$", "tags", "and(units:bytes,or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"},
+		{"allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"},
+		{"allow", "^(used|capacity)$", "tags", "and(units:bytes,or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"},
 		{"allow", "^usageNanoCores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"},
 		{"allow", "^kube_pod_container_status_(running|terminated|waiting|ready)$", "containers"},
 		{"allow", "^kube_deployment_(created|spec_replicas|status_replicas|status_replicas_updated|status_replicas_available|status_replicas_unavailable)$", "deployments"},
 		{"allow", "^kube_pod_start_time", "pods"},
 		{"allow", "^kube_pod_status_phase$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"},
 		{"allow", "^kube_pod_status_(ready|scheduled)$", "tags", "and(condition:true)", "pods"},
-		{"allow", "^kube_(service_labels|deployment_labels|pod_container_info)$", "ksm inventory"},
+		{"allow", "^kube_(service_labels|deployment_labels|pod_container_info|pod_deleted)$", "ksm inventory"},
 		{"allow", "^(node|kubelet_running_pod_count|Ready)$", "nodes"},
-		{"allow", "^NetworkUnavailable$", "nodes"},
-		{"allow", "^(Disk|Memory|PID)Pressure$", "nodes"},
+		{"allow", "^NetworkUnavailable$", "node status"},
+		{"allow", "^(Disk|Memory|PID)Pressure$", "node status"},
+		{"allow", "^capacity_.*$", "node capacity"},
 		{"allow", "^kube_namespace_status_phase$", "tags", "and(or(phase:Active,phase:Terminating))", "namespaces"},
 		{"allow", "^collect_.*$", "agent collection stats"},
 		{"allow", "^events$", "events"},
-		{"deny", "^.+$", "all other metrics"},
+		{"deny", "^.+$", "all other metrics}"},
 	}
 
 	mfConfigFile := path.Join(string(os.PathSeparator), "ck8sa", "metric-filters.json")
