@@ -1,3 +1,10 @@
+# v0.6.0
+
+* Switch to `httptrap:kubernetes` check type. To preserve metric continuity - if
+an `httptrap:kubernetes` check is not found, the agent will search for an `httptrap`
+check and use that if found. Otherwise, it will create a new check using the new
+check with correct sub-type.
+
 # v0.5.8
 
 * add: optional collection of cadvisor metrics from kubelet

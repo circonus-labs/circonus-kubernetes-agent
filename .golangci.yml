@@ -1,0 +1,180 @@
+run:
+  skip-dirs-use-default: true
+  skip-files:
+    - ".*_mock_test.go$"
+  modules-download-mode: readonly
+
+linters-settings:
+  errcheck:
+    check-type-assertions: false
+    check-blank: false
+
+  funlen:
+    lines: 100
+    statements: 50
+
+  govet:
+    check-shadowing: false
+    enable:
+      - atomicalign
+    enable-all: false
+    disable:
+      - shadow
+    disable-all: false
+  golint:
+    min-confidence: 0.8
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/circonus-labs
+  gocyclo:
+    min-complexity: 10
+  gocognit:
+    min-complexity: 10
+  maligned:
+    suggest-new: true
+  dupl:
+    threshold: 100
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  depguard:
+    # list-type: blacklist
+    # include-go-root: false
+    # packages:
+    #   - github.com/sirupsen/logrus
+    # packages-with-error-messages:
+    #   # specify an error message to output when a blacklisted package is used
+    #   github.com/sirupsen/logrus: "logging is allowed only by logutils.Log"
+  misspell:
+    locale: US
+    # ignore-words:
+    #   - someword
+  lll:
+    line-length: 120
+    tab-width: 1
+  unused:
+    # treat code as a program (not a library) and report unused exported identifiers; default is false.
+    # XXX: if you enable this setting, unused will report a lot of false-positives in text editors:
+    # if it's called for subdir of a project it can't find funcs usages. All text editor integrations
+    # with golangci-lint call it on a directory with the changed file.
+    check-exported: false
+  unparam:
+    # Inspect exported functions, default is false. Set to true if no external program/library imports your code.
+    # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
+    # if it's called for subdir of a project it can't find external interfaces. All text editor integrations
+    # with golangci-lint call it on a directory with the changed file.
+    check-exported: false
+  nakedret:
+    # make an issue if func has more lines of code than this setting and it has naked returns; default is 30
+    max-func-lines: 30
+  prealloc:
+    # XXX: we don't recommend using this linter before doing performance profiling.
+    # For most programs usage of prealloc will be a premature optimization.
+
+    # Report preallocation suggestions only on simple loops that have no returns/breaks/continues/gotos in them.
+    # True by default.
+    simple: true
+    range-loops: true # Report preallocation suggestions on range loops, true by default
+    for-loops: false # Report preallocation suggestions on for loops, false by default
+  gocritic:
+    # # Which checks should be enabled; can't be combined with 'disabled-checks';
+    # # See https://go-critic.github.io/overview#checks-overview
+    # # To check which checks are enabled run `GL_DEBUG=gocritic golangci-lint run`
+    # # By default list of stable checks is used.
+    # enabled-checks:
+    #   - rangeValCopy
+
+    # # Which checks should be disabled; can't be combined with 'enabled-checks'; default is empty
+    # disabled-checks:
+    #   - regexpMust
+
+    # # Enable multiple checks by tags, run `GL_DEBUG=gocritic golangci-lint run` to see all tags and checks.
+    # # Empty list by default. See https://github.com/go-critic/go-critic#usage -> section "Tags".
+    # enabled-tags:
+    #   - performance
+
+    # settings: # settings passed to gocritic
+    #   captLocal: # must be valid enabled check name
+    #     paramsOnly: true
+    #   rangeValCopy:
+    #     sizeThreshold: 32
+  godox:
+    # # report any comments starting with keywords, this is useful for TODO or FIXME comments that
+    # # might be left in the code accidentally and should be resolved before merging
+    # keywords: # default keywords are TODO, BUG, and FIXME, these can be overwritten by this setting
+    #   - NOTE
+    #   - OPTIMIZE # marks code that should be optimized before merging
+    #   - HACK # marks hack-arounds that should be removed before merging
+  dogsled:
+    # checks assignments with too many blank identifiers; default is 2
+    max-blank-identifiers: 2
+
+  whitespace:
+    multi-if: false   # Enforces newlines (or comments) after every multi-line if statement
+    multi-func: false # Enforces newlines (or comments) after every multi-line function signature
+  wsl:
+    # If true append is only allowed to be cuddled if appending value is
+    # matching variables, fields or types on line above. Default is true.
+    strict-append: true
+    # Allow calls and assignments to be cuddled as long as the lines have any
+    # matching variables, fields or types. Default is true.
+    allow-assign-and-call: true
+    # Allow multiline assignments to be cuddled. Default is true.
+    allow-multiline-assign: true
+    # Allow case blocks to end with a whitespace.
+    allow-case-traling-whitespace: true
+    # Allow declarations (var) to be cuddled.
+    allow-cuddle-declarations: false
+
+linters:
+  enable:
+    - megacheck
+    - govet
+  disable:
+    - maligned
+    - prealloc
+  disable-all: false
+  presets:
+    - bugs
+    - unused
+  fast: false
+
+
+issues:
+  # # List of regexps of issue texts to exclude, empty list by default.
+  # # But independently from this option we use default exclude patterns,
+  # # it can be disabled by `exclude-use-default: false`. To list all
+  # # excluded by default patterns execute `golangci-lint run --help`
+  # exclude:
+  #   - abcdef
+
+  # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+
+    # # Exclude known linters from partially hard-vendored code,
+    # # which is impossible to exclude via "nolint" comments.
+    # - path: internal/hmac/
+    #   text: "weak cryptographic primitive"
+    #   linters:
+    #     - gosec
+
+    - linters:
+        - staticcheck
+      text: "SA9003:"
+
+    - linters:
+        - lll
+      source: "^//go:generate "
+
+  exclude-use-default: true
+  max-issues-per-linter: 50
+  max-same-issues: 3
+
