@@ -123,25 +123,6 @@ func (c *Check) SubmitQueue(ctx context.Context, metrics map[string]MetricSample
 	return nil
 }
 
-// // SubmitStream sends metrics to a circonus trap
-// func (c *Check) SubmitStream(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
-// 	if metrics == nil {
-// 		return errors.New("invalid metrics (nil)")
-// 	}
-
-// 	data, err := ioutil.ReadAll(metrics)
-// 	if err != nil {
-// 		return errors.Wrap(err, "reading metrics")
-// 	}
-
-// 	if c.ConcurrentSubmissions() {
-// 		return c.Submit(ctx, bytes.NewReader(data), resultLogger)
-// 	}
-
-// 	c.AddMetricSet(data, resultLogger)
-// 	return nil
-// }
-
 // Submit sends metrics to a circonus trap
 func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
 	if metrics == nil {
@@ -210,18 +191,18 @@ func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zero
 	if c.UseCompression() && len(rawData) > compressionThreshold {
 		subData = bytes.NewBuffer([]byte{})
 		zw := gzip.NewWriter(subData)
-		n, err := zw.Write(rawData)
-		if err != nil {
-			resultLogger.Error().Err(err).Msg("compressing metrics")
-			return errors.Wrap(err, "compressing metrics")
+		n, e1 := zw.Write(rawData)
+		if e1 != nil {
+			resultLogger.Error().Err(e1).Msg("compressing metrics")
+			return errors.Wrap(e1, "compressing metrics")
 		}
 		if n != len(rawData) {
-			resultLogger.Error().Err(err).Int("data_len", len(rawData)).Int("written", n).Msg("gzip write length mismatch")
+			resultLogger.Error().Int("data_len", len(rawData)).Int("written", n).Msg("gzip write length mismatch")
 			return errors.Errorf("write length mismatch data length %d != written length %d", len(rawData), n)
 		}
-		if err := zw.Close(); err != nil {
-			resultLogger.Error().Err(err).Msg("closing gzip writer")
-			return errors.Wrap(err, "closing gzip writer")
+		if e2 := zw.Close(); e2 != nil {
+			resultLogger.Error().Err(e2).Msg("closing gzip writer")
+			return errors.Wrap(e2, "closing gzip writer")
 		}
 		payloadIsCompressed = true
 	} else {
@@ -233,15 +214,15 @@ func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zero
 		if payloadIsCompressed {
 			fn += ".gz"
 		}
-		fh, err := os.Create(fn)
-		if err != nil {
-			c.log.Error().Err(err).Str("file", fn).Msg("skipping submit trace")
+
+		if fh, e1 := os.Create(fn); e1 != nil {
+			c.log.Error().Err(e1).Str("file", fn).Msg("skipping submit trace")
 		} else {
-			if _, err := fh.Write(subData.Bytes()); err != nil {
-				resultLogger.Error().Err(err).Msg("writing metric trace")
+			if _, e2 := fh.Write(subData.Bytes()); e2 != nil {
+				resultLogger.Error().Err(e2).Msg("writing metric trace")
 			}
-			if err := fh.Close(); err != nil {
-				resultLogger.Error().Err(err).Str("file", fn).Msg("closing metric trace")
+			if e3 := fh.Close(); e3 != nil {
+				resultLogger.Error().Err(e3).Str("file", fn).Msg("closing metric trace")
 			}
 		}
 	}
@@ -266,10 +247,10 @@ func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zero
 	}
 
 	if c.DebugSubmissions() {
-		dump, err := httputil.DumpRequestOut(req.Request, !payloadIsCompressed)
-		if err != nil {
-			resultLogger.Error().Err(err).Msg("dumping request")
-			return err
+		dump, e := httputil.DumpRequestOut(req.Request, !payloadIsCompressed)
+		if e != nil {
+			resultLogger.Error().Err(e).Msg("dumping request")
+			return e
 		}
 
 		fmt.Println(string(dump))

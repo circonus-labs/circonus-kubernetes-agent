@@ -46,9 +46,9 @@ func (c *Check) initializeBroker(client *apiclient.API, bundle *apiclient.CheckB
 	}
 
 	if c.config.Check.BrokerCAFile != "" {
-		cert, err := ioutil.ReadFile(c.config.Check.BrokerCAFile)
-		if err != nil {
-			return errors.Wrap(err, "configuring broker tls")
+		cert, e := ioutil.ReadFile(c.config.Check.BrokerCAFile)
+		if e != nil {
+			return errors.Wrap(e, "configuring broker tls")
 		}
 		cp := x509.NewCertPool()
 		if !cp.AppendCertsFromPEM(cert) {
