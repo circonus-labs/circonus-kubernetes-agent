@@ -1,3 +1,7 @@
+# v0.6.1
+
+* add: `__rollup:false` stream tag to remaining high cardinality metrics
+
 # v0.6.0
 
 * Switch to `httptrap:kubernetes` check type. To preserve metric continuity - if
