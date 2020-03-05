@@ -162,7 +162,10 @@ func (ms *MS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 		return
 	}
 
-	streamTags := []string{"source:metrics-server"}
+	streamTags := []string{
+		"source:metrics-server",
+		"__rollup:false", // prevent high cardinality metrics from rolling up
+	}
 	measurementTags := []string{}
 
 	// if ms.check.StreamMetrics() {

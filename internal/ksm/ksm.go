@@ -283,7 +283,11 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 		return errors.New("error response from api server")
 	}
 
-	streamTags := []string{"source:kube-state-metrics", "source_type:metrics"}
+	streamTags := []string{
+		"source:kube-state-metrics",
+		"source_type:metrics",
+		"__rollup:false", // prevent high cardinality metrics from rolling up
+	}
 	measurementTags := []string{}
 
 	// if ksm.check.StreamMetrics() {
@@ -348,7 +352,11 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 		return errors.New("error response from api server")
 	}
 
-	streamTags := []string{"source:kube-state-metrics", "source_type:telemetry"}
+	streamTags := []string{
+		"source:kube-state-metrics",
+		"source_type:telemetry",
+		"__rollup:false", // prevent high cardinality metrics from rolling up
+	}
 	measurementTags := []string{}
 
 	// if ksm.check.StreamMetrics() {

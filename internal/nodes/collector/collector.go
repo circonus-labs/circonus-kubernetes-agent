@@ -867,7 +867,10 @@ func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags [
 		return
 	}
 
-	if err := promtext.QueueMetrics(nc.ctx, nc.check, nc.log, resp.Body, parentStreamTags, parentMeasurementTags, nil); err != nil {
+	streamTags := []string{"__rollup:false"} // prevent high cardinality metrics from rolling up
+	streamTags = append(streamTags, parentStreamTags...)
+
+	if err := promtext.QueueMetrics(nc.ctx, nc.check, nc.log, resp.Body, streamTags, parentMeasurementTags, nil); err != nil {
 		nc.log.Error().Err(err).Msg("parsing node metrics/cadvisor")
 	}
 }
