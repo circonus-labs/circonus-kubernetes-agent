@@ -132,6 +132,21 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 		}
 	}
 
+	if metricPortName == "" && telemetryPortName == "" {
+		ksm.log.Error().Msg("invalid service definition, ports named 'http-metrics' and 'telemetry' not found")
+		ksm.Lock()
+		ksm.running = false
+		ksm.Unlock()
+		return
+	}
+
+	if metricPortName == "" {
+		ksm.log.Warn().Str("port", "http-metrics").Msg("metrics port not found in service definition")
+	}
+	if telemetryPortName == "" {
+		ksm.log.Warn().Str("port", "telemetry").Msg("telemetry port not found in service definition")
+	}
+
 	var wg sync.WaitGroup
 
 	if metricPortName != "" {
