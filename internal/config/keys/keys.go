@@ -148,6 +148,9 @@ const (
 	// K8SEnableCadvisorMetrics - kublet /metrics/cadvisor metrics
 	K8SEnableCadvisorMetrics = "kubernetes.enable_cadvisor_metrics"
 
+	// K8SEnableKubeDNSMetrics - collect kube-dns metrics
+	K8SEnableKubeDNSMetrics = "kubernetes.enable_kube_dns"
+
 	// K8SEnableEvents enable events
 	K8SEnableEvents = "kubernetes.enable_events"
 

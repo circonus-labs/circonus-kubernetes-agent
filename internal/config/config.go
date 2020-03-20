@@ -40,6 +40,7 @@ type Cluster struct {
 	EnableNodeStats        bool   `mapstructure:"enable_node_stats" json:"enable_node_stats" toml:"enable_node_stats" yaml:"enable_node_stats"`
 	EnableNodeMetrics      bool   `mapstructure:"enable_node_metrics" json:"enable_node_metrics" toml:"enable_node_metrics" yaml:"enable_node_metrics"`
 	EnableCadvisorMetrics  bool   `mapstructure:"enable_cadvisor_metrics" json:"enable_cadvisor_metrics" toml:"enable_cadvisor_metrics" yaml:"enable_cadvisor_metrics"`
+	EnableKubeDNSMetrics   bool   `mapstructure:"enable_kube_dns_metrics" json:"enable_kube_dns_metrics" toml:"enable_kube_dns_metrics" yaml:"enable_kube_dns_metrics"`
 	IncludeContainers      bool   `mapstructure:"include_container_metrics" json:"include_container_metrics" toml:"include_container_metrics" yaml:"include_container_metrics"`
 	IncludePods            bool   `mapstructure:"include_pod_metrics" json:"include_pod_metrics" toml:"include_pod_metrics" yaml:"include_pod_metrics"`
 	PodLabelKey            string `mapstructure:"pod_label_key" json:"pod_label_key" toml:"pod_label" yaml:"pod_label_key"`

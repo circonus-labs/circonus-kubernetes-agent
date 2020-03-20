@@ -355,6 +355,7 @@ func (c *Check) loadMetricFilters() [][]string {
 		{"allow", "^kube_namespace_status_phase$", "tags", "and(or(phase:Active,phase:Terminating))", "namespaces"},
 		{"allow", "^collect_.*$", "agent collection stats"},
 		{"allow", "^events$", "events"},
+		{"allow", "^coredns_.*$", "kube-dns"},
 		{"deny", "^.+$", "all other metrics}"},
 	}
 
