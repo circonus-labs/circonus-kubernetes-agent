@@ -186,6 +186,7 @@ func (ksm *KSM) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error
 	defer client.CloseIdleConnections()
 
 	reqURL := u.String()
+	ksm.log.Debug().Str("url", reqURL).Msg("service")
 	req, err := k8s.NewAPIRequest(ksm.config.BearerToken, reqURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "service definition req")
@@ -241,6 +242,7 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 	}
 	defer client.CloseIdleConnections()
 
+	ksm.log.Debug().Str("url", metricURL).Msg("metrics")
 	req, err := k8s.NewAPIRequest(ksm.config.BearerToken, metricURL)
 	if err != nil {
 		return errors.Wrap(err, "/metrics req")
@@ -290,15 +292,9 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 	}
 	measurementTags := []string{}
 
-	// if ksm.check.StreamMetrics() {
-	// 	if err := promtext.StreamMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
-	// 		return err
-	// 	}
-	// } else {
 	if err := promtext.QueueMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
 		return err
 	}
-	// }
 
 	return nil
 }
@@ -310,6 +306,7 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 	}
 	defer client.CloseIdleConnections()
 
+	ksm.log.Debug().Str("url", telemetryURL).Msg("telemetry")
 	req, err := k8s.NewAPIRequest(ksm.config.BearerToken, telemetryURL)
 	if err != nil {
 		return errors.Wrap(err, "/telemetry req")
@@ -359,15 +356,9 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 	}
 	measurementTags := []string{}
 
-	// if ksm.check.StreamMetrics() {
-	// 	if err := promtext.StreamMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
-	// 		return err
-	// 	}
-	// } else {
 	if err := promtext.QueueMetrics(ctx, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
 		return err
 	}
-	// }
 
 	return nil
 }
