@@ -15,7 +15,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"os"
 	"path"
 	"strconv"
@@ -246,15 +245,16 @@ func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zero
 		req.Header.Set("Content-Encoding", "gzip")
 	}
 
-	if c.DebugSubmissions() {
-		dump, e := httputil.DumpRequestOut(req.Request, !payloadIsCompressed)
-		if e != nil {
-			resultLogger.Error().Err(e).Msg("dumping request")
-			return e
-		}
+	// doesn't work with retryablehttp
+	// if c.DebugSubmissions() {
+	// 	dump, e := httputil.DumpRequestOut(req.Request, !payloadIsCompressed)
+	// 	if e != nil {
+	// 		resultLogger.Error().Err(e).Msg("dumping request")
+	// 		return e
+	// 	}
 
-		fmt.Println(string(dump))
-	}
+	// 	fmt.Println(string(dump))
+	// }
 
 	retryClient := retryablehttp.NewClient()
 	retryClient.HTTPClient = client

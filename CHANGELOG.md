@@ -1,3 +1,12 @@
+# v0.6.2
+
+* add: optional, metric collection for kube-dns
+* upd: default check.target to cluster.name if target is unset
+* add: error if neither metric or telemetry ports found in ksm service definition
+* add: warn if metric port not found in ksm service definition
+* add: warn if telemetry port not found in ksm service definition
+* add: debug message for ksm urls being used
+
 # v0.6.1
 
 * add: `__rollup:false` stream tag to remaining high cardinality metrics

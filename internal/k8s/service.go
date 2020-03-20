@@ -21,8 +21,8 @@ type ServiceSpec struct {
 	Ports []ServicePort `json:"ports"`
 }
 type ServicePort struct {
-	Name       string `json:"name"`
-	Protocol   string `json:"protocol"`
-	Port       uint   `json:"port"`
-	TargetPort string `json:"targetPort"`
+	Name       string      `json:"name"`
+	Protocol   string      `json:"protocol"`
+	Port       uint        `json:"port"`
+	TargetPort interface{} `json:"targetPort"`
 }
