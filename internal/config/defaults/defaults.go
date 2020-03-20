@@ -30,6 +30,7 @@ const (
 	CheckBrokerCAFile  = ""
 	CheckMetricFilters = ""
 	CheckTags          = ""
+	CheckTarget        = "" // defaults to cluster name
 	DefaultStreamtags  = ""
 	CheckTitle         = ""
 	TraceSubmits       = ""
@@ -77,6 +78,7 @@ const (
 	K8SEnableNodeStats        = true
 	K8SEnableNodeMetrics      = true
 	K8SEnableCadvisorMetrics  = false
+	K8SEnableKubeDNSMetrics   = false
 	K8SNodeSelector           = "" // blank=all
 	K8SIncludePods            = true
 	K8SPodLabelKey            = "" // blank=all
@@ -99,9 +101,6 @@ var (
 
 	// ConfigFile defines the default configuration file name
 	ConfigFile = ""
-
-	// CheckTarget defaults to return from os.Hostname()
-	CheckTarget = ""
 
 	// K8SNodePoolSize defaults to number of available cpus for concurrent collection of metrics
 	K8SNodePoolSize = runtime.NumCPU()
@@ -127,10 +126,4 @@ func init() {
 
 	EtcPath = filepath.Join(BasePath, "etc")
 	ConfigFile = filepath.Join(EtcPath, release.NAME+".yaml")
-
-	CheckTarget, err = os.Hostname()
-	if err != nil {
-		fmt.Printf("Unable to determine hostname for target %v\n", err)
-		os.Exit(1)
-	}
 }

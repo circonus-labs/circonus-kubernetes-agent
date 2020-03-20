@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -20,6 +21,7 @@ import (
 	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/dns"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/events"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/ksm"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/ms"
@@ -97,6 +99,9 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 		circCfg.Check.Title = fmt.Sprintf("%s /%s", cfg.Name, release.NAME)
 	}
 
+	if circCfg.Check.Target == "" {
+		circCfg.Check.Target = strings.Replace(cfg.Name, " ", "_", -1)
+	}
 	check, err := circonus.NewCheck(c.logger, &circCfg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to initialize circonus for cluster (%s)", cfg.Name)
@@ -126,6 +131,14 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 		collector, err := ms.New(&c.cfg, c.logger, c.check)
 		if err != nil {
 			return nil, errors.Wrap(err, "initializing kube-state-metrics collector")
+		}
+		c.collectors = append(c.collectors, collector)
+	}
+
+	if c.cfg.EnableKubeDNSMetrics {
+		collector, err := dns.New(&c.cfg, c.logger, c.check)
+		if err != nil {
+			return nil, errors.Wrap(err, "initializing kube-dns metrics collector")
 		}
 		c.collectors = append(c.collectors, collector)
 	}
