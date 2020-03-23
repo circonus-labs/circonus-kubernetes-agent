@@ -65,6 +65,10 @@
       kubernetes-enable-events: "false"
       ## collect metrics from kube-state-metrics if running
       kubernetes-enable-kube-state-metrics: "false"
+      ## kube-state-metrics metrics port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
+      kubernetes-ksm-metrics-port-name: "http-metrics"
+      ## kube-state-metrics telemetry port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
+      kubernetes-ksm-telemetry-port-name: "telemetry"
       ## collect metrics from metrics-server if running
       kubernetes-enable-metrics-server: "false"
       ## collect node metrics

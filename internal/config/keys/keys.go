@@ -156,6 +156,8 @@ const (
 
 	// K8SEnableKubeStateMetrics enable kube-state-metrics
 	K8SEnableKubeStateMetrics = "kubernetes.enable_kube_state_metrics"
+	K8SKSMMetricsPortName     = "kubernetes.ksm_metrics_port_name"
+	K8SKSMTelemetryPortName   = "kubernetes.ksm_telemetry_port_name"
 
 	// K8SEnableMetricsServer enable metrics-server
 	K8SEnableMetricsServer = "kubernetes.enable_metrics_server"
