@@ -73,6 +73,8 @@ const (
 	K8SBearerTokenFile        = "/var/run/secrets/kubernetes.io/serviceaccount/token" //nolint:gosec
 	K8SEnableEvents           = false
 	K8SEnableKubeStateMetrics = false
+	K8SKSMMetricsPortName     = "http-metrics" // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
+	K8SKSMTelemetryPortName   = "telemetry"    // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
 	K8SEnableMetricsServer    = false
 	K8SEnableNodes            = true
 	K8SEnableNodeStats        = true

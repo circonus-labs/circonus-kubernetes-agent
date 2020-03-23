@@ -171,6 +171,44 @@ func init() {
 
 	{
 		const (
+			key          = keys.K8SKSMMetricsPortName
+			longOpt      = "k8s-ksm-metrics-port-name"
+			envVar       = release.ENVPREFIX + "_K8S_KSM_METRICS_PORT_NAME"
+			description  = "Kube-state-metrics metrics port name"
+			defaultValue = defaults.K8SKSMMetricsPortName
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		const (
+			key          = keys.K8SKSMTelemetryPortName
+			longOpt      = "k8s-ksm-telemetry-port-name"
+			envVar       = release.ENVPREFIX + "_K8S_KSM_TELEMETRY_PORT_NAME"
+			description  = "Kube-state-metrics telemetry port name"
+			defaultValue = defaults.K8SKSMTelemetryPortName
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		const (
 			key          = keys.K8SEnableMetricsServer
 			longOpt      = "k8s-enable-metrics-server"
 			envVar       = release.ENVPREFIX + "_K8S_ENABLE_METRICS_SERVER"

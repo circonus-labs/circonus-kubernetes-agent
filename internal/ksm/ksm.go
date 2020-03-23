@@ -124,27 +124,31 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	metricPortName := ""
 	telemetryPortName := ""
 	for _, p := range svc.Spec.Ports {
-		switch p.Name {
-		case "http-metrics":
-			metricPortName = p.Name
-		case "telemetry":
-			telemetryPortName = p.Name
+		if p.Name != "" {
+			if ksm.config.KSMMetricsPortName != "" && ksm.config.KSMMetricsPortName == p.Name {
+				metricPortName = p.Name
+			} else if ksm.config.KSMTelemetryPortName != "" && ksm.config.KSMTelemetryPortName == p.Name {
+				telemetryPortName = p.Name
+			}
 		}
 	}
 
 	if metricPortName == "" && telemetryPortName == "" {
-		ksm.log.Error().Msg("invalid service definition, ports named 'http-metrics' and 'telemetry' not found")
+		ksm.log.Error().
+			Str("metrics_port", ksm.config.KSMMetricsPortName).
+			Str("telemetry_port", ksm.config.KSMTelemetryPortName).
+			Msg("invalid service definition, named ports not found")
 		ksm.Lock()
 		ksm.running = false
 		ksm.Unlock()
 		return
 	}
 
-	if metricPortName == "" {
-		ksm.log.Warn().Str("port", "http-metrics").Msg("metrics port not found in service definition")
+	if ksm.config.KSMMetricsPortName != "" && metricPortName == "" {
+		ksm.log.Warn().Str("port", ksm.config.KSMMetricsPortName).Msg("metrics port not found in service definition")
 	}
-	if telemetryPortName == "" {
-		ksm.log.Warn().Str("port", "telemetry").Msg("telemetry port not found in service definition")
+	if ksm.config.KSMTelemetryPortName != "" && telemetryPortName == "" {
+		ksm.log.Warn().Str("port", ksm.config.KSMTelemetryPortName).Msg("telemetry port not found in service definition")
 	}
 
 	var wg sync.WaitGroup

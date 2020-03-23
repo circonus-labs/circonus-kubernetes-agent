@@ -1,3 +1,7 @@
+# v0.6.3
+
+* add: make kube-state-metrics port names for metrics and telemetry configurable. Default from ['standard' service deployment](https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml). metrics=`http-metrics` and telemetry=`telemetry`.
+
 # v0.6.2
 
 * add: optional, metric collection for kube-dns
