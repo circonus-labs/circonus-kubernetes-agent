@@ -32,8 +32,10 @@
               #- --debug
               #
               # controls how many concurrent node metric collectors are run
-              # increase for performance when collect_duration exceeds 60s
-              - --k8s-pool-size=2
+              # increase: for performance when collect_duration exceeds 60s
+              # decrease: to control resource utilization
+              # default, runtime.NumCPU()
+              # - --k8s-pool-size=2
             env:
               ##
               ## NOTE: Change settings in configuration.yaml file, in the 
@@ -221,6 +223,14 @@
               #     configMapKeyRef:
               #       name: cka-config-v1
               #       key: kubernetes-api-timelimit
+            ##
+            ## No single set of resource settings is optimal for
+            ## all clusters. Factors such as number of nodes, pods, 
+            ## and containers all play a role. Run without resource
+            ## settings, tune resource/time balance, monitor actual 
+            ## utilization, then set requests and limits applicable 
+            ## to the specific environment.
+            ##
             # resources:
             #   requests:
             #     memory: "64Mi"
