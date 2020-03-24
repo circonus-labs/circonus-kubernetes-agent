@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -153,10 +154,18 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 
 	var wg sync.WaitGroup
 
+	// NOTE: w/re to ksm being run with HTTPS - https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#manually-constructing-apiserver-proxy-urls
+	//       if the port name is prefixed with 'https-', "https:" will be added before the service name in the selfLink below.
+
 	if metricPortName != "" {
 		wg.Add(1)
 		go func() {
-			metricURL := ksm.config.URL + svc.Metadata.SelfLink + ":" + metricPortName + metricPath
+			svcPath := svc.Metadata.SelfLink
+			if strings.HasPrefix(metricPortName, "https-") {
+				svcPath = strings.Replace(svcPath, svc.Metadata.Name, "https:"+svc.Metadata.Name, -1)
+			}
+
+			metricURL := ksm.config.URL + svcPath + ":" + metricPortName + metricPath
 			if err := ksm.metrics(ctx, tlsConfig, metricURL); err != nil {
 				ksm.log.Error().Err(err).Str("url", metricURL).Msg("http-metrics")
 			}
@@ -167,7 +176,12 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	if telemetryPortName != "" {
 		wg.Add(1)
 		go func() {
-			telemetryURL := ksm.config.URL + svc.Metadata.SelfLink + ":" + telemetryPortName + metricPath
+			svcPath := svc.Metadata.SelfLink
+			if strings.HasPrefix(metricPortName, "https-") {
+				svcPath = strings.Replace(svcPath, svc.Metadata.Name, "https:"+svc.Metadata.Name, -1)
+			}
+
+			telemetryURL := ksm.config.URL + svcPath + ":" + telemetryPortName + metricPath
 			if err := ksm.telemetry(ctx, tlsConfig, telemetryURL); err != nil {
 				ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("telemetry")
 			}
