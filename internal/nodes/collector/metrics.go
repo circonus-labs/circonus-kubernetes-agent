@@ -113,8 +113,8 @@ func (nc *Collector) queueBaseFS(dest map[string]circonus.MetricSample, stats *f
 			var streamTags []string
 			streamTags = append(streamTags, parentStreamTags...)
 			streamTags = append(streamTags, "units:percent")
-			_ = nc.check.QueueMetricSample(dest, used, circonus.MetricTypeUint64, streamTags, parentMeasurementTags,
-				((stats.UsedBytes / stats.CapacityBytes) * 100), nc.ts)
+			usedPct := ((float64(stats.UsedBytes) / float64(stats.CapacityBytes)) * 100)
+			_ = nc.check.QueueMetricSample(dest, used, circonus.MetricTypeFloat64, streamTags, parentMeasurementTags, usedPct, nc.ts)
 		}
 	}
 }
