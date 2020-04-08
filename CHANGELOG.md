@@ -1,3 +1,8 @@
+# v0.6.6
+
+* fix: force float64 for used percentages
+* upd: include `units:bytes` for fs metric filters
+
 # v0.6.5
 
 * add: update metric filters from configuration on every start. deployment configuration is definitive source for metric filters.
