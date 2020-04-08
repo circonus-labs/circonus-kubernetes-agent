@@ -1,3 +1,12 @@
+# v0.6.5
+
+* add: update metric filters from configuration on every start. deployment configuration is definitive source for metric filters.
+* fix: add default tags to internal `collect_*` metrics
+* fix: remove escaping quotes in string metric values
+* upd: remove unused methods
+* add: used percent for fs/volume metrics
+* add: `metrics.k8s.io` to rbac
+
 # v0.6.4
 
 * add: support https for certain kube-state-metrics configurations. port names prefixed with `https-` will trigger apiserver proxy urls using `https:`.
