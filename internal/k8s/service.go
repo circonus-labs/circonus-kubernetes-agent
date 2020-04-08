@@ -18,7 +18,8 @@ type ServiceMetadata struct {
 	SelfLink  string `json:"selfLink"`
 }
 type ServiceSpec struct {
-	Ports []ServicePort `json:"ports"`
+	Ports    []ServicePort     `json:"ports"`
+	Selector map[string]string `json:"selector"`
 }
 type ServicePort struct {
 	Name       string      `json:"name"`
