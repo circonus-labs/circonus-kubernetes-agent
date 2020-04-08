@@ -372,7 +372,7 @@ type metricFilters struct {
 func (c *Check) loadMetricFilters() [][]string {
 	defaults := [][]string{
 		{"allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"},
-		{"allow", "^(used|capacity)$", "tags", "and(units:bytes,or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"},
+		{"allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"},
 		{"allow", "^usageNanoCores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"},
 		{"allow", "^kube_pod_container_status_(running|terminated|waiting|ready)$", "containers"},
 		{"allow", "^kube_deployment_(created|spec_replicas|status_replicas|status_replicas_updated|status_replicas_available|status_replicas_unavailable)$", "deployments"},
