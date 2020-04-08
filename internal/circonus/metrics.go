@@ -75,6 +75,7 @@ var (
 // AddGauge to queue for submission
 func (c *Check) AddGauge(metricName string, tags cgm.Tags, value interface{}) {
 	if c.metrics != nil {
+		tags = append(tags, c.defaultTags...)
 		c.metrics.GaugeWithTags(metricName, tags, value)
 	}
 }
@@ -82,6 +83,7 @@ func (c *Check) AddGauge(metricName string, tags cgm.Tags, value interface{}) {
 // AddHistSample to queue for submission
 func (c *Check) AddHistSample(metricName string, tags cgm.Tags, value float64) {
 	if c.metrics != nil {
+		tags = append(tags, c.defaultTags...)
 		c.metrics.TimingWithTags(metricName, tags, value)
 	}
 }
@@ -89,6 +91,7 @@ func (c *Check) AddHistSample(metricName string, tags cgm.Tags, value float64) {
 // AddText to queue for submission
 func (c *Check) AddText(metricName string, tags cgm.Tags, value string) {
 	if c.metrics != nil {
+		tags = append(tags, c.defaultTags...)
 		c.metrics.SetTextWithTags(metricName, tags, value)
 	}
 }
@@ -96,6 +99,7 @@ func (c *Check) AddText(metricName string, tags cgm.Tags, value string) {
 // IncrementCounter to queue for submission
 func (c *Check) IncrementCounter(metricName string, tags cgm.Tags) {
 	if c.metrics != nil {
+		tags = append(tags, c.defaultTags...)
 		c.metrics.IncrementWithTags(metricName, tags)
 	}
 }
@@ -103,88 +107,10 @@ func (c *Check) IncrementCounter(metricName string, tags cgm.Tags) {
 // SetCounter to queue for submission
 func (c *Check) SetCounter(metricName string, tags cgm.Tags, value uint64) {
 	if c.metrics != nil {
+		tags = append(tags, c.defaultTags...)
 		c.metrics.SetWithTags(metricName, tags, value)
 	}
 }
-
-// // WriteMetricSample to queue for submission
-// func (c *Check) WriteMetricSample(
-// 	metricDest io.Writer,
-// 	metricName,
-// 	metricType string,
-// 	streamTags,
-// 	measurementTags []string,
-// 	value interface{},
-// 	timestamp *time.Time) error {
-
-// 	if metricDest == nil {
-// 		return errors.New("invalid metric destination (nil)")
-// 	}
-// 	if metricName == "" {
-// 		return errors.New("invalid metric name (empty)")
-// 	}
-// 	if metricType == "" {
-// 		return errors.New("invalid metric type (empty)")
-// 	}
-
-// 	streamTagList := strings.Split(c.config.DefaultStreamtags, ",")
-// 	streamTagList = append(streamTagList, streamTags...)
-
-// 	if len(streamTagList)+len(measurementTags) > MaxTags {
-// 		c.log.Warn().
-// 			Str("metric_name", metricName).
-// 			Strs("stream_tags", streamTagList).
-// 			Strs("measurement_tags", measurementTags).
-// 			Int("num_tags", len(streamTagList)+len(measurementTags)).
-// 			Int("max_tags", MaxTags).
-// 			Msg("max metric tags exceeded, discarding")
-// 		return nil
-// 	}
-
-// 	taggedMetricName := c.taggedName(metricName, streamTagList, measurementTags)
-
-// 	if len(taggedMetricName) > MaxMetricNameLen {
-// 		c.log.Warn().
-// 			Str("metric_name", taggedMetricName).
-// 			Int("encoded_len", len(taggedMetricName)).
-// 			Int("max_len", MaxMetricNameLen).
-// 			Msg("max metric name length exceeded, discarding")
-// 		return nil
-// 	}
-
-// 	if !metricTypeRx.MatchString(metricType) {
-// 		return fmt.Errorf("unrecognized circonus metric type (%s)", metricType)
-// 	}
-
-// 	val := value
-// 	if metricType == "s" {
-// 		val = fmt.Sprintf("%q", value.(string))
-// 	}
-
-// 	var metricSample string
-// 	if timestamp != nil && (metricType != MetricTypeHistogram && metricType != MetricTypeCumulativeHistogram) {
-// 		metricSample = fmt.Sprintf(
-// 			`{"%s":{"_type":"%s","_value":%v,"_ts":%d}}`,
-// 			taggedMetricName,
-// 			metricType,
-// 			val,
-// 			makeTimestamp(timestamp),
-// 		)
-// 	} else {
-// 		metricSample = fmt.Sprintf(
-// 			`{"%s":{"_type":"%s","_value":%v}}`,
-// 			taggedMetricName,
-// 			metricType,
-// 			val,
-// 		)
-// 	}
-
-// 	_, err := fmt.Fprintln(metricDest, metricSample)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
 
 // QueueMetricSample to queue for submission
 func (c *Check) QueueMetricSample(
@@ -237,7 +163,7 @@ func (c *Check) QueueMetricSample(
 
 	val := value
 	if metricType == "s" {
-		val = fmt.Sprintf("%q", value.(string))
+		val = value.(string) //fmt.Sprintf("%s", value.(string))
 	}
 
 	if _, found := metrics[taggedMetricName]; found {

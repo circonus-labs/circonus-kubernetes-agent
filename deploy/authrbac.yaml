@@ -36,6 +36,15 @@
         - services/proxy
       verbs:
         - get
+    - apiGroups:
+        - "metrics.k8s.io"
+      resources:
+        - pods
+        - nodes
+      verbs:
+        - get
+        - list
+        - watch
 
 ---
   ## create service account to isolate privileges for the agent

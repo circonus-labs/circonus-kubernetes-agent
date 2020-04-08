@@ -57,6 +57,7 @@ type Check struct {
 	stats           Stats
 	statsmu         sync.Mutex
 	metrics         *cgm.CirconusMetrics
+	defaultTags     cgm.Tags
 	metricQueue     chan MetricSet
 }
 
@@ -80,9 +81,6 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 	if cfg.DryRun != defaults.DryRun {
 		c.log.Info().Bool("enabled", cfg.DryRun).Msg("dry run")
 	}
-	// if cfg.StreamMetrics != defaults.StreamMetrics {
-	// 	c.log.Info().Bool("enabled", cfg.StreamMetrics).Msg("streaming metrics format")
-	// }
 	if cfg.DebugSubmissions != defaults.DebugSubmissions {
 		c.log.Info().Bool("enabled", cfg.DebugSubmissions).Msg("debug submissions")
 	}
@@ -91,6 +89,18 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 	}
 	if cfg.MaxMetricBucketSize != defaults.MaxMetricBucketSize {
 		c.log.Info().Int("max_metric_bucket_size", cfg.MaxMetricBucketSize).Msg("max metric bucket size")
+	}
+
+	if cfg.DefaultStreamtags != "" {
+		ctags := cgm.Tags{}
+		tagList := strings.Split(cfg.DefaultStreamtags, ",")
+		for _, t := range tagList {
+			td := strings.SplitN(t, ":", 2)
+			if len(td) == 2 {
+				ctags = append(ctags, cgm.Tag{Category: td[0], Value: td[1]})
+			}
+		}
+		c.defaultTags = ctags
 	}
 
 	if cfg.DryRun {
@@ -199,6 +209,7 @@ func (c *Check) initializeCheckBundle(client *apiclient.API) error {
 	if err != nil {
 		return errors.Wrap(err, "finding/creating check")
 	}
+
 	return c.setSubmissionURL(client, bundle)
 }
 
@@ -272,7 +283,28 @@ func (c *Check) findOrCreateCheckBundle(client *apiclient.API, cfg *config.Circo
 		c.log.Warn().Str("alt_type", altCheckType).Str("bundle_cid", bundle.CID).Str("check_uuid", bundle.CheckUUIDs[0]).Msg("found alternate check type, using")
 	}
 
-	return &bundle, nil
+	return c.updateMetricFilters(client, cfg, &bundle)
+}
+
+// updateMetricFilters forces check bundle metric filters to match what
+// is in deployment configuration which is "source of truth" for filters
+func (c *Check) updateMetricFilters(client *apiclient.API, cfg *config.Circonus, b *apiclient.CheckBundle) (*apiclient.CheckBundle, error) {
+	checkMetricFilters := c.loadMetricFilters()
+	if cfg.Check.MetricFilters != "" {
+		var filters [][]string
+		if e := json.Unmarshal([]byte(cfg.Check.MetricFilters), &filters); e != nil {
+			return nil, errors.Wrap(e, "parsing check bundle metric filters")
+		}
+		checkMetricFilters = filters
+	}
+
+	b.MetricFilters = checkMetricFilters
+	bundle, err := client.UpdateCheckBundle(b)
+	if err != nil {
+		return nil, errors.Wrap(err, "updating check bundle metric filters")
+	}
+
+	return bundle, nil
 }
 
 // createCheckBundle creates a new check bundle
