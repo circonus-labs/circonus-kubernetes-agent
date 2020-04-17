@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cka-readonly
+  labels:
+    app.kubernetes.io/name: circonus-kubernetes-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cka-readonly
+subjects:
+  - kind: ServiceAccount
+    name: circonus-kubernetes-agent
+    namespace: default
