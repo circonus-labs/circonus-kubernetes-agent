@@ -33,6 +33,7 @@ const (
 // Formats supported: https://prometheus.io/docs/instrumenting/exposition_formats/
 func QueueMetrics(
 	ctx context.Context,
+	parser expfmt.TextParser,
 	check *circonus.Check,
 	logger zerolog.Logger,
 	data io.Reader,
@@ -45,8 +46,6 @@ func QueueMetrics(
 		baseStreamTags = make([]string, len(parentStreamTags))
 		copy(baseStreamTags, parentStreamTags)
 	}
-
-	var parser expfmt.TextParser
 
 	metricFamilies, err := parser.TextToMetricFamilies(data)
 	if err != nil {
@@ -139,7 +138,7 @@ func QueueMetrics(
 							metrics, metricName,
 							circonus.MetricTypeFloat64,
 							streamTags, parentMeasurementTags,
-							*m.GetGauge().Value, ts)
+							m.GetGauge().GetValue(), ts)
 					}
 				case m.Counter != nil:
 					if m.GetCounter().Value != nil {
@@ -147,7 +146,7 @@ func QueueMetrics(
 							metrics, metricName,
 							circonus.MetricTypeFloat64,
 							streamTags, parentMeasurementTags,
-							*m.GetCounter().Value, ts)
+							m.GetCounter().GetValue(), ts)
 					}
 				case m.Untyped != nil:
 					if m.GetUntyped().Value != nil {
@@ -163,7 +162,7 @@ func QueueMetrics(
 							metrics, metricName,
 							circonus.MetricTypeFloat64,
 							streamTags, parentMeasurementTags,
-							*m.GetUntyped().Value, ts)
+							m.GetUntyped().GetValue(), ts)
 					}
 				}
 			}
