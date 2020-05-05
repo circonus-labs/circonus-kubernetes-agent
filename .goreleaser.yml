@@ -11,9 +11,9 @@ builds:
         binary: sbin/circonus-kubernetes-agentd
         env:
             - CGO_ENABLED=0
-            - GODEBUG=netdns=go
+            # - GODEBUG=netdns=go
         flags: 
-            # - -a
+            - -a
         goos:
             - linux
         goarch:
