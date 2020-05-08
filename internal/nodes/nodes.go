@@ -188,7 +188,7 @@ func (n *Nodes) nodeList(tlsConfig *tls.Config) (*k8s.NodeList, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "node list cli")
 	}
-	defer client.CloseIdleConnections()
+	// defer client.CloseIdleConnections()
 
 	reqURL := u.String()
 	req, err := k8s.NewAPIRequest(n.config.BearerToken, reqURL)
@@ -198,6 +198,9 @@ func (n *Nodes) nodeList(tlsConfig *tls.Config) (*k8s.NodeList, error) {
 
 	start := time.Now()
 	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		n.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
@@ -207,27 +210,26 @@ func (n *Nodes) nodeList(tlsConfig *tls.Config) (*k8s.NodeList, error) {
 		})
 		return nil, err
 	}
-	defer resp.Body.Close()
 	n.check.AddHistSample("collect_latency", cgm.Tags{
 		cgm.Tag{Category: "request", Value: "node-list"},
 		cgm.Tag{Category: "target", Value: "api-server"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		n.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
+		return nil, err
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		data, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			n.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
-			return nil, err
-		}
 		n.log.Warn().Str("url", reqURL).Str("status", resp.Status).RawJSON("response", data).Msg("error from API server")
 		return nil, errors.Errorf("error from api %s (%s)", resp.Status, string(data))
 	}
 
 	var nodes k8s.NodeList
-
-	if err := json.NewDecoder(resp.Body).Decode(&nodes); err != nil {
-		return nil, err
+	if err := json.Unmarshal(data, &nodes); err != nil {
+		return nil, errors.Wrap(err, "parsing json")
 	}
 
 	if len(nodes.Items) == 0 {
