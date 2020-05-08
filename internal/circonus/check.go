@@ -418,9 +418,9 @@ func (c *Check) loadMetricFilters() [][]string {
 		{"allow", "^(Disk|Memory|PID)Pressure$", "node status"},
 		{"allow", "^capacity_.*$", "node capacity"},
 		{"allow", "^kube_namespace_status_phase$", "tags", "and(or(phase:Active,phase:Terminating))", "namespaces"},
-		{"allow", "^collect_.*$", "agent collection stats"},
-		{"allow", "^events$", "events"},
 		{"allow", "^coredns_.*$", "kube-dns"},
+		{"allow", "^events$", "events"},
+		{"allow", "^collect_.*$", "agent collection stats"},
 		{"deny", "^.+$", "all other metrics}"},
 	}
 
