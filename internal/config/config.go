@@ -76,6 +76,7 @@ type Circonus struct {
 	ConcurrentSubmissions bool `json:"-" toml:"-" yaml:"-"`
 	SerialSubmissions     bool `json:"-" toml:"-" yaml:"-"`
 	MaxMetricBucketSize   int  `json:"-" toml:"-" yaml:"-"`
+	NodeCC                bool `json:"-" toml:"-" yaml:"-"`
 }
 
 // API defines the circonus api configuration options

@@ -32,12 +32,13 @@ type Nodes struct {
 	check        *circonus.Check
 	config       *config.Cluster
 	log          zerolog.Logger
+	nodeCC       bool
 	running      bool
 	apiTimelimit time.Duration
 	sync.Mutex
 }
 
-func New(cfg *config.Cluster, parentLog zerolog.Logger, check *circonus.Check) (*Nodes, error) {
+func New(cfg *config.Cluster, parentLog zerolog.Logger, check *circonus.Check, nodeCC bool) (*Nodes, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid cluster config (nil)")
 	}
@@ -48,6 +49,7 @@ func New(cfg *config.Cluster, parentLog zerolog.Logger, check *circonus.Check) (
 	nodes := &Nodes{
 		config: cfg,
 		check:  check,
+		nodeCC: nodeCC,
 		log:    parentLog.With().Str("pkg", "nodes").Logger(),
 	}
 
@@ -122,7 +124,7 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 				Int("worker_id", id).
 				Msg("worker started")
 			for node := range nodeQueue {
-				node.Collect(ctx, id, tlsConfig, ts)
+				node.Collect(ctx, id, tlsConfig, ts, n.nodeCC)
 			}
 			n.log.Debug().
 				Str("duration", time.Since(workStart).String()).

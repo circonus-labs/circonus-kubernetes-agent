@@ -203,7 +203,7 @@ func (c *Cluster) Start(ctx context.Context) error {
 				for _, collectorID := range c.collectors {
 					switch collectorID {
 					case "node":
-						collector, err := nodes.New(&c.cfg, c.logger, c.check)
+						collector, err := nodes.New(&c.cfg, c.logger, c.check, c.circCfg.NodeCC)
 						if err != nil {
 							c.logger.Error().Err(err).Msg("initializing node collector")
 						} else {

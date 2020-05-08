@@ -47,6 +47,7 @@ const (
 	NoGZIP                = false
 	UseGZIP               = true
 	DebugSubmissions      = false
+	NodeCC                = false
 
 	// General defaults
 

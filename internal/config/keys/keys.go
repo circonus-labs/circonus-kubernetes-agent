@@ -84,7 +84,9 @@ const (
 	// TraceSubmits enables writing all metrics sent to circonus to files
 	TraceSubmits = "circonus.trace_submits"
 
+	//
 	// hidden circonus settings for development and debugging
+	//
 
 	// ConcurrentSubmissions submit metrics to circonus concurrently
 	ConcurrentSubmissions = "circonus.concurrent_submissions"
@@ -104,8 +106,9 @@ const (
 	// DryRun print metrics to stdout rather than sending to circonu
 	DryRun = "circonus.dry_run"
 
-	// StreamMetrics use streaming metric submission format
-	// StreamMetrics = "circonus.stream_metrics"
+	// NodeCC concurrently collect node metrics (uses more memory for faster collection)
+	// This is technically a k8s setting but it not per-cluster, it is a behavior for the entire agent
+	NodeCC = "circonus.node_cc"
 
 	// UseGZIP when submitting
 	UseGZIP = "circonus.use_gzip"

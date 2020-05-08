@@ -283,7 +283,9 @@ func init() {
 		viper.SetDefault(key, defaultValue)
 	}
 
+	//
 	// hidden circonus options for development and debugging
+	//
 
 	{
 		const (
@@ -348,46 +350,27 @@ func init() {
 		viper.SetDefault(key, defaultValue)
 	}
 
-	// {
-	// 	const (
-	// 		key          = keys.DebugSubmissions
-	// 		longOpt      = "debug-submissions"
-	// 		envVar       = release.ENVPREFIX + "_DEBUG_SUBMISSIONS"
-	// 		description  = "Enable submission debugging (dump request w/payload to stdout)"
-	// 		defaultValue = defaults.DebugSubmissions
-	// 	)
+	{
+		const (
+			key          = keys.NodeCC
+			longOpt      = "nodecc"
+			envVar       = release.ENVPREFIX + "_NODECC"
+			description  = "Collect node metrics concurrently (mem vs time/cpu)"
+			defaultValue = defaults.NodeCC
+		)
 
-	// 	rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
-	// 	flag := rootCmd.PersistentFlags().Lookup(longOpt)
-	// 	flag.Hidden = true
-	// 	if err := viper.BindPFlag(key, flag); err != nil {
-	// 		bindFlagError(longOpt, err)
-	// 	}
-	// 	if err := viper.BindEnv(key, envVar); err != nil {
-	// 		bindEnvError(envVar, err)
-	// 	}
-	// 	viper.SetDefault(key, defaultValue)
-	// }
-	// {
-	// 	const (
-	// 		key          = keys.ConcurrentSubmissions
-	// 		longOpt      = "concurrent-submissions"
-	// 		envVar       = release.ENVPREFIX + "_CONCURRENT_SUBMISSIONS"
-	// 		description  = "Submit metrics concurrently (disable if gaps appear)"
-	// 		defaultValue = defaults.ConcurrentSubmissions
-	// 	)
+		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
+		flag := rootCmd.PersistentFlags().Lookup(longOpt)
+		flag.Hidden = true
+		if err := viper.BindPFlag(key, flag); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
 
-	// 	rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
-	// 	flag := rootCmd.PersistentFlags().Lookup(longOpt)
-	// 	flag.Hidden = true
-	// 	if err := viper.BindPFlag(key, flag); err != nil {
-	// 		bindFlagError(longOpt, err)
-	// 	}
-	// 	if err := viper.BindEnv(key, envVar); err != nil {
-	// 		bindEnvError(envVar, err)
-	// 	}
-	// 	viper.SetDefault(key, defaultValue)
-	// }
 	{
 		const (
 			key          = keys.SerialSubmissions
@@ -408,6 +391,7 @@ func init() {
 		}
 		viper.SetDefault(key, defaultValue)
 	}
+
 	{
 		const (
 			key          = keys.MaxMetricBucketSize
