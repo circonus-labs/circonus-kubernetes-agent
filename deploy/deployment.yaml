@@ -158,11 +158,11 @@
                   configMapKeyRef:
                     name: cka-config-v1
                     key: kubernetes-ksm-telemetry-port-name
-              - name: CKA_K8S_ENABLE_METRICS_SERVER
+              - name: CKA_K8S_ENABLE_API_SERVER
                 valueFrom:
                   configMapKeyRef:
                     name: cka-config-v1
-                    key: kubernetes-enable-metrics-server
+                    key: kubernetes-enable-api-server
               - name: CKA_K8S_ENABLE_NODES
                 valueFrom:
                   configMapKeyRef:
@@ -223,6 +223,8 @@
               #     configMapKeyRef:
               #       name: cka-config-v1
               #       key: kubernetes-api-timelimit
+              - name: GODEBUG
+                value: "madvdontneed=1"
             ##
             ## No single set of resource settings is optimal for
             ## all clusters. Factors such as number of nodes, pods, 

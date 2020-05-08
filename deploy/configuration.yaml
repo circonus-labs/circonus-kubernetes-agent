@@ -69,8 +69,8 @@
       kubernetes-ksm-metrics-port-name: "http-metrics"
       ## kube-state-metrics telemetry port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
       kubernetes-ksm-telemetry-port-name: "telemetry"
-      ## collect metrics from metrics-server if running
-      kubernetes-enable-metrics-server: "false"
+      ## collect metrics from api-server
+      kubernetes-enable-api-server: "true"
       ## collect node metrics
       kubernetes-enable-nodes: "true"
       ## expression to use for node labelSelector
@@ -98,14 +98,17 @@
       #kubernetes-api-timelimit: "10s"
       ##
       ## Metric filters control which metrics are passed on by the broker
-      ## NOTE: This list ONLY applies when initially creating a check. After a
-      ##       check has been created, use the UI to change metric filters.
+      ## NOTE: This list is applied to the check every time the agent pod starts.
+      ##       Updates through any other method will be overwritten by this list.
       metric-filters.json: |
         {
           "metric_filters": [
             ["allow","^[rt]x$","tags","and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))","utilization"],
             ["allow","^(used|capacity)$","tags","and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))","utilization"],
             ["allow","^usageNanoCores$","tags","and(not(container_name:*),not(sys_container:*))","utilization"],
+            ["allow","^apiserver_request_total$","tags","and(or(code:5*,code:4*))","api req errors"],
+            ["allow","^authenticated_user_requests$","api auth"],
+            ["allow","^authentication_attempts$","api auth"],
             ["allow","^kube_pod_container_status_(running|terminated|waiting|ready)$","containers"],
             ["allow","^kube_deployment_(created|spec_replicas|status_replicas|status_replicas_updated|status_replicas_available|status_replicas_unavailable)$","deployments"],
             ["allow","^kube_pod_start_time","pods"],
