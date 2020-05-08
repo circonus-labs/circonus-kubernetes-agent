@@ -11,6 +11,8 @@ import (
 	"expvar"
 	"fmt"
 	"net/http"
+
+	// _ "net/http/pprof" //nolint:gosec
 	"os"
 	"os/signal"
 
@@ -111,6 +113,7 @@ func New() (*Agent, error) {
 	a.signalNotifySetup()
 
 	go func() {
+		// _ = http.ListenAndServe(":6060", nil) // pprof
 		// NOTE: http://addr:8080/stats - application stats
 		//       http://addr:8080/health - liveness probe
 		err := http.ListenAndServe(":8080",

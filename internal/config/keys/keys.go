@@ -159,7 +159,10 @@ const (
 	K8SKSMMetricsPortName     = "kubernetes.ksm_metrics_port_name"
 	K8SKSMTelemetryPortName   = "kubernetes.ksm_telemetry_port_name"
 
-	// K8SEnableMetricsServer enable metrics-server
+	// K8SEnableAPIServer enable api-server
+	K8SEnableAPIServer = "kubernetes.enable_api_server"
+
+	// K8SEnableMetricsServer DEPRECATED, to be removed in future release
 	K8SEnableMetricsServer = "kubernetes.enable_metrics_server"
 
 	// K8SIncludePods include pod metrics

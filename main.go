@@ -6,8 +6,13 @@
 
 package main
 
-import "github.com/circonus-labs/circonus-kubernetes-agent/cmd"
+import (
+	"runtime/debug"
+
+	"github.com/circonus-labs/circonus-kubernetes-agent/cmd"
+)
 
 func main() {
+	debug.SetGCPercent(50)
 	cmd.Execute()
 }
