@@ -137,17 +137,19 @@ func (c *Check) QueueMetricSample(
 		return errors.New("invalid metric type (empty)")
 	}
 
-	rejectMetric := true
-	for _, mf := range c.metricFilters {
-		if mf.Filter.MatchString(metricName) {
-			if mf.Allow {
-				rejectMetric = false
+	if len(c.metricFilters) > 0 {
+		rejectMetric := true
+		for _, mf := range c.metricFilters {
+			if mf.Filter.MatchString(metricName) {
+				if mf.Allow {
+					rejectMetric = false
+				}
+				break
 			}
-			break
 		}
-	}
-	if rejectMetric {
-		return nil
+		if rejectMetric {
+			return nil
+		}
 	}
 
 	streamTagList := strings.Split(c.config.DefaultStreamtags, ",")
