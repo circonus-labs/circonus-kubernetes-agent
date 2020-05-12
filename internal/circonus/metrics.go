@@ -143,11 +143,14 @@ func (c *Check) QueueMetricSample(
 			if mf.Filter.MatchString(metricName) {
 				if mf.Allow {
 					rejectMetric = false
+					break
 				}
-				break
 			}
 		}
 		if rejectMetric {
+			c.statsmu.Lock()
+			c.stats.Filtered++
+			c.statsmu.Unlock()
 			return nil
 		}
 	}
@@ -183,7 +186,7 @@ func (c *Check) QueueMetricSample(
 
 	val := value
 	if metricType == "s" {
-		val = value.(string) //fmt.Sprintf("%s", value.(string))
+		val = value.(string)
 	}
 
 	if _, found := metrics[taggedMetricName]; found {
@@ -204,11 +207,7 @@ func (c *Check) QueueMetricSample(
 		metricSample.Timestamp = makeTimestamp(timestamp)
 	}
 
-	if c.config.ConcurrentSubmissions {
-		metrics[taggedMetricName] = metricSample
-	} else {
-		c.mQueue <- Metric{Name: taggedMetricName, Value: metricSample}
-	}
+	metrics[taggedMetricName] = metricSample
 
 	return nil
 }

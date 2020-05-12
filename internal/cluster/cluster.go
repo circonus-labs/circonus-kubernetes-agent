@@ -152,11 +152,6 @@ func (c *Cluster) Start(ctx context.Context) error {
 		go eventWatcher.Start(ctx, c.tlsConfig)
 	}
 
-	if !c.check.ConcurrentSubmissions() {
-		go c.check.Submitter(ctx)
-		go c.check.MetricQueueHandler(ctx)
-	}
-
 	c.logger.Info().Str("collection_interval", c.interval.String()).Time("next_collection", time.Now().Add(c.interval)).Msg("client started")
 
 	ticker := time.NewTicker(c.interval)
@@ -192,7 +187,6 @@ func (c *Cluster) Start(ctx context.Context) error {
 			start := time.Now()
 			c.lastStart = &start
 			c.running = true
-			debug.FreeOSMemory()
 			c.Unlock()
 
 			// reset submit retries metric
@@ -262,6 +256,8 @@ func (c *Cluster) Start(ctx context.Context) error {
 				c.check.AddGauge("collect_ngr", baseStreamTags, uint64(runtime.NumGoroutine()))
 
 				{
+					debug.FreeOSMemory()
+
 					var ms runtime.MemStats
 					runtime.ReadMemStats(&ms)
 
@@ -282,6 +278,7 @@ func (c *Cluster) Start(ctx context.Context) error {
 					c.check.AddGauge("collect_heap_released", streamTags, ms.HeapReleased)
 					c.check.AddGauge("collect_stack_sys", streamTags, ms.StackSys)
 					c.check.AddGauge("collect_other_sys", streamTags, ms.OtherSys)
+
 					var mem syscall.Rusage
 					if err := syscall.Getrusage(syscall.RUSAGE_SELF, &mem); err == nil {
 						c.check.AddGauge("collect_max_rss", streamTags, uint64(mem.Maxrss*1024))

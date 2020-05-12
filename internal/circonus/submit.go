@@ -18,7 +18,6 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"sync"
 	"time"
 
 	"code.cloudfoundry.org/bytefmt"
@@ -43,63 +42,6 @@ const (
 	traceTSFormat        = "20060102_150405.000000000"
 )
 
-func (c *Check) MetricQueueHandler(ctx context.Context) {
-	c.log.Debug().Msg("starting metric queue handler")
-	metricBucket := make(map[string]MetricSample)
-	ticker := time.NewTicker(5 * time.Second)
-	var metricBucketmu sync.Mutex
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			metricBucketmu.Lock()
-			if len(metricBucket) > 0 {
-				c.log.Debug().Int("bs", len(metricBucket)).Msg("tick flush bucket")
-				data, err := json.MarshalIndent(metricBucket, "", "  ")
-				if err != nil {
-					c.log.Error().Err(err).Msg("marshaling metric queue")
-				} else {
-					c.AddMetricSet(data, c.log)
-				}
-				metricBucket = make(map[string]MetricSample)
-			}
-			metricBucketmu.Unlock()
-		case m := <-c.mQueue:
-			metricBucketmu.Lock()
-			metricBucket[m.Name] = m.Value
-			if len(metricBucket) >= 250 {
-				c.log.Debug().Int("bs", len(metricBucket)).Msg("flush queue")
-				data, err := json.MarshalIndent(metricBucket, "", "  ")
-				if err != nil {
-					c.log.Error().Err(err).Msg("marshaling metric queue")
-				} else {
-					c.AddMetricSet(data, c.log)
-				}
-				metricBucket = make(map[string]MetricSample)
-			}
-			metricBucketmu.Unlock()
-		}
-	}
-}
-
-func (c *Check) AddMetricSet(metrics []byte, logger zerolog.Logger) {
-	c.metricQueue <- MetricSet{Metrics: metrics, Logger: logger}
-}
-func (c *Check) Submitter(ctx context.Context) {
-	c.log.Debug().Msg("starting metric submitter")
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case ms := <-c.metricQueue:
-			if err := c.Submit(ctx, bytes.NewReader(ms.Metrics), ms.Logger); err != nil {
-				ms.Logger.Error().Err(err).Msg("submitting metric set")
-			}
-		}
-	}
-}
-
 func (c *Check) FlushCGM(ctx context.Context, ts *time.Time) {
 	if c.metrics != nil {
 		// TODO: add timestamp support to CGM (e.g. FlushMetricsWithTimestamp(ts))
@@ -115,17 +57,8 @@ func (c *Check) FlushCGM(ctx context.Context, ts *time.Time) {
 			metrics[mn] = ms
 		}
 
-		data, err := json.Marshal(metrics)
-		if err != nil {
-			c.log.Warn().Err(err).Msg("encoding metrics")
-			return
-		}
-		if c.ConcurrentSubmissions() {
-			if err := c.Submit(ctx, bytes.NewReader(data), c.log); err != nil {
-				c.log.Error().Err(err).Msg("submitting cgm metrics")
-			}
-		} else {
-			c.AddMetricSet(data, c.log)
+		if err := c.SubmitMetrics(ctx, metrics, c.log, false); err != nil {
+			c.log.Error().Err(err).Msg("submitting cgm metrics")
 		}
 	}
 }
@@ -135,19 +68,22 @@ func (c *Check) ResetSubmitStats() {
 	defer c.statsmu.Unlock()
 	c.stats.Metrics = 0
 	c.stats.SentBytes = 0
+	c.stats.Filtered = 0
 }
 
 func (c *Check) SubmitStats() Stats {
 	c.statsmu.Lock()
 	defer c.statsmu.Unlock()
 	return Stats{
+		Filtered:  c.stats.Filtered,
 		Metrics:   c.stats.Metrics,
 		SentBytes: c.stats.SentBytes,
 		SentSize:  bytefmt.ByteSize(c.stats.SentBytes),
 	}
 }
 
-func (c *Check) SubmitQueue(ctx context.Context, metrics map[string]MetricSample, resultLogger zerolog.Logger) error {
+// Submit sends metrics to a circonus trap
+func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSample, resultLogger zerolog.Logger, includeStats bool) error {
 	if metrics == nil {
 		return errors.New("invalid metrics (nil)")
 	}
@@ -155,38 +91,23 @@ func (c *Check) SubmitQueue(ctx context.Context, metrics map[string]MetricSample
 		return nil
 	}
 
-	data, err := json.MarshalIndent(metrics, "", "  ")
+	rawData, err := json.Marshal(metrics)
 	if err != nil {
+		resultLogger.Error().Err(err).Msg("json encoding metrics")
 		return errors.Wrap(err, "marshaling metrics")
-	}
-
-	if c.ConcurrentSubmissions() {
-		return c.Submit(ctx, bytes.NewReader(data), resultLogger)
-	}
-
-	c.AddMetricSet(data, resultLogger)
-	return nil
-}
-
-// Submit sends metrics to a circonus trap
-func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
-	if metrics == nil {
-		return errors.New("invalid metrics (nil)")
 	}
 
 	start := time.Now()
 
 	if c.submissionURL == "" {
 		if c.config.DryRun {
-			_, err := io.Copy(os.Stdout, metrics)
+			_, err := io.Copy(os.Stdout, bytes.NewReader(rawData))
 			return err
 		}
 		return errors.New("no submission url and not in dry-run mode")
 	}
 
 	if c.client == nil {
-		// var client *http.Client
-
 		if c.brokerTLSConfig != nil {
 			c.client = &http.Client{
 				Transport: &http.Transport{
@@ -226,12 +147,6 @@ func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zero
 	if err != nil {
 		resultLogger.Error().Err(err).Msg("creating new submit ID")
 		return errors.Wrap(err, "creating new submit ID")
-	}
-
-	rawData, err := ioutil.ReadAll(metrics)
-	if err != nil {
-		resultLogger.Error().Err(err).Msg("reading metric data")
-		return errors.Wrap(err, "reading metric data")
 	}
 
 	payloadIsCompressed := false
@@ -369,10 +284,12 @@ func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zero
 		Str("bytes_sent", bytefmt.ByteSize(uint64(dataLen))).
 		Msg("submitted")
 
-	c.statsmu.Lock()
-	c.stats.Metrics += result.Stats
-	c.stats.SentBytes += uint64(dataLen)
-	c.statsmu.Unlock()
+	if includeStats {
+		c.statsmu.Lock()
+		c.stats.Metrics += result.Stats
+		c.stats.SentBytes += uint64(dataLen)
+		c.statsmu.Unlock()
+	}
 
 	return nil
 }

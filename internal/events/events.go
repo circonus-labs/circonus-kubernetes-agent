@@ -122,11 +122,13 @@ func (e *Events) submitEvent(ctx context.Context, event *corev1.Event) {
 		Reason:            event.Reason,
 		Message:           event.Message,
 	}
+
 	data, err := json.Marshal(ae)
 	if err != nil {
 		e.log.Error().Err(err).Str("data", string(data)).Msg("parsing event")
 		return
 	}
+
 	var streamTags []string
 	var measurementTags []string
 	metrics := make(map[string]circonus.MetricSample)
@@ -137,7 +139,8 @@ func (e *Events) submitEvent(ctx context.Context, event *corev1.Event) {
 		streamTags, measurementTags,
 		string(data),
 		&ets)
-	if err := e.check.SubmitQueue(ctx, metrics, e.log.With().Str("type", "event").Logger()); err != nil {
+
+	if err := e.check.SubmitMetrics(ctx, metrics, e.log.With().Str("type", "event").Logger(), true); err != nil {
 		e.log.Warn().Err(err).Msg("submitting event")
 	}
 }

@@ -231,10 +231,10 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 	}
 
 	if len(metrics) == 0 {
-		nc.log.Warn().Msg("no telemetry to submit")
+		nc.log.Warn().Msg("no meta telemetry to submit")
 		return
 	}
-	if err := nc.check.SubmitQueue(nc.ctx, metrics, nc.log.With().Str("type", "meta").Logger()); err != nil {
+	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "meta").Logger(), true); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
 	}
 
@@ -412,10 +412,10 @@ func (nc *Collector) summaryNode(node *statsSummaryNode, parentStreamTags []stri
 	nc.queueRlimit(metrics, &node.Rlimit, parentStreamTags, parentMeasurementTags)
 
 	if len(metrics) == 0 {
-		nc.log.Warn().Msg("no telemetry to submit")
+		nc.log.Warn().Msg("no summary telemetry to submit")
 		return
 	}
-	if err := nc.check.SubmitQueue(nc.ctx, metrics, nc.log.With().Str("type", "/stats/summary").Logger()); err != nil {
+	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "/stats/summary").Logger(), true); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
 	}
 }
@@ -448,10 +448,10 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 	}
 
 	if len(metrics) == 0 {
-		nc.log.Warn().Msg("no telemetry to submit")
+		nc.log.Warn().Msg("no system container telemetry to submit")
 		return
 	}
-	if err := nc.check.SubmitQueue(nc.ctx, metrics, nc.log.With().Str("type", "system_containers").Logger()); err != nil {
+	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "system_containers").Logger(), true); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
 	}
 
@@ -526,10 +526,10 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 	}
 
 	if len(metrics) == 0 {
-		nc.log.Warn().Msg("no telemetry to submit")
+		nc.log.Warn().Msg("no pod telemetry to submit")
 		return
 	}
-	if err := nc.check.SubmitQueue(nc.ctx, metrics, nc.log.With().Str("type", "pods").Logger()); err != nil {
+	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "pods").Logger(), true); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
 	}
 }

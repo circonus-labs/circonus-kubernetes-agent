@@ -39,20 +39,17 @@ const (
 )
 
 type Stats struct {
+	Filtered  uint64
 	Metrics   uint64
 	SentBytes uint64
 	SentSize  string
-}
-
-type MetricSet struct {
-	Metrics []byte
-	Logger  zerolog.Logger
 }
 
 type MetricFilter struct {
 	Allow  bool
 	Filter *regexp.Regexp
 }
+
 type Check struct {
 	config          *config.Circonus
 	brokerTLSConfig *tls.Config
@@ -64,8 +61,6 @@ type Check struct {
 	statsmu         sync.Mutex
 	metrics         *cgm.CirconusMetrics
 	defaultTags     cgm.Tags
-	metricQueue     chan MetricSet
-	mQueue          chan Metric
 	metricFilters   []MetricFilter
 	client          *http.Client
 }
@@ -75,10 +70,8 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 		return nil, errors.New("invalid circonus config (nil)")
 	}
 	c := &Check{
-		config:      cfg,
-		log:         parentLogger.With().Str("pkg", "circonus.check").Logger(),
-		metricQueue: make(chan MetricSet, 5),
-		mQueue:      make(chan Metric, 1000),
+		config: cfg,
+		log:    parentLogger.With().Str("pkg", "circonus.check").Logger(),
 	}
 
 	// output debug messages for hidden settings which are not DEFAULT
@@ -93,12 +86,6 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 	}
 	if cfg.DebugSubmissions != defaults.DebugSubmissions {
 		c.log.Info().Bool("enabled", cfg.DebugSubmissions).Msg("debug submissions")
-	}
-	if cfg.SerialSubmissions != defaults.SerialSubmissions {
-		c.log.Info().Bool("enabled", cfg.SerialSubmissions).Msg("serial submissions")
-	}
-	if cfg.MaxMetricBucketSize != defaults.MaxMetricBucketSize {
-		c.log.Info().Int("max_metric_bucket_size", cfg.MaxMetricBucketSize).Msg("max metric bucket size")
 	}
 
 	if cfg.DefaultStreamtags != "" {
@@ -143,17 +130,6 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 	}
 
 	return c, nil
-}
-
-// MaxMetricBucketSize used by promtext parser to bucket metrics for submissions (may stabilize memory with large prom output)
-func (c *Check) MaxMetricBucketSize() int {
-	return c.config.MaxMetricBucketSize
-}
-
-// ConcurrentSubmissions enable sending metrics to circonus concurrently
-// when disabled collection time is increased, when enabled may produce gaps
-func (c *Check) ConcurrentSubmissions() bool {
-	return c.config.ConcurrentSubmissions
 }
 
 // UseCompression indicates whether the data being sent should be compressed
@@ -251,12 +227,12 @@ func (c *Check) setSubmissionURL(client *apiclient.API, checkBundle *apiclient.C
 	c.metricFilters = make([]MetricFilter, len(bundle.MetricFilters))
 	for idx, filter := range bundle.MetricFilters {
 		if len(filter) == 0 {
-			return errors.Errorf("invalid metric filters configured (%d:%v)", idx, filter)
+			return errors.Errorf("invalid (empty) metric filter configured (%d:%v)", idx, filter)
 		}
 
 		c.log.Debug().Strs("filter", filter).Msg("adding metric filter")
 		c.metricFilters[idx] = MetricFilter{
-			Allow:  filter[0] == "allow",
+			Allow:  strings.ToLower(filter[0]) == "allow",
 			Filter: regexp.MustCompile(filter[1]),
 		}
 	}

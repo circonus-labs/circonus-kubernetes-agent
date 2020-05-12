@@ -88,16 +88,6 @@ const (
 	// hidden circonus settings for development and debugging
 	//
 
-	// ConcurrentSubmissions submit metrics to circonus concurrently
-	ConcurrentSubmissions = "circonus.concurrent_submissions"
-	// SerialSubmissions submit metrics serially
-	SerialSubmissions = "circonus.serial_submissions"
-
-	// MaxMetricBucketSize defines a bucket size for parsing prom output - can save on memory
-	// to not queue up all of the metric-server metrics at one time and send them in smaller chunks
-	// 0 = no limit, any other number, metrics are sent in buckets of size
-	MaxMetricBucketSize = "circonus.max_metric_bucket_size"
-
 	// Base64Tags whether to encode tags with base64
 	Base64Tags = "circonus.base64_tags"
 	// NoBase64 disables using base64 encoding for stream tags (debugging)
