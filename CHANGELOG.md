@@ -1,3 +1,13 @@
+# v0.7.0
+
+* NOTE: metrics-server option is deprecated
+* add: metric filter rules to configuration for dns, api errors, and api auth
+* upd: refactor sequencing and number of go routines for metric collection
+* add: basic local filtering of metrics by namerx in rules (reduce memory utilization, bandwidth, and broker load)
+* add: `--nodecc` argument to turn on concurrent collection for node/pod/container metrics (mem vs speed/cpu tradeoff) default is off
+* upd: collect dns metrics from each kube-dns pod, default true, for new health dashboard - can be turned off in configuration
+* add: api-server metrics collection, default true, for new health dashboard - can be turned off in configuration
+
 # v0.6.6
 
 * fix: force float64 for used percentages
