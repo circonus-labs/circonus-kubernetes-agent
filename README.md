@@ -6,6 +6,7 @@ An agent designed to retrieve metrics from a Kubernetes cluster. Runs as a deplo
 
 ## Installation
 
+### `kubectl`
 1. Clone repo
 1. Verify `deploy/authrbac.yaml`, alter any applicable settings for cluster security
 1. Change any applicable settings in `deploy/configuration.yaml`, minimum required:
@@ -14,7 +15,18 @@ An agent designed to retrieve metrics from a Kubernetes cluster. Runs as a deplo
    * Kubernetes name - used for check title when creating a check
    * It is recommended that [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) be installed in the cluster and collection enabled in the configuration for all dashboard tabs to function
 1. Change any applicable settings in `deploy/deployment.yaml`
-1. Apply `kubectl apply -f deploy/`
+1. Apply `kubectl apply -f deploy/*.yaml`
+
+### `helm`
+
+```
+helm install deploy/helm \
+  --name=<Helm release name> \
+  --set=circonus_api_key=<some valid Circonus API key> \
+  --set=kubernetes_name=<kubernetes-name> \
+  --set=circonus_check_target=<circonus-check-target> \
+  --wait
+```
 
 ## Versions
 
