@@ -1,3 +1,7 @@
+# v0.7.1
+
+* add: contributed helm chart
+
 # v0.7.0
 
 * NOTE: metrics-server option is deprecated
