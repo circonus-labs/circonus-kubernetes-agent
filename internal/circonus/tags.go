@@ -12,6 +12,7 @@ import (
 	"strings"
 	"unicode"
 
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/rs/zerolog/log"
 )
 
@@ -23,6 +24,32 @@ type Tag struct {
 
 // Tags defines a list of tags
 type Tags []Tag
+
+func (c *Check) TagListToCGM(tags []string) cgm.Tags {
+	tagList := make(cgm.Tags, len(tags))
+
+	for i, tag := range tags {
+		if i >= MaxTags {
+			log.Warn().Int("num", len(tags)).Int("max", MaxTags).Interface("tags", tags).Msg("ignoring tags over max")
+			break
+		}
+
+		if !strings.Contains(tag, ":") {
+			tagList[i] = cgm.Tag{Category: tag, Value: ""}
+			continue
+		}
+
+		tagParts := strings.SplitN(tag, ":", 2)
+		if len(tagParts) != 2 {
+			tagList[i] = cgm.Tag{Category: tag, Value: ""}
+			continue
+		}
+
+		tagList[i] = cgm.Tag{Category: tagParts[0], Value: tagParts[1]}
+	}
+
+	return tagList
+}
 
 // TaggedName takes a string name and 0, 1, or 2 sets of tags.
 //   * The first set of tags are the stream tags.

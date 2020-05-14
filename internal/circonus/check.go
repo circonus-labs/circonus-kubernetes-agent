@@ -15,8 +15,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	stdlog "log"
+	"net/http"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -37,14 +39,15 @@ const (
 )
 
 type Stats struct {
+	Filtered  uint64
 	Metrics   uint64
 	SentBytes uint64
 	SentSize  string
 }
 
-type MetricSet struct {
-	Metrics []byte
-	Logger  zerolog.Logger
+type MetricFilter struct {
+	Allow  bool
+	Filter *regexp.Regexp
 }
 
 type Check struct {
@@ -58,7 +61,8 @@ type Check struct {
 	statsmu         sync.Mutex
 	metrics         *cgm.CirconusMetrics
 	defaultTags     cgm.Tags
-	metricQueue     chan MetricSet
+	metricFilters   []MetricFilter
+	client          *http.Client
 }
 
 func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error) {
@@ -66,9 +70,8 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 		return nil, errors.New("invalid circonus config (nil)")
 	}
 	c := &Check{
-		config:      cfg,
-		log:         parentLogger.With().Str("pkg", "circonus.check").Logger(),
-		metricQueue: make(chan MetricSet),
+		config: cfg,
+		log:    parentLogger.With().Str("pkg", "circonus.check").Logger(),
 	}
 
 	// output debug messages for hidden settings which are not DEFAULT
@@ -83,12 +86,6 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 	}
 	if cfg.DebugSubmissions != defaults.DebugSubmissions {
 		c.log.Info().Bool("enabled", cfg.DebugSubmissions).Msg("debug submissions")
-	}
-	if cfg.SerialSubmissions != defaults.SerialSubmissions {
-		c.log.Info().Bool("enabled", cfg.SerialSubmissions).Msg("serial submissions")
-	}
-	if cfg.MaxMetricBucketSize != defaults.MaxMetricBucketSize {
-		c.log.Info().Int("max_metric_bucket_size", cfg.MaxMetricBucketSize).Msg("max metric bucket size")
 	}
 
 	if cfg.DefaultStreamtags != "" {
@@ -133,17 +130,6 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error)
 	}
 
 	return c, nil
-}
-
-// MaxMetricBucketSize used by promtext parser to bucket metrics for submissions (may stabilize memory with large prom output)
-func (c *Check) MaxMetricBucketSize() int {
-	return c.config.MaxMetricBucketSize
-}
-
-// ConcurrentSubmissions enable sending metrics to circonus concurrently
-// when disabled collection time is increased, when enabled may produce gaps
-func (c *Check) ConcurrentSubmissions() bool {
-	return c.config.ConcurrentSubmissions
 }
 
 // UseCompression indicates whether the data being sent should be compressed
@@ -214,8 +200,14 @@ func (c *Check) initializeCheckBundle(client *apiclient.API) error {
 }
 
 // setSubmissionURL sets the package submissionURL for use by metric submitter
-func (c *Check) setSubmissionURL(client *apiclient.API, bundle *apiclient.CheckBundle) error {
+func (c *Check) setSubmissionURL(client *apiclient.API, checkBundle *apiclient.CheckBundle) error {
+	bundle, err := c.updateMetricFilters(client, c.config, checkBundle)
+	if err != nil {
+		return errors.Wrap(err, "updating metric filters")
+	}
+
 	c.log.Debug().Interface("check_bundle", bundle).Msg("using check bundle")
+
 	surl, ok := bundle.Config[apiclicfg.SubmissionURL]
 	if !ok {
 		return errors.Errorf("check bundle config does not have a submission_url (%#v)", bundle.Config)
@@ -231,6 +223,20 @@ func (c *Check) setSubmissionURL(client *apiclient.API, bundle *apiclient.CheckB
 	if err := c.initializeBroker(client, bundle); err != nil {
 		return errors.Wrap(err, "unable to initialize broker TLS configuration")
 	}
+
+	c.metricFilters = make([]MetricFilter, len(bundle.MetricFilters))
+	for idx, filter := range bundle.MetricFilters {
+		if len(filter) == 0 {
+			return errors.Errorf("invalid (empty) metric filter configured (%d:%v)", idx, filter)
+		}
+
+		c.log.Debug().Strs("filter", filter).Msg("adding metric filter")
+		c.metricFilters[idx] = MetricFilter{
+			Allow:  strings.ToLower(filter[0]) == "allow",
+			Filter: regexp.MustCompile(filter[1]),
+		}
+	}
+
 	return nil
 }
 
@@ -283,7 +289,7 @@ func (c *Check) findOrCreateCheckBundle(client *apiclient.API, cfg *config.Circo
 		c.log.Warn().Str("alt_type", altCheckType).Str("bundle_cid", bundle.CID).Str("check_uuid", bundle.CheckUUIDs[0]).Msg("found alternate check type, using")
 	}
 
-	return c.updateMetricFilters(client, cfg, &bundle)
+	return &bundle, nil
 }
 
 // updateMetricFilters forces check bundle metric filters to match what
@@ -374,6 +380,9 @@ func (c *Check) loadMetricFilters() [][]string {
 		{"allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"},
 		{"allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"},
 		{"allow", "^usageNanoCores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"},
+		{"allow", "^apiserver_request_total$", "tags", "and(or(code:5*,code:4*))", "api req errors"},
+		{"allow", "^authenticated_user_requests$", "api auth"},
+		{"allow", "^authentication_attempts$", "api auth"},
 		{"allow", "^kube_pod_container_status_(running|terminated|waiting|ready)$", "containers"},
 		{"allow", "^kube_deployment_(created|spec_replicas|status_replicas|status_replicas_updated|status_replicas_available|status_replicas_unavailable)$", "deployments"},
 		{"allow", "^kube_pod_start_time", "pods"},
@@ -385,9 +394,9 @@ func (c *Check) loadMetricFilters() [][]string {
 		{"allow", "^(Disk|Memory|PID)Pressure$", "node status"},
 		{"allow", "^capacity_.*$", "node capacity"},
 		{"allow", "^kube_namespace_status_phase$", "tags", "and(or(phase:Active,phase:Terminating))", "namespaces"},
-		{"allow", "^collect_.*$", "agent collection stats"},
-		{"allow", "^events$", "events"},
 		{"allow", "^coredns_.*$", "kube-dns"},
+		{"allow", "^events$", "events"},
+		{"allow", "^collect_.*$", "agent collection stats"},
 		{"deny", "^.+$", "all other metrics}"},
 	}
 

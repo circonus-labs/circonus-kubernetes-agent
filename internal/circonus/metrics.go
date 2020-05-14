@@ -53,6 +53,11 @@ const (
 	MaxMetricNameLen = 4096 // sync w/MAX_METRIC_TAGGED_NAME https://github.com/circonus-labs/reconnoiter/blob/master/src/noit_metric.h#L40
 )
 
+type Metric struct {
+	Name  string
+	Value MetricSample
+}
+
 type MetricSample struct {
 	Value     interface{} `json:"_value"`
 	Type      string      `json:"_type"`
@@ -132,6 +137,24 @@ func (c *Check) QueueMetricSample(
 		return errors.New("invalid metric type (empty)")
 	}
 
+	if len(c.metricFilters) > 0 {
+		rejectMetric := true
+		for _, mf := range c.metricFilters {
+			if mf.Filter.MatchString(metricName) {
+				if mf.Allow {
+					rejectMetric = false
+					break
+				}
+			}
+		}
+		if rejectMetric {
+			c.statsmu.Lock()
+			c.stats.Filtered++
+			c.statsmu.Unlock()
+			return nil
+		}
+	}
+
 	streamTagList := strings.Split(c.config.DefaultStreamtags, ",")
 	streamTagList = append(streamTagList, streamTags...)
 
@@ -163,7 +186,7 @@ func (c *Check) QueueMetricSample(
 
 	val := value
 	if metricType == "s" {
-		val = value.(string) //fmt.Sprintf("%s", value.(string))
+		val = value.(string)
 	}
 
 	if _, found := metrics[taggedMetricName]; found {

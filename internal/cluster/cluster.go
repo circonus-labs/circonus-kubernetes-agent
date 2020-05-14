@@ -13,18 +13,19 @@ import (
 	"fmt"
 	"io/ioutil"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	cgm "github.com/circonus-labs/circonus-gometrics/v3"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/as"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/dns"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/events"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/ksm"
-	"github.com/circonus-labs/circonus-kubernetes-agent/internal/ms"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/nodes"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
@@ -39,7 +40,7 @@ type Cluster struct {
 	logger     zerolog.Logger
 	interval   time.Duration
 	lastStart  *time.Time
-	collectors []Collector
+	collectors []string
 	running    bool
 	sync.Mutex
 }
@@ -108,39 +109,21 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 	}
 	c.check = check
 
-	if c.cfg.EnableNodes {
-		// node metrics, as well as, pod and container metrics (both optional)
-		collector, err := nodes.New(&c.cfg, c.logger, c.check)
-		if err != nil {
-			return nil, errors.Wrap(err, "initializing node collector")
-		}
-		c.collectors = append(c.collectors, collector)
-	}
-
 	if c.cfg.EnableKubeStateMetrics {
-		// TODO: does this allow "watching"?
-		collector, err := ksm.New(&c.cfg, c.logger, c.check)
-		if err != nil {
-			return nil, errors.Wrap(err, "initializing kube-state-metrics collector")
-		}
-		c.collectors = append(c.collectors, collector)
+		c.collectors = append(c.collectors, "ksm")
 	}
 
-	if c.cfg.EnableMetricServer {
-		// TODO: does this allow "watching"?
-		collector, err := ms.New(&c.cfg, c.logger, c.check)
-		if err != nil {
-			return nil, errors.Wrap(err, "initializing kube-state-metrics collector")
-		}
-		c.collectors = append(c.collectors, collector)
+	if c.cfg.EnableAPIServer {
+		c.collectors = append(c.collectors, "api")
 	}
 
 	if c.cfg.EnableKubeDNSMetrics {
-		collector, err := dns.New(&c.cfg, c.logger, c.check)
-		if err != nil {
-			return nil, errors.Wrap(err, "initializing kube-dns metrics collector")
-		}
-		c.collectors = append(c.collectors, collector)
+		c.collectors = append(c.collectors, "dns")
+	}
+
+	if c.cfg.EnableNodes {
+		// node metrics, as well as, pod and container metrics (both optional)
+		c.collectors = append(c.collectors, "node")
 	}
 
 	if len(c.collectors) == 0 {
@@ -151,18 +134,9 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 }
 
 func (c *Cluster) Start(ctx context.Context) error {
-	// create a errgroup context based on ctx
-	// if events enabled, create event watcher and add to errgroup
-	// if >0 collectors, start collector goroutine and add to errgroup
-	// errgroup wait
 
 	var eventWatcher *events.Events
 	if c.cfg.EnableEvents {
-		// TODO: events needs to be a separate thing started
-		//       in cluster.Start. It will not return if event
-		//       'watching' works as a stream collector. Which
-		//       means it does not need to be fired every
-		//       cluster.Interval like everything else.
 		ew, err := events.New(&c.cfg, c.logger, c.check)
 		if err != nil {
 			return errors.Wrap(err, "initializing events collector")
@@ -176,10 +150,6 @@ func (c *Cluster) Start(ctx context.Context) error {
 
 	if eventWatcher != nil {
 		go eventWatcher.Start(ctx, c.tlsConfig)
-	}
-
-	if !c.check.ConcurrentSubmissions() {
-		go c.check.Submitter(ctx)
 	}
 
 	c.logger.Info().Str("collection_interval", c.interval.String()).Time("next_collection", time.Now().Add(c.interval)).Msg("client started")
@@ -224,16 +194,53 @@ func (c *Cluster) Start(ctx context.Context) error {
 
 			go func() {
 				var wg sync.WaitGroup
-				wg.Add(len(c.collectors))
-				for _, collector := range c.collectors {
-					if collector.ID() == "events" {
-						continue
+				for _, collectorID := range c.collectors {
+					switch collectorID {
+					case "node":
+						collector, err := nodes.New(&c.cfg, c.logger, c.check, c.circCfg.NodeCC)
+						if err != nil {
+							c.logger.Error().Err(err).Msg("initializing node collector")
+						} else {
+							collector.Collect(ctx, c.tlsConfig, &start)
+						}
+					case "ksm":
+						wg.Add(1)
+						go func() {
+							collector, err := ksm.New(&c.cfg, c.logger, c.check)
+							if err != nil {
+								c.logger.Error().Err(err).Msg("initializing kube-state-metrics collector")
+							} else {
+								collector.Collect(ctx, c.tlsConfig, &start)
+							}
+							wg.Done()
+						}()
+					case "api":
+						wg.Add(1)
+						go func() {
+							collector, err := as.New(&c.cfg, c.logger, c.check)
+							if err != nil {
+								c.logger.Error().Err(err).Msg("initializing api-server collector")
+							} else {
+								collector.Collect(ctx, c.tlsConfig, &start)
+							}
+							wg.Done()
+						}()
+					case "dns":
+						wg.Add(1)
+						go func() {
+							collector, err := dns.New(&c.cfg, c.logger, c.check)
+							if err != nil {
+								c.logger.Error().Err(err).Msg("initializing kube-dns collector")
+							} else {
+								collector.Collect(ctx, c.tlsConfig, &start)
+							}
+							wg.Done()
+						}()
+					default:
+						c.logger.Warn().Str("collector_id", collectorID).Msg("ignoring unknown collector")
 					}
-					go func(collector Collector) {
-						collector.Collect(ctx, c.tlsConfig, &start)
-						wg.Done()
-					}(collector)
 				}
+
 				wg.Wait()
 
 				cstats := c.check.SubmitStats()
@@ -249,17 +256,29 @@ func (c *Cluster) Start(ctx context.Context) error {
 				c.check.AddGauge("collect_ngr", baseStreamTags, uint64(runtime.NumGoroutine()))
 
 				{
-					var streamTags cgm.Tags
-					streamTags = append(streamTags, baseStreamTags...)
-					streamTags = append(streamTags, cgm.Tag{Category: "units", Value: "bytes"})
-					c.check.AddGauge("collect_sent", streamTags, cstats.SentBytes)
+					debug.FreeOSMemory()
 
 					var ms runtime.MemStats
 					runtime.ReadMemStats(&ms)
+
+					var streamTags cgm.Tags
+					streamTags = append(streamTags, baseStreamTags...)
+
+					c.check.AddGauge("collect_mem_frag", streamTags, float64(ms.Sys-ms.HeapReleased)/float64(ms.HeapInuse))
+					c.check.AddGauge("collect_numgc", streamTags, ms.NumGC)
+					c.check.AddGauge("collect_heap_objs", streamTags, ms.HeapObjects)
+					c.check.AddGauge("collect_live_obj", streamTags, ms.Mallocs-ms.Frees)
+
+					streamTags = append(streamTags, cgm.Tag{Category: "units", Value: "bytes"})
+
+					c.check.AddGauge("collect_sent", streamTags, cstats.SentBytes)
 					c.check.AddGauge("collect_heap_alloc", streamTags, ms.HeapAlloc)
+					c.check.AddGauge("collect_heap_inuse", streamTags, ms.HeapInuse)
+					c.check.AddGauge("collect_heap_idle", streamTags, ms.HeapIdle)
 					c.check.AddGauge("collect_heap_released", streamTags, ms.HeapReleased)
 					c.check.AddGauge("collect_stack_sys", streamTags, ms.StackSys)
 					c.check.AddGauge("collect_other_sys", streamTags, ms.OtherSys)
+
 					var mem syscall.Rusage
 					if err := syscall.Getrusage(syscall.RUSAGE_SELF, &mem); err == nil {
 						c.check.AddGauge("collect_max_rss", streamTags, uint64(mem.Maxrss*1024))
@@ -267,6 +286,7 @@ func (c *Cluster) Start(ctx context.Context) error {
 						c.logger.Warn().Err(err).Msg("collecting rss from system")
 					}
 				}
+
 				{
 					var streamTags cgm.Tags
 					streamTags = append(streamTags, baseStreamTags...)

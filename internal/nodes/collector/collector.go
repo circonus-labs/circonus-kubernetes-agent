@@ -7,6 +7,7 @@
 package collector
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -24,6 +25,7 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
+	"github.com/prometheus/common/expfmt"
 	"github.com/rs/zerolog"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -61,7 +63,7 @@ func New(cfg *config.Cluster, node *k8s.Node, logger zerolog.Logger, check *circ
 	}, nil
 }
 
-func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.Config, ts *time.Time) {
+func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.Config, ts *time.Time, concurrent bool) {
 	nc.ctx = ctx
 	nc.tlsConfig = tlsConfig
 	nc.ts = ts
@@ -72,36 +74,49 @@ func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.C
 	baseMeasurementTags := []string{}
 	baseStreamTags := []string{"source:kubelet", "node:" + nc.node.Metadata.Name}
 
-	var wg sync.WaitGroup
+	if concurrent {
+		var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() {
+		wg.Add(1)
+		go func() {
+			nc.meta(baseStreamTags, baseMeasurementTags) // from node list
+			wg.Done()
+		}()
+		if nc.cfg.EnableNodeStats {
+			wg.Add(1)
+			go func() {
+				nc.summary(baseStreamTags, baseMeasurementTags) // from /stats/summary
+				wg.Done()
+			}()
+		}
+		if nc.cfg.EnableNodeMetrics {
+			wg.Add(1)
+			go func() {
+				nc.nmetrics(baseStreamTags, baseMeasurementTags) // from /metrics
+				wg.Done()
+			}()
+		}
+		if nc.cfg.EnableCadvisorMetrics {
+			wg.Add(1)
+			go func() {
+				nc.cadvisor(baseStreamTags, baseMeasurementTags) // from /metrics/cadvisor
+				wg.Done()
+			}()
+		}
+
+		wg.Wait()
+	} else {
 		nc.meta(baseStreamTags, baseMeasurementTags) // from node list
-		wg.Done()
-	}()
-	if nc.cfg.EnableNodeStats {
-		wg.Add(1)
-		go func() {
+		if nc.cfg.EnableNodeStats {
 			nc.summary(baseStreamTags, baseMeasurementTags) // from /stats/summary
-			wg.Done()
-		}()
-	}
-	if nc.cfg.EnableNodeMetrics {
-		wg.Add(1)
-		go func() {
+		}
+		if nc.cfg.EnableNodeMetrics {
 			nc.nmetrics(baseStreamTags, baseMeasurementTags) // from /metrics
-			wg.Done()
-		}()
-	}
-	if nc.cfg.EnableCadvisorMetrics {
-		wg.Add(1)
-		go func() {
+		}
+		if nc.cfg.EnableCadvisorMetrics {
 			nc.cadvisor(baseStreamTags, baseMeasurementTags) // from /metrics/cadvisor
-			wg.Done()
-		}()
+		}
 	}
-
-	wg.Wait()
 
 	nc.check.AddHistSample("collect_latency", cgm.Tags{
 		cgm.Tag{Category: "op", Value: "collect_node"},
@@ -216,10 +231,10 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 	}
 
 	if len(metrics) == 0 {
-		nc.log.Warn().Msg("no telemetry to submit")
+		nc.log.Warn().Msg("no meta telemetry to submit")
 		return
 	}
-	if err := nc.check.SubmitQueue(nc.ctx, metrics, nc.log.With().Str("type", "meta").Logger()); err != nil {
+	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "meta").Logger(), true); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
 	}
 
@@ -367,7 +382,12 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 	}
 
 	var stats statsSummary
-	if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		nc.log.Error().Err(err).Msg("reading summary stats")
+		return
+	}
+	if err := json.Unmarshal(data, &stats); err != nil {
 		nc.log.Error().Err(err).Msg("parsing summary stats")
 		return
 	}
@@ -392,10 +412,10 @@ func (nc *Collector) summaryNode(node *statsSummaryNode, parentStreamTags []stri
 	nc.queueRlimit(metrics, &node.Rlimit, parentStreamTags, parentMeasurementTags)
 
 	if len(metrics) == 0 {
-		nc.log.Warn().Msg("no telemetry to submit")
+		nc.log.Warn().Msg("no summary telemetry to submit")
 		return
 	}
-	if err := nc.check.SubmitQueue(nc.ctx, metrics, nc.log.With().Str("type", "/stats/summary").Logger()); err != nil {
+	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "/stats/summary").Logger(), true); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
 	}
 }
@@ -428,10 +448,10 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 	}
 
 	if len(metrics) == 0 {
-		nc.log.Warn().Msg("no telemetry to submit")
+		nc.log.Warn().Msg("no system container telemetry to submit")
 		return
 	}
-	if err := nc.check.SubmitQueue(nc.ctx, metrics, nc.log.With().Str("type", "system_containers").Logger()); err != nil {
+	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "system_containers").Logger(), true); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
 	}
 
@@ -506,10 +526,10 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 	}
 
 	if len(metrics) == 0 {
-		nc.log.Warn().Msg("no telemetry to submit")
+		nc.log.Warn().Msg("no pod telemetry to submit")
 		return
 	}
-	if err := nc.check.SubmitQueue(nc.ctx, metrics, nc.log.With().Str("type", "pods").Logger()); err != nil {
+	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "pods").Logger(), true); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
 	}
 }
@@ -575,7 +595,14 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 		return
 	}
 
-	if err := promtext.QueueMetrics(nc.ctx, nc.check, nc.log, resp.Body, parentStreamTags, parentMeasurementTags, nil); err != nil {
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		nc.log.Error().Err(err).Msg("reading metrics")
+		return
+	}
+
+	var parser expfmt.TextParser
+	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, nc.log, bytes.NewReader(data), parentStreamTags, parentMeasurementTags, nil); err != nil {
 		nc.log.Error().Err(err).Msg("parsing node metrics")
 	}
 }
@@ -644,7 +671,14 @@ func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags [
 	streamTags := []string{"__rollup:false"} // prevent high cardinality metrics from rolling up
 	streamTags = append(streamTags, parentStreamTags...)
 
-	if err := promtext.QueueMetrics(nc.ctx, nc.check, nc.log, resp.Body, streamTags, parentMeasurementTags, nil); err != nil {
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		nc.log.Error().Err(err).Msg("reading metrics")
+		return
+	}
+
+	var parser expfmt.TextParser
+	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, nc.log, bytes.NewReader(data), streamTags, parentMeasurementTags, nil); err != nil {
 		nc.log.Error().Err(err).Msg("parsing node metrics/cadvisor")
 	}
 }
@@ -707,8 +741,12 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 	}
 
 	var ps podSpec
-	if err := json.NewDecoder(resp.Body).Decode(&ps); err != nil {
-		return collect, tags, err
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return collect, tags, errors.Wrap(err, "reading pod spec body")
+	}
+	if err := json.Unmarshal(data, &ps); err != nil {
+		return collect, tags, errors.Wrap(err, "parsing pod spec json")
 	}
 
 	collect = true

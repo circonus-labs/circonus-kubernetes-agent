@@ -84,17 +84,9 @@ const (
 	// TraceSubmits enables writing all metrics sent to circonus to files
 	TraceSubmits = "circonus.trace_submits"
 
+	//
 	// hidden circonus settings for development and debugging
-
-	// ConcurrentSubmissions submit metrics to circonus concurrently
-	ConcurrentSubmissions = "circonus.concurrent_submissions"
-	// SerialSubmissions submit metrics serially
-	SerialSubmissions = "circonus.serial_submissions"
-
-	// MaxMetricBucketSize defines a bucket size for parsing prom output - can save on memory
-	// to not queue up all of the metric-server metrics at one time and send them in smaller chunks
-	// 0 = no limit, any other number, metrics are sent in buckets of size
-	MaxMetricBucketSize = "circonus.max_metric_bucket_size"
+	//
 
 	// Base64Tags whether to encode tags with base64
 	Base64Tags = "circonus.base64_tags"
@@ -104,8 +96,9 @@ const (
 	// DryRun print metrics to stdout rather than sending to circonu
 	DryRun = "circonus.dry_run"
 
-	// StreamMetrics use streaming metric submission format
-	// StreamMetrics = "circonus.stream_metrics"
+	// NodeCC concurrently collect node metrics (uses more memory for faster collection)
+	// This is technically a k8s setting but it not per-cluster, it is a behavior for the entire agent
+	NodeCC = "circonus.node_cc"
 
 	// UseGZIP when submitting
 	UseGZIP = "circonus.use_gzip"
@@ -159,7 +152,10 @@ const (
 	K8SKSMMetricsPortName     = "kubernetes.ksm_metrics_port_name"
 	K8SKSMTelemetryPortName   = "kubernetes.ksm_telemetry_port_name"
 
-	// K8SEnableMetricsServer enable metrics-server
+	// K8SEnableAPIServer enable api-server
+	K8SEnableAPIServer = "kubernetes.enable_api_server"
+
+	// K8SEnableMetricsServer DEPRECATED, to be removed in future release
 	K8SEnableMetricsServer = "kubernetes.enable_metrics_server"
 
 	// K8SIncludePods include pod metrics

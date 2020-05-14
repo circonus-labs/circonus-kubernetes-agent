@@ -14,44 +14,46 @@ import (
 	"github.com/pkg/errors"
 )
 
+var client *http.Client
+
 func NewAPIClient(tlscfg *tls.Config, reqTimeout time.Duration) (*http.Client, error) {
 	if reqTimeout == time.Duration(0) {
 		reqTimeout = 10 * time.Second
 	}
 
-	var client *http.Client
+	// var client *http.Client
 
-	if tlscfg != nil {
-		client = &http.Client{
-			Timeout: reqTimeout,
-			Transport: &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-				DialContext: (&net.Dialer{
-					Timeout:   5 * time.Second,
-					KeepAlive: 3 * time.Second,
-					DualStack: true,
-				}).DialContext,
-				TLSClientConfig:     tlscfg,
-				TLSHandshakeTimeout: 10 * time.Second,
-				DisableKeepAlives:   false,
-				MaxIdleConnsPerHost: 2,
-				DisableCompression:  false,
-			},
-		}
-	} else {
-		client = &http.Client{
-			Timeout: reqTimeout,
-			Transport: &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-				DialContext: (&net.Dialer{
-					Timeout:   5 * time.Second,
-					KeepAlive: 3 * time.Second,
-					DualStack: true,
-				}).DialContext,
-				DisableKeepAlives:   false,
-				MaxIdleConnsPerHost: 2,
-				DisableCompression:  false,
-			},
+	if client == nil {
+		if tlscfg != nil {
+			client = &http.Client{
+				Timeout: reqTimeout,
+				Transport: &http.Transport{
+					Proxy: http.ProxyFromEnvironment,
+					DialContext: (&net.Dialer{
+						Timeout:   5 * time.Second,
+						KeepAlive: 3 * time.Second,
+					}).DialContext,
+					TLSClientConfig:     tlscfg,
+					TLSHandshakeTimeout: 10 * time.Second,
+					DisableKeepAlives:   false,
+					MaxIdleConnsPerHost: 2,
+					DisableCompression:  false,
+				},
+			}
+		} else {
+			client = &http.Client{
+				Timeout: reqTimeout,
+				Transport: &http.Transport{
+					Proxy: http.ProxyFromEnvironment,
+					DialContext: (&net.Dialer{
+						Timeout:   5 * time.Second,
+						KeepAlive: 3 * time.Second,
+					}).DialContext,
+					DisableKeepAlives:   false,
+					MaxIdleConnsPerHost: 2,
+					DisableCompression:  false,
+				},
+			}
 		}
 	}
 

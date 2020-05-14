@@ -12,7 +12,7 @@ An agent designed to retrieve metrics from a Kubernetes cluster. Runs as a deplo
    * Circonus API Token
    * check target - so the agent can find the check on restart (short, unique string w/o spaces - normally this is an FQDN)
    * Kubernetes name - used for check title when creating a check
-   * It is recommended that kube-state-metrics be installed in the cluster and collection enabled in the configuration
+   * It is recommended that [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) be installed in the cluster and collection enabled in the configuration for all dashboard tabs to function
 1. Change any applicable settings in `deploy/deployment.yaml`
 1. Apply `kubectl apply -f deploy/`
 
@@ -23,5 +23,4 @@ Developed against and tested with...
 * kubernetes v1.17.0
 * etcd v3.4.3
 * calico v3.10
-* metrics-server v0.3.6
 * kube-state-metrics v1.7.2 (arm) and v1.8.0 (amd)

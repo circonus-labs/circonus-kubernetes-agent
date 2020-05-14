@@ -39,14 +39,12 @@ const (
 	// StreamMetrics = false
 	// these hidden settings are mainly for debugging
 	// the features default to ON and can be toggled OFF
-	ConcurrentSubmissions = true
-	SerialSubmissions     = false
-	MaxMetricBucketSize   = 0
-	NoBase64              = false
-	Base64Tags            = true
-	NoGZIP                = false
-	UseGZIP               = true
-	DebugSubmissions      = false
+	NoBase64         = false
+	Base64Tags       = true
+	NoGZIP           = false
+	UseGZIP          = true
+	DebugSubmissions = false
+	NodeCC           = false
 
 	// General defaults
 
@@ -75,6 +73,7 @@ const (
 	K8SEnableKubeStateMetrics = false
 	K8SKSMMetricsPortName     = "http-metrics" // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
 	K8SKSMTelemetryPortName   = "telemetry"    // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
+	K8SEnableAPIServer        = false
 	K8SEnableMetricsServer    = false
 	K8SEnableNodes            = true
 	K8SEnableNodeStats        = true

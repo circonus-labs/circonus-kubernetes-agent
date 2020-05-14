@@ -9,11 +9,11 @@ package dns
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,11 +21,14 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
-	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
+	"github.com/prometheus/common/expfmt"
 	"github.com/rs/zerolog"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 type DNS struct {
@@ -97,42 +100,20 @@ func (dns *DNS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	}()
 
 	collectStart := time.Now()
-	svc, err := dns.getServiceDefinition(tlsConfig)
+
+	urls, err := dns.getMetricURLs()
 	if err != nil {
-		dns.log.Error().Err(err).Msg("service definition")
-		dns.Lock()
-		dns.running = false
-		dns.Unlock()
-		return
-	}
-	if svc == nil {
-		dns.log.Error().Msg("invalid service definition (nil)")
+		dns.log.Error().Err(err).Msg("invalid service definition")
 		dns.Lock()
 		dns.running = false
 		dns.Unlock()
 		return
 	}
 
-	metricPath := "/proxy/metrics"
-	metricPortName := ""
-	for _, p := range svc.Spec.Ports {
-		if p.Name == "metrics" {
-			metricPortName = p.Name
+	for podName, metricURL := range urls {
+		if err := dns.getMetrics(ctx, podName, metricURL); err != nil {
+			dns.log.Error().Err(err).Str("url", metricURL).Msg("http-metrics")
 		}
-	}
-
-	if metricPortName == "" {
-		dns.log.Error().Msg("invalid service definition, port named 'metrics' not found")
-		dns.Lock()
-		dns.running = false
-		dns.Unlock()
-		return
-	}
-
-	metricURL := dns.config.URL + svc.Metadata.SelfLink + ":" + metricPortName + metricPath
-
-	if err := dns.metrics(ctx, tlsConfig, metricURL); err != nil {
-		dns.log.Error().Err(err).Str("url", metricURL).Msg("http-metrics")
 	}
 
 	dns.check.AddHistSample("collect_latency", cgm.Tags{
@@ -146,87 +127,90 @@ func (dns *DNS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	dns.Unlock()
 }
 
-func (dns *DNS) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error) {
-	u, err := url.Parse(dns.config.URL + "/api/v1/services")
-	if err != nil {
-		return nil, err
-	}
-
-	q := u.Query()
-	q.Set("fieldSelector", "metadata.name=kube-dns")
-	u.RawQuery = q.Encode()
-
-	client, err := k8s.NewAPIClient(tlsConfig, dns.apiTimelimit)
-	if err != nil {
-		return nil, errors.Wrap(err, "service definition cli")
-	}
-	defer client.CloseIdleConnections()
-
-	reqURL := u.String()
-	dns.log.Debug().Str("url", reqURL).Msg("service")
-	req, err := k8s.NewAPIRequest(dns.config.BearerToken, reqURL)
-	if err != nil {
-		return nil, errors.Wrap(err, "service definition req")
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		dns.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "source", Value: release.NAME},
-			cgm.Tag{Category: "request", Value: "kube-dns_service"},
-			cgm.Tag{Category: "target", Value: "api-server"},
-		})
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		dns.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "source", Value: release.NAME},
-			cgm.Tag{Category: "request", Value: "kube-dns_service"},
-			cgm.Tag{Category: "target", Value: "api-server"},
-			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
-		})
-		data, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			dns.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
-			return nil, err
+func (dns *DNS) getMetricURLs() (map[string]string, error) {
+	var cfg *rest.Config
+	if c, err := rest.InClusterConfig(); err != nil {
+		if err != rest.ErrNotInCluster {
+			return nil, errors.Wrap(err, "unable to get DNS metrics, must be in cluster")
 		}
-		dns.log.Warn().Str("status", resp.Status).RawJSON("response", data).Msg("error from API server")
-		return nil, errors.New("error response from api server")
+		// not in cluster, use supplied customer config for cluster
+		cfg = &rest.Config{}
+		if dns.config.BearerToken != "" {
+			cfg.BearerToken = dns.config.BearerToken
+		}
+		if dns.config.URL != "" {
+			cfg.Host = dns.config.URL
+		}
+		if dns.config.CAFile != "" {
+			cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: dns.config.CAFile}
+		}
+	} else {
+		cfg = c // use in-cluster config
 	}
 
-	var s k8s.ServiceList
-	if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing cleint set")
+	}
+
+	svc, err := clientset.CoreV1().Services("kube-system").Get("kube-dns", metav1.GetOptions{})
+	if err != nil {
 		return nil, err
 	}
 
-	if len(s.Items) == 0 {
-		return nil, errors.New("no 'kube-dns' service found")
+	scrape := false
+	port := ""
+
+	for name, value := range svc.Annotations {
+		switch name {
+		case "prometheus.io/port":
+			port = value
+		case "prometheus.io/scrape":
+			s, err := strconv.ParseBool(value)
+			if err != nil {
+				return nil, errors.Wrap(err, "parsing service confing annotation")
+			}
+			scrape = s
+		}
+	}
+	if !scrape {
+		return nil, errors.New("kube-dns not configured for scraping")
 	}
 
-	if len(s.Items) > 1 {
-		return nil, fmt.Errorf("multiple (%d) 'kube-dns' services found", len(s.Items))
+	if len(svc.Spec.Selector) == 0 {
+		return nil, errors.New("no selectors found in kube-dns service")
+
 	}
 
-	return s.Items[0], nil
+	selectors := make([]string, len(svc.Spec.Selector))
+	i := 0
+	for name, value := range svc.Spec.Selector {
+		selectors[i] = name + "=" + value
+		i++
+	}
+
+	pods, err := clientset.CoreV1().Pods(svc.Namespace).List(metav1.ListOptions{LabelSelector: strings.Join(selectors, ",")})
+	if err != nil {
+		return nil, errors.Wrap(err, "getting list of kube-dns pods")
+	}
+	if len(pods.Items) == 0 {
+		return nil, errors.Errorf("no pods found matching selector (%s)", strings.Join(selectors, ","))
+	}
+
+	urls := make(map[string]string)
+	for _, pod := range pods.Items {
+		if pod.Status.PodIP != "" {
+			urls[pod.Name] = fmt.Sprintf("http://%s:%s/metrics", pod.Status.PodIP, port)
+		}
+	}
+
+	return urls, nil
 }
 
-func (dns *DNS) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL string) error {
-	client, err := k8s.NewAPIClient(tlsConfig, dns.apiTimelimit)
-	if err != nil {
-		return errors.Wrap(err, "/metrics cli")
-	}
-	defer client.CloseIdleConnections()
-
-	dns.log.Debug().Str("url", metricURL).Msg("metrics")
-	req, err := k8s.NewAPIRequest(dns.config.BearerToken, metricURL)
-	if err != nil {
-		return errors.Wrap(err, "/metrics req")
-	}
+func (dns *DNS) getMetrics(ctx context.Context, podName, metricURL string) error {
 
 	start := time.Now()
-	resp, err := client.Do(req)
+	resp, err := http.Get(metricURL) //nolint:gosec
 	if err != nil {
 		dns.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
@@ -265,11 +249,13 @@ func (dns *DNS) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 	streamTags := []string{
 		"source:kube-dns",
 		"source_type:metrics",
+		"pod_name:" + podName,
 		"__rollup:false", // prevent high cardinality metrics from rolling up
 	}
 	measurementTags := []string{}
 
-	if err := promtext.QueueMetrics(ctx, dns.check, dns.log, resp.Body, streamTags, measurementTags, dns.ts); err != nil {
+	var parser expfmt.TextParser
+	if err := promtext.QueueMetrics(ctx, parser, dns.check, dns.log, resp.Body, streamTags, measurementTags, dns.ts); err != nil {
 		return err
 	}
 

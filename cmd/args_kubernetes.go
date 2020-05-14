@@ -209,6 +209,26 @@ func init() {
 
 	{
 		const (
+			key          = keys.K8SEnableAPIServer
+			longOpt      = "k8s-enable-api-server"
+			envVar       = release.ENVPREFIX + "_K8S_ENABLE_API_SERVER"
+			description  = "Kubernetes enable collection from api-server"
+			defaultValue = defaults.K8SEnableAPIServer
+		)
+
+		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		// This is deprecated, it is a NOOP and will be removed from a future release
+		const (
 			key          = keys.K8SEnableMetricsServer
 			longOpt      = "k8s-enable-metrics-server"
 			envVar       = release.ENVPREFIX + "_K8S_ENABLE_METRICS_SERVER"

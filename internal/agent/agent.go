@@ -11,6 +11,8 @@ import (
 	"expvar"
 	"fmt"
 	"net/http"
+
+	// _ "net/http/pprof" //nolint:gosec
 	"os"
 	"os/signal"
 
@@ -63,16 +65,6 @@ func New() (*Agent, error) {
 	}
 
 	// Set the hidden settings based on viper
-	cfg.Circonus.ConcurrentSubmissions = defaults.ConcurrentSubmissions
-	cfg.Circonus.SerialSubmissions = defaults.SerialSubmissions
-	if viper.GetBool(keys.SerialSubmissions) != defaults.SerialSubmissions {
-		cfg.Circonus.SerialSubmissions = true
-		cfg.Circonus.ConcurrentSubmissions = false
-	}
-	cfg.Circonus.MaxMetricBucketSize = defaults.MaxMetricBucketSize
-	if viper.GetUint(keys.MaxMetricBucketSize) != defaults.MaxMetricBucketSize {
-		cfg.Circonus.MaxMetricBucketSize = viper.GetInt(keys.MaxMetricBucketSize)
-	}
 	cfg.Circonus.Base64Tags = defaults.Base64Tags
 	if viper.GetBool(keys.NoBase64) {
 		cfg.Circonus.Base64Tags = false
@@ -84,6 +76,8 @@ func New() (*Agent, error) {
 	cfg.Circonus.DryRun = viper.GetBool(keys.DryRun)
 	// cfg.Circonus.StreamMetrics = viper.GetBool(keys.StreamMetrics)
 	cfg.Circonus.DebugSubmissions = viper.GetBool(keys.DebugSubmissions)
+
+	cfg.Circonus.NodeCC = viper.GetBool(keys.NodeCC)
 
 	if len(cfg.Clusters) > 0 { // multiple clusters
 		for _, clusterConfig := range cfg.Clusters {
@@ -111,6 +105,7 @@ func New() (*Agent, error) {
 	a.signalNotifySetup()
 
 	go func() {
+		// _ = http.ListenAndServe(":6060", nil) // pprof
 		// NOTE: http://addr:8080/stats - application stats
 		//       http://addr:8080/health - liveness probe
 		err := http.ListenAndServe(":8080",

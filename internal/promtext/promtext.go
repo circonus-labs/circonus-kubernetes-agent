@@ -33,6 +33,7 @@ const (
 // Formats supported: https://prometheus.io/docs/instrumenting/exposition_formats/
 func QueueMetrics(
 	ctx context.Context,
+	parser expfmt.TextParser,
 	check *circonus.Check,
 	logger zerolog.Logger,
 	data io.Reader,
@@ -46,27 +47,18 @@ func QueueMetrics(
 		copy(baseStreamTags, parentStreamTags)
 	}
 
-	var parser expfmt.TextParser
-
 	metricFamilies, err := parser.TextToMetricFamilies(data)
 	if err != nil {
 		return err
 	}
 
 	metrics := make(map[string]circonus.MetricSample)
-	maxMetrics := check.MaxMetricBucketSize()
 
 	for mn, mf := range metricFamilies {
 		if done(ctx) {
 			return nil
 		}
 		for _, m := range mf.Metric {
-			if maxMetrics > 0 && len(metrics) >= maxMetrics {
-				if err := check.SubmitQueue(ctx, metrics, logger); err != nil {
-					logger.Warn().Err(err).Msg("submitting metrics")
-				}
-				metrics = make(map[string]circonus.MetricSample)
-			}
 			if done(ctx) {
 				return nil
 			}
@@ -139,7 +131,7 @@ func QueueMetrics(
 							metrics, metricName,
 							circonus.MetricTypeFloat64,
 							streamTags, parentMeasurementTags,
-							*m.GetGauge().Value, ts)
+							m.GetGauge().GetValue(), ts)
 					}
 				case m.Counter != nil:
 					if m.GetCounter().Value != nil {
@@ -147,7 +139,7 @@ func QueueMetrics(
 							metrics, metricName,
 							circonus.MetricTypeFloat64,
 							streamTags, parentMeasurementTags,
-							*m.GetCounter().Value, ts)
+							m.GetCounter().GetValue(), ts)
 					}
 				case m.Untyped != nil:
 					if m.GetUntyped().Value != nil {
@@ -163,18 +155,19 @@ func QueueMetrics(
 							metrics, metricName,
 							circonus.MetricTypeFloat64,
 							streamTags, parentMeasurementTags,
-							*m.GetUntyped().Value, ts)
+							m.GetUntyped().GetValue(), ts)
 					}
 				}
 			}
 		}
 	}
 
-	// send any remaining metrics
-	if len(metrics) > 0 {
-		if err := check.SubmitQueue(ctx, metrics, logger); err != nil {
-			logger.Warn().Err(err).Msg("submitting metrics")
-		}
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	if err := check.SubmitMetrics(ctx, metrics, logger, true); err != nil {
+		logger.Warn().Err(err).Msg("submitting metrics")
 	}
 
 	return nil

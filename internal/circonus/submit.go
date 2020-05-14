@@ -7,7 +7,7 @@ package circonus
 
 import (
 	"bytes"
-	"compress/gzip"
+	// "compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -25,6 +25,7 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/klauspost/compress/gzip"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -41,22 +42,6 @@ const (
 	traceTSFormat        = "20060102_150405.000000000"
 )
 
-func (c *Check) AddMetricSet(metrics []byte, logger zerolog.Logger) {
-	c.metricQueue <- MetricSet{Metrics: metrics, Logger: logger}
-}
-func (c *Check) Submitter(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case ms := <-c.metricQueue:
-			if err := c.Submit(ctx, bytes.NewReader(ms.Metrics), ms.Logger); err != nil {
-				ms.Logger.Error().Err(err).Msg("submitting metric set")
-			}
-		}
-	}
-}
-
 func (c *Check) FlushCGM(ctx context.Context, ts *time.Time) {
 	if c.metrics != nil {
 		// TODO: add timestamp support to CGM (e.g. FlushMetricsWithTimestamp(ts))
@@ -72,17 +57,8 @@ func (c *Check) FlushCGM(ctx context.Context, ts *time.Time) {
 			metrics[mn] = ms
 		}
 
-		data, err := json.Marshal(metrics)
-		if err != nil {
-			c.log.Warn().Err(err).Msg("encoding metrics")
-			return
-		}
-		if c.ConcurrentSubmissions() {
-			if err := c.Submit(ctx, bytes.NewReader(data), c.log); err != nil {
-				c.log.Error().Err(err).Msg("submitting cgm metrics")
-			}
-		} else {
-			c.AddMetricSet(data, c.log)
+		if err := c.SubmitMetrics(ctx, metrics, c.log, false); err != nil {
+			c.log.Error().Err(err).Msg("submitting cgm metrics")
 		}
 	}
 }
@@ -92,83 +68,78 @@ func (c *Check) ResetSubmitStats() {
 	defer c.statsmu.Unlock()
 	c.stats.Metrics = 0
 	c.stats.SentBytes = 0
+	c.stats.Filtered = 0
 }
 
 func (c *Check) SubmitStats() Stats {
 	c.statsmu.Lock()
 	defer c.statsmu.Unlock()
 	return Stats{
+		Filtered:  c.stats.Filtered,
 		Metrics:   c.stats.Metrics,
 		SentBytes: c.stats.SentBytes,
 		SentSize:  bytefmt.ByteSize(c.stats.SentBytes),
 	}
 }
 
-func (c *Check) SubmitQueue(ctx context.Context, metrics map[string]MetricSample, resultLogger zerolog.Logger) error {
-	if metrics == nil {
-		return errors.New("invalid metrics (nil)")
-	}
-
-	data, err := json.MarshalIndent(metrics, "", "  ")
-	if err != nil {
-		return errors.Wrap(err, "marshaling metrics")
-	}
-
-	if c.ConcurrentSubmissions() {
-		return c.Submit(ctx, bytes.NewReader(data), resultLogger)
-	}
-
-	c.AddMetricSet(data, resultLogger)
-	return nil
-}
-
 // Submit sends metrics to a circonus trap
-func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zerolog.Logger) error {
+func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSample, resultLogger zerolog.Logger, includeStats bool) error {
 	if metrics == nil {
 		return errors.New("invalid metrics (nil)")
+	}
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	rawData, err := json.Marshal(metrics)
+	if err != nil {
+		resultLogger.Error().Err(err).Msg("json encoding metrics")
+		return errors.Wrap(err, "marshaling metrics")
 	}
 
 	start := time.Now()
 
 	if c.submissionURL == "" {
 		if c.config.DryRun {
-			_, err := io.Copy(os.Stdout, metrics)
+			_, err := io.Copy(os.Stdout, bytes.NewReader(rawData))
 			return err
 		}
 		return errors.New("no submission url and not in dry-run mode")
 	}
 
-	var client *http.Client
-
-	if c.brokerTLSConfig != nil {
-		client = &http.Client{
-			Transport: &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-				DialContext: (&net.Dialer{
-					Timeout:   10 * time.Second,
-					KeepAlive: 3 * time.Second,
-					DualStack: true,
-				}).DialContext,
-				TLSClientConfig:     c.brokerTLSConfig,
-				TLSHandshakeTimeout: 10 * time.Second,
-				DisableKeepAlives:   false,
-				MaxIdleConnsPerHost: 2,
-				DisableCompression:  false,
-			},
-		}
-	} else {
-		client = &http.Client{
-			Transport: &http.Transport{
-				Proxy: http.ProxyFromEnvironment,
-				DialContext: (&net.Dialer{
-					Timeout:   10 * time.Second,
-					KeepAlive: 3 * time.Second,
-					DualStack: true,
-				}).DialContext,
-				DisableKeepAlives:   false,
-				MaxIdleConnsPerHost: 2,
-				DisableCompression:  false,
-			},
+	if c.client == nil {
+		if c.brokerTLSConfig != nil {
+			c.client = &http.Client{
+				Transport: &http.Transport{
+					Proxy: http.ProxyFromEnvironment,
+					DialContext: (&net.Dialer{
+						Timeout:       10 * time.Second,
+						KeepAlive:     3 * time.Second,
+						FallbackDelay: -1 * time.Millisecond,
+					}).DialContext,
+					TLSClientConfig:     c.brokerTLSConfig,
+					TLSHandshakeTimeout: 10 * time.Second,
+					DisableKeepAlives:   true,
+					DisableCompression:  false,
+					MaxIdleConns:        1,
+					MaxIdleConnsPerHost: 0,
+				},
+			}
+		} else {
+			c.client = &http.Client{
+				Transport: &http.Transport{
+					Proxy: http.ProxyFromEnvironment,
+					DialContext: (&net.Dialer{
+						Timeout:       10 * time.Second,
+						KeepAlive:     3 * time.Second,
+						FallbackDelay: -1 * time.Millisecond,
+					}).DialContext,
+					DisableKeepAlives:   true,
+					DisableCompression:  false,
+					MaxIdleConns:        1,
+					MaxIdleConnsPerHost: 0,
+				},
+			}
 		}
 	}
 
@@ -176,12 +147,6 @@ func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zero
 	if err != nil {
 		resultLogger.Error().Err(err).Msg("creating new submit ID")
 		return errors.Wrap(err, "creating new submit ID")
-	}
-
-	rawData, err := ioutil.ReadAll(metrics)
-	if err != nil {
-		resultLogger.Error().Err(err).Msg("reading metric data")
-		return errors.Wrap(err, "reading metric data")
 	}
 
 	payloadIsCompressed := false
@@ -245,19 +210,8 @@ func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zero
 		req.Header.Set("Content-Encoding", "gzip")
 	}
 
-	// doesn't work with retryablehttp
-	// if c.DebugSubmissions() {
-	// 	dump, e := httputil.DumpRequestOut(req.Request, !payloadIsCompressed)
-	// 	if e != nil {
-	// 		resultLogger.Error().Err(e).Msg("dumping request")
-	// 		return e
-	// 	}
-
-	// 	fmt.Println(string(dump))
-	// }
-
 	retryClient := retryablehttp.NewClient()
-	retryClient.HTTPClient = client
+	retryClient.HTTPClient = c.client
 	retryClient.Logger = logshim{logh: c.log.With().Str("pkg", "retryablehttp").Logger()}
 	retryClient.RetryWaitMin = 50 * time.Millisecond
 	retryClient.RetryWaitMax = 1 * time.Second
@@ -287,6 +241,9 @@ func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zero
 	defer retryClient.HTTPClient.CloseIdleConnections()
 
 	resp, err := retryClient.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		resultLogger.Error().Err(err).Msg("making request")
 		c.metrics.IncrementWithTags("collect_submit_fails", cgm.Tags{
@@ -296,7 +253,6 @@ func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zero
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	_ = resp.Body.Close()
 	if err != nil {
 		resultLogger.Error().Err(err).Msg("reading body")
 		return err
@@ -328,10 +284,12 @@ func (c *Check) Submit(ctx context.Context, metrics io.Reader, resultLogger zero
 		Str("bytes_sent", bytefmt.ByteSize(uint64(dataLen))).
 		Msg("submitted")
 
-	c.statsmu.Lock()
-	c.stats.Metrics += result.Stats
-	c.stats.SentBytes += uint64(dataLen)
-	c.statsmu.Unlock()
+	if includeStats {
+		c.statsmu.Lock()
+		c.stats.Metrics += result.Stats
+		c.stats.SentBytes += uint64(dataLen)
+		c.statsmu.Unlock()
+	}
 
 	return nil
 }
