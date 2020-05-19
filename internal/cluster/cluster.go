@@ -103,7 +103,7 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 	if circCfg.Check.Target == "" {
 		circCfg.Check.Target = strings.Replace(cfg.Name, " ", "_", -1)
 	}
-	check, err := circonus.NewCheck(c.logger, &circCfg)
+	check, err := circonus.NewCheck(c.logger, &circCfg, cfg.Name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to initialize circonus for cluster (%s)", cfg.Name)
 	}
@@ -253,6 +253,7 @@ func (c *Cluster) Start(ctx context.Context) error {
 				}
 				c.check.AddText("collect_agent", baseStreamTags, release.NAME+"_"+release.VERSION)
 				c.check.AddGauge("collect_metrics", baseStreamTags, cstats.Metrics)
+				c.check.AddGauge("collect_filtered", baseStreamTags, cstats.Filtered)
 				c.check.AddGauge("collect_ngr", baseStreamTags, uint64(runtime.NumGoroutine()))
 
 				{
