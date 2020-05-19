@@ -52,6 +52,7 @@ type MetricFilter struct {
 
 type Check struct {
 	config          *config.Circonus
+	clusterName     string
 	brokerTLSConfig *tls.Config
 	checkBundleCID  string
 	checkUUID       string
@@ -65,13 +66,14 @@ type Check struct {
 	client          *http.Client
 }
 
-func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus) (*Check, error) {
+func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterName string) (*Check, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid circonus config (nil)")
 	}
 	c := &Check{
-		config: cfg,
-		log:    parentLogger.With().Str("pkg", "circonus.check").Logger(),
+		config:      cfg,
+		clusterName: clusterName,
+		log:         parentLogger.With().Str("pkg", "circonus.check").Logger(),
 	}
 
 	// output debug messages for hidden settings which are not DEFAULT
@@ -332,6 +334,9 @@ func (c *Check) createCheckBundle(client *apiclient.API, cfg *config.Circonus) (
 		checkMetricFilters = filters
 	}
 
+	tagList := strings.Split(cfg.Check.Tags, ",")
+	tagList = append(tagList, "cluster:"+c.clusterName)
+
 	checkConfig := &apiclient.CheckBundle{
 		Brokers: []string{cfg.Check.BrokerCID},
 		Config: apiclient.CheckBundleConfig{
@@ -345,7 +350,7 @@ func (c *Check) createCheckBundle(client *apiclient.API, cfg *config.Circonus) (
 		Notes:         &notes,
 		Period:        60,
 		Status:        checkStatusActive,
-		Tags:          strings.Split(cfg.Check.Tags, ","),
+		Tags:          tagList,
 		Target:        cfg.Check.Target,
 		Timeout:       10,
 		Type:          checkType,
@@ -380,24 +385,36 @@ func (c *Check) loadMetricFilters() [][]string {
 		{"allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"},
 		{"allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"},
 		{"allow", "^usageNanoCores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"},
+		{"allow", "^utilization$", "utilization health"},
 		{"allow", "^apiserver_request_total$", "tags", "and(or(code:5*,code:4*))", "api req errors"},
 		{"allow", "^authenticated_user_requests$", "api auth"},
-		{"allow", "^authentication_attempts$", "api auth"},
+		{"allow", "^authentication_attempts$", "api auth health"},
 		{"allow", "^kube_pod_container_status_(running|terminated|waiting|ready)$", "containers"},
+		{"allow", "^kube_pod_container_status_(terminated|waiting)_reason$", "containers health"},
+		{"allow", "^kube_pod_init_container_status_(terminated|waiting)_reason$", "containers health"},
 		{"allow", "^kube_deployment_(created|spec_replicas|status_replicas|status_replicas_updated|status_replicas_available|status_replicas_unavailable)$", "deployments"},
-		{"allow", "^kube_pod_start_time", "pods"},
+		{"allow", "^kube_job_status_failed$", "health"},
+		{"allow", "^kube_persistentvolume_status_phase$", "health"},
+		{"allow", "^kube_deployment_status_observed_generation$", "health"},
+		{"allow", "^kube_deployment_metadata_generation$", "health"},
+		{"allow", "^kube_daemonset_status_(current|desired)_number_scheduled$", "health"},
+		{"allow", "^kube_statefulset_status_replicas$", "health"},
+		{"allow", "^kube_statefulset_status_replicas_ready$", "health"},
+		{"allow", "^kube_pod_start_time$", "pods"},
+		{"allow", "^kube_pod_status_condition$", "pods"},
 		{"allow", "^kube_pod_status_phase$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"},
 		{"allow", "^kube_pod_status_(ready|scheduled)$", "tags", "and(condition:true)", "pods"},
 		{"allow", "^kube_(service_labels|deployment_labels|pod_container_info|pod_deleted)$", "ksm inventory"},
 		{"allow", "^(node|kubelet_running_pod_count|Ready)$", "nodes"},
 		{"allow", "^NetworkUnavailable$", "node status"},
+		{"allow", "^kube_node_status_condition$", "node status health"},
 		{"allow", "^(Disk|Memory|PID)Pressure$", "node status"},
 		{"allow", "^capacity_.*$", "node capacity"},
 		{"allow", "^kube_namespace_status_phase$", "tags", "and(or(phase:Active,phase:Terminating))", "namespaces"},
 		{"allow", "^coredns_.*$", "kube-dns"},
 		{"allow", "^events$", "events"},
 		{"allow", "^collect_.*$", "agent collection stats"},
-		{"deny", "^.+$", "all other metrics}"},
+		{"deny", "^.+$", "all other metrics"},
 	}
 
 	mfConfigFile := path.Join(string(os.PathSeparator), "ck8sa", "metric-filters.json")
