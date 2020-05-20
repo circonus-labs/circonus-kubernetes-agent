@@ -19,8 +19,6 @@
           app.kubernetes.io/name: circonus-kubernetes-agent
           app.kubernetes.io/version: v0.7.1
       spec:
-        nodeSelector:
-          kubernetes.io/os: linux
         serviceAccountName: circonus-kubernetes-agent
         containers:
           - name: circonus-kubernetes-agent
@@ -246,13 +244,17 @@
                 port: 8080                
               initialDelaySeconds: 30
             volumeMounts:
-              - name: metric-filters
+              - name: configs
                 mountPath: /ck8sa
                 readOnly: true
         volumes:
-          - name: metric-filters
+          - name: configs
             configMap:
               name: cka-config-v1
               items:
                 - key: metric-filters.json
                   path: metric-filters.json
+                - key: default-alerts.json
+                  path: default-alerts.json
+                - key: custom-rules.json
+                  path: custom-rules.json
