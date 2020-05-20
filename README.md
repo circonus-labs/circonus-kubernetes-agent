@@ -12,9 +12,10 @@ An agent designed to retrieve metrics from a Kubernetes cluster. Runs as a deplo
 1. Verify `deploy/authrbac.yaml`, alter any applicable settings for cluster security
 1. Change any applicable settings in `deploy/configuration.yaml`, minimum required:
    * Circonus API Token
-   * check target - so the agent can find the check on restart (short, unique string w/o spaces - normally this is an FQDN)
+   * Check target - so agent can find check on restart (short, unique string w/o spaces - normally this is an FQDN)
    * Kubernetes name - used for check title when creating a check
-   * It is recommended that [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) be installed in the cluster and collection enabled in the configuration for all dashboard tabs to function
+   * Circonus Alert Email - email address for default alerts
+   * For full functionality [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) should be installed in the cluster
 1. Change any applicable settings in `deploy/deployment.yaml`
 1. Apply `kubectl apply -f deploy/`
 
