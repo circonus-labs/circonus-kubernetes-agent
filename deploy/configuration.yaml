@@ -55,39 +55,36 @@
       #circonus-check-title: ""
       ## comma delimited list of k:v streamtags to add to every metric
       #circonus-default-streamtags: ""
-      ## alert email address
-      circonus-alert-email: ""
-      ## Node memory pressure
-      #circonus-alert-memory-pressure: 
+      ##
       ## set a name identifying the cluster, to be used in the check 
       ## title when it is created
       kubernetes-name: ""
       #kubernetes-api-url: "https://kubernetes"
       #kubernetes-api-ca-file: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
       #kubernetes-bearer-token-file: "/var/run/secrets/kubernetes.io/serviceaccount/token"
-      ## collect event metrics
-      kubernetes-enable-events: "false"
-      ## collect metrics from kube-state-metrics if running
-      kubernetes-enable-kube-state-metrics: "false"
+      ## collect event metrics - default is enabled for dashboard
+      kubernetes-enable-events: "true"
+      ## collect metrics from kube-state-metrics if running - default is enabled for dashboard
+      kubernetes-enable-kube-state-metrics: "true"
       ## kube-state-metrics metrics port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
       kubernetes-ksm-metrics-port-name: "http-metrics"
       ## kube-state-metrics telemetry port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
       kubernetes-ksm-telemetry-port-name: "telemetry"
-      ## collect metrics from api-server
+      ## collect metrics from api-server - default is enabled for dashboard
       kubernetes-enable-api-server: "true"
-      ## collect node metrics
+      ## collect node metrics - default is enabled for dashboard
       kubernetes-enable-nodes: "true"
-      ## expression to use for node labelSelector
+      ## expression to use for node labelSelector - blank = all nodes
       kubernetes-node-selector: ""
-      ## collect kublet /stats/summary performance metrics (e.g. cpu, memory, fs)
+      ## collect kublet /stats/summary performance metrics (e.g. cpu, memory, fs) - default is enabled for dashboard
       kubernetes-enable-node-stats: "true"
-      ## collect kublet /metrics observation metrics
+      ## collect kublet /metrics observation metrics - default is enabled for dashboard
       kubernetes-enable-node-metrics: "true"
-      ## enable kubelet cadvisor metrics
+      ## enable kubelet cadvisor metrics (note: being deprecated by k8s)
       kubernetes-enable-cadvisor-metrics: "false"
-      ## enable kube-dns metrics
-      kubernetes-enable-kube-dns-metrics: "false"
-      ## include pod metrics, requires nodes to be enabled
+      ## enable kube-dns metrics - default is enabled for dashboard
+      kubernetes-enable-kube-dns-metrics: "true"
+      ## include pod metrics, requires nodes to be enabled - - default is enabled for dashboard
       kubernetes-include-pod-metrics: "true"
       ## include only pods with this label key, blank = all pods
       kubernetes-pod-label-key: ""
@@ -110,21 +107,16 @@
             ["allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"],
             ["allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"],
             ["allow", "^usageNanoCores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"],
-            ["allow", "^utilization$", "utilization health"],
             ["allow", "^apiserver_request_total$", "tags", "and(or(code:5*,code:4*))", "api req errors"],
             ["allow", "^authenticated_user_requests$", "api auth"],
-            ["allow", "^authentication_attempts$", "api auth health"],
             ["allow", "^kube_pod_container_status_(running|terminated|waiting|ready)$", "containers"],
             ["allow", "^kube_pod_container_status_(terminated|waiting)_reason$", "containers health"],
             ["allow", "^kube_pod_init_container_status_(terminated|waiting)_reason$", "containers health"],
-            ["allow", "^kube_deployment_(created|spec_replicas|status_replicas|status_replicas_updated|status_replicas_available|status_replicas_unavailable)$", "deployments"],
+            ["allow", "^kube_deployment_(created|spec_replicas)$", "deployments"],
+            ["allow", "^kube_deployment_status_(replicas|replicas_updated|replicas_available|replicas_unavailable)$", "deployments"],
             ["allow", "^kube_job_status_failed$", "health"],
             ["allow", "^kube_persistentvolume_status_phase$", "health"],
-            ["allow", "^kube_deployment_status_observed_generation$", "health"],
-            ["allow", "^kube_deployment_metadata_generation$", "health"],
-            ["allow", "^kube_daemonset_status_(current|desired)_number_scheduled$", "health"],
-            ["allow", "^kube_statefulset_status_replicas$", "health"],
-            ["allow", "^kube_statefulset_status_replicas_ready$", "health"],
+            ["allow", "^kube_deployment_status_replicas_unavailable$", "deployments"],
             ["allow", "^kube_pod_start_time$", "pods"],
             ["allow", "^kube_pod_status_condition$", "pods"],
             ["allow", "^kube_pod_status_phase$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"],
@@ -136,9 +128,87 @@
             ["allow", "^(Disk|Memory|PID)Pressure$", "node status"],
             ["allow", "^capacity_.*$", "node capacity"],
             ["allow", "^kube_namespace_status_phase$", "tags", "and(or(phase:Active,phase:Terminating))", "namespaces"],
-            ["allow", "^coredns_.*$", "kube-dns"],
+            ["allow", "^utilization$", "utilization health"],
+            ["allow", "^kube_deployment_(metadata|status_observed)_generation$", "health"],
+            ["allow", "^kube_daemonset_status_(current|desired)_number_scheduled$", "health"],
+         		["allow", "^kube_statefulset_status_(replicas|replicas_ready)$", "health"],
+            ["allow", "^deployment_generation_delta$", "health"],
+            ["allow", "^daemonset_scheduled_delta$", "health"],
+            ["allow", "^statefulset_replica_delta$", "health"],
+            ["allow", "^coredns_.*$", "dns health"],
             ["allow", "^events$", "events"],
             ["allow", "^collect_.*$", "agent collection stats"],
+            ["allow", "^authentication_attempts$", "api auth health"],
             ["deny", "^.+$", "all other metrics"]
           ]
         }
+      ##
+      ## alert configuration
+      ##
+      ## Note: one of, contact_email OR contact_group_cid, is required - if neither are provided, alerting is disabled
+      ##
+      default_alerts.json: |
+        {
+          "contact_email": "",
+          "contact_group_cid": "",
+          "rule_settings": [
+            {
+              "rule_id": "cpu_utilization",
+              "threshold": "80"
+            },
+            {
+              "rule_id": "memory_pressure",
+              "threshold": "0"
+            },
+            {
+              "rule_id": "disk_pressure",
+              "threshold": "0"
+            },
+            {
+              "rule_id": "pid_pressure",
+              "threshold": "0"
+            },
+            {
+              "rule_id": "crash_loops",
+              "threshold": "0"
+            },
+            {
+              "rule_id": "job_failures",
+              "threshold": "0"
+            },
+            {
+              "rule_id": "persistent_vol_failures",
+              "threshold": "0"
+            },
+            {
+              "rule_id": "nodes_not_ready",
+              "threshold": "0",
+              "window": "1m"
+            },
+            {
+              "rule_id": "pod_pending_delays",
+              "threshold": "0",
+              "window": "1m"
+            },
+            {
+              "rule_id": "deployment_generation_delta",
+              "threshold": "0"
+            },
+            {
+              "rule_id": "daemonset_scheduled_delta",
+              "threshold": "0"
+            },
+            {
+              "rule_id": "statefulset_replica_delta",
+              "threshold": "0"
+            }
+          ]
+        }
+      ##
+      ## an array of custom alert rule set objects (see https://login.circonus.com/resources/api/calls/rule_set 
+      ## for more information on object format alternatively, use the UI to view the API Object of an existing rule set)
+      ##
+      custom_rules.json: |
+        [
+
+        ]
