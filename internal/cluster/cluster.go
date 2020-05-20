@@ -25,6 +25,7 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/dns"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/events"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/health"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/ksm"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/nodes"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
@@ -58,9 +59,10 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 	}
 
 	c := &Cluster{
-		cfg:     cfg,
-		circCfg: circCfg,
-		logger:  parentLog.With().Str("pkg", "cluster").Str("cluster_name", cfg.Name).Logger(),
+		cfg:        cfg,
+		circCfg:    circCfg,
+		collectors: []string{"health"},
+		logger:     parentLog.With().Str("pkg", "cluster").Str("cluster_name", cfg.Name).Logger(),
 	}
 
 	if c.cfg.BearerToken == "" && c.cfg.BearerTokenFile != "" {
@@ -203,6 +205,17 @@ func (c *Cluster) Start(ctx context.Context) error {
 						} else {
 							collector.Collect(ctx, c.tlsConfig, &start)
 						}
+					case "health":
+						wg.Add(1)
+						go func() {
+							collector, err := health.New(&c.cfg, c.logger, c.check)
+							if err != nil {
+								c.logger.Error().Err(err).Msg("initializing health collector")
+							} else {
+								collector.Collect(ctx, c.tlsConfig, &start)
+							}
+							wg.Done()
+						}()
 					case "ksm":
 						wg.Add(1)
 						go func() {
