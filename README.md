@@ -16,9 +16,9 @@ An agent designed to retrieve metrics from a Kubernetes cluster. Runs as a deplo
 
 1. Clone repo
 1. In `deploy/default/configuration.yaml` set the following required attributes:
-   * Set Circonus API Token
-   * Cluster Name
-   * Circonus Alert Email - email address for default alerts
+   * Set Circonus API Token - `circonus-api-key`
+   * Kubernetes Cluster Name - `kubernetes-name`
+   * Circonus Alert Email - `default-alerts.json`->`contact.email` - email address for default alerts
 1. Apply `kubectl apply -f deploy/default/`
 
 #### Custom
