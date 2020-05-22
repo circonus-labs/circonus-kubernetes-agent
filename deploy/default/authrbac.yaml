@@ -1,0 +1,74 @@
+---
+  ## create cluster role providing readonly access to resources for collecting metrics
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    name: cka-readonly
+    labels:
+      app.kubernetes.io/name: circonus-kubernetes-agent
+  rules:
+    - apiGroups:
+        - ""
+      resources:
+        - componentstatuses
+        - events
+        - endpoints
+        - namespaces
+        - nodes
+        - pods
+        - services
+      verbs:
+        - get
+        - list
+        - watch
+    - nonResourceURLs:
+        - "/metrics"
+        - "/version"
+        - "/healthz"
+      verbs:
+        - get
+    - apiGroups:
+        - ""
+      resources:
+        - nodes/metrics
+        - nodes/spec
+        - nodes/proxy
+        - services/proxy
+      verbs:
+        - get
+    - apiGroups:
+        - "metrics.k8s.io"
+      resources:
+        - pods
+        - nodes
+      verbs:
+        - get
+        - list
+        - watch
+
+---
+  ## create service account to isolate privileges for the agent
+  apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: circonus-kubernetes-agent
+    namespace: default
+    labels:
+      app.kubernetes.io/name: circonus-kubernetes-agent
+
+---
+  ## bind the service account to the readonly role
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    name: cka-readonly
+    labels:
+      app.kubernetes.io/name: circonus-kubernetes-agent
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: cka-readonly
+  subjects:
+    - kind: ServiceAccount
+      name: circonus-kubernetes-agent
+      namespace: default

@@ -145,12 +145,14 @@
       ##
       ## alert configuration
       ##
-      ## Note: one of, contact_email OR contact_group_cid, is required - if neither are provided, alerting is disabled
+      ## Note: one of, contact.email OR contact.group_cid, is required - if neither are provided, alerting is disabled
       ##
       default_alerts.json: |
         {
-          "contact_email": "",
-          "contact_group_cid": "",
+          "contact": {
+            "email": "",
+            "group_cid": ""
+          }
           "rule_settings": [
             {
               "rule_id": "cpu_utilization",
@@ -205,10 +207,12 @@
           ]
         }
       ##
-      ## an array of custom alert rule set objects (see https://login.circonus.com/resources/api/calls/rule_set 
+      ## "rules" is an array of custom alert rule set objects (see https://login.circonus.com/resources/api/calls/rule_set 
       ## for more information on object format alternatively, use the UI to view the API Object of an existing rule set)
       ##
       custom_rules.json: |
-        [
+        {
+          "rules":[
 
-        ]
+          ]
+        }
