@@ -6,11 +6,11 @@ An agent designed to retrieve metrics from a Kubernetes cluster. Runs as a deplo
 
 ## Installation
 
-## Prerequisites
-
-### `kubectl` (default)
+### Prerequisites
 
 1. For full functionality [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) should be installed in the cluster
+
+### `kubectl`
 
 #### Default (simple)
 
