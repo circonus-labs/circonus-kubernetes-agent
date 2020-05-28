@@ -249,7 +249,7 @@ func (dns *DNS) getMetrics(ctx context.Context, podName, metricURL string) error
 	streamTags := []string{
 		"source:kube-dns",
 		"source_type:metrics",
-		"pod_name:" + podName,
+		"pod:" + podName,
 		"__rollup:false", // prevent high cardinality metrics from rolling up
 	}
 	measurementTags := []string{}
