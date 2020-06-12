@@ -146,7 +146,9 @@
       ##
       ## alert configuration
       ##
-      ## Note: one of, contact.email OR contact.group_cid, is required - if neither are provided, alerting is disabled
+      ## REQUIRED -- one of, contact.email OR contact.group_cid
+      ##
+      ## Note: if neither supplied, all alertring and some dashboard functionality will be disabled
       ##
       default_alerts.json: |
         {

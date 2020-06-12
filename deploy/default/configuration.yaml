@@ -32,15 +32,17 @@
       ##
       ## alert configuration
       ##
-      ## REQUIRED -- one of, contact.email OR contact.group_cid
+      ## REQUIRED -- contact.email (if not supplied, alerting and some dashboard functionality will be disabled)
       ##
-      ## Note: if neither supplied, all alertring and some dashboard functionality will be disabled
+      ## Note: Alter rule settings as appropriate, settings below reflect the defaults. 
+      ##       cpu_utilization.`window` is seconds
+      ##       cpu_utilization.`threshold` is percent
+      ##       pod_pending_delays.`window` is seconds
       ##
       default_alerts.json: |
         {
           "contact": {
-            "email": "",
-            "group_cid": ""
+            "email": ""
           },
           "rule_settings": { 
             "cpu_utilization": {
