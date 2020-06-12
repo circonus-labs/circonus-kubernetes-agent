@@ -135,7 +135,8 @@
             ["allow", "^deployment_generation_delta$", "health"],
             ["allow", "^daemonset_scheduled_delta$", "health"],
             ["allow", "^statefulset_replica_delta$", "health"],
-            ["allow", "^coredns_.*$", "dns health"],
+            ["allow", "^coredns_(dns|forward)_request_(count_total|duration_seconds_avg)$", "dns health"],
+            ["allow", "^coredns_(dns|forward)_response_rcode_count_total$", "dns health"],
             ["allow", "^events$", "events"],
             ["allow", "^collect_.*$", "agent collection stats"],
             ["allow", "^authentication_attempts$", "api auth health"],
@@ -152,57 +153,14 @@
           "contact": {
             "email": "",
             "group_cid": ""
-          }
+          },
           "rule_settings": [
-            {
-              "rule_id": "cpu_utilization",
-              "threshold": "80"
+            "cpu_utilization": {
+              "threshold": "75",
+              "window": 900
             },
-            {
-              "rule_id": "memory_pressure",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "disk_pressure",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "pid_pressure",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "crash_loops",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "job_failures",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "persistent_vol_failures",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "nodes_not_ready",
-              "threshold": "0",
-              "window": "1m"
-            },
-            {
-              "rule_id": "pod_pending_delays",
-              "threshold": "0",
-              "window": "1m"
-            },
-            {
-              "rule_id": "deployment_generation_delta",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "daemonset_scheduled_delta",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "statefulset_replica_delta",
-              "threshold": "0"
+            "pod_pending_delays": {
+              "window": 900
             }
           ]
         }
