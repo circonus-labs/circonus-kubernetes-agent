@@ -67,6 +67,9 @@ type Circonus struct {
 	Check             Check  `json:"check" toml:"check" yaml:"check"`
 	TraceSubmits      string `mapstructure:"trace_submits" json:"trace_submits" toml:"trace_submits" yaml:"trace_submits"` // trace metrics being sent to circonus
 	DefaultStreamtags string `mapstructure:"default_streamtags" json:"default_streamtags" toml:"default_streamtags" yaml:"default_streamtags"`
+	MetricFiltersFile string `mapstructure:"metric_filters_file" json:"metric_filters_file" toml:"metric_filters_file" yaml:"metric_filters_file"`
+	DefaultAlertsFile string `mapstructure:"default_alerts_file" json:"default_alerts_file" toml:"default_alerts_file" yaml:"default_alerts_file"`
+	CustomRulesFile   string `mapstructure:"custom_rules_file" json:"custom_rules_file" toml:"custom_rules_file" yaml:"custom_rules_file"`
 	// hidden circonus settings for development and debugging
 	Base64Tags       bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"base64_tags" json:"base64_tags" toml:"base64_tags" yaml:"base64_tags"`
 	DryRun           bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"dry_run" json:"dry_run" toml:"dry_run" yaml:"dry_run"`                             // simulate sending metrics, print them to stdout

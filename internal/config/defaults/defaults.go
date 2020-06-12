@@ -32,6 +32,9 @@ const (
 	CheckTags          = ""
 	CheckTarget        = "" // defaults to cluster name
 	DefaultStreamtags  = ""
+	MetricFiltersFile  = "/ck8sa/metric-filters.json" // assumes running in a pod, ConfigMap mounted volume
+	DefaultAlertsFile  = "/ck8sa/default-alerts.json" // assumes running in a pod, ConfigMap mounted volume
+	CustomRulesFile    = "/ck8sa/custom-rules.json"   // assumes running in a pod, ConfigMap mounted volume
 	CheckTitle         = ""
 	TraceSubmits       = ""
 	// hidden circonus settings for development and debugging
