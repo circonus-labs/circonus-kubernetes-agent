@@ -16,8 +16,6 @@ import (
 	"io/ioutil"
 	stdlog "log"
 	"net/http"
-	"os"
-	"path"
 	"regexp"
 	"strings"
 	"sync"
@@ -25,11 +23,13 @@ import (
 	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	apiclient "github.com/circonus-labs/go-apiclient"
 	apiclicfg "github.com/circonus-labs/go-apiclient/config"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -56,6 +56,7 @@ type Check struct {
 	brokerTLSConfig *tls.Config
 	checkBundleCID  string
 	checkUUID       string
+	checkCID        string
 	submissionURL   string
 	log             zerolog.Logger
 	stats           Stats
@@ -116,8 +117,9 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterName str
 		return nil, err
 	}
 
-	{
+	initializeAlerting(client, c.log, clusterName, c.checkCID)
 
+	{
 		cfg := &cgm.Config{
 			Log:      stdlog.New(c.log.With().Str("pkg", "cgm").Logger(), "", 0),
 			Debug:    c.config.API.Debug,
@@ -217,9 +219,11 @@ func (c *Check) setSubmissionURL(client *apiclient.API, checkBundle *apiclient.C
 	c.checkBundleCID = bundle.CID
 	if len(bundle.CheckUUIDs) == 1 {
 		c.checkUUID = bundle.CheckUUIDs[0]
+		c.checkCID = bundle.Checks[0]
 	} else {
 		c.log.Warn().Int("num_checks", len(bundle.CheckUUIDs)).Msg("multiple check UUIDs found in bundle")
 		c.checkUUID = strings.Join(bundle.CheckUUIDs, ",")
+		c.checkCID = bundle.Checks[0]
 	}
 	c.submissionURL = surl
 	if err := c.initializeBroker(client, bundle); err != nil {
@@ -381,57 +385,73 @@ type metricFilters struct {
 }
 
 func (c *Check) loadMetricFilters() [][]string {
-	defaults := [][]string{
-		{"allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"},
-		{"allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"},
-		{"allow", "^usageNanoCores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"},
-		{"allow", "^apiserver_request_total$", "tags", "and(or(code:5*,code:4*))", "api req errors"},
-		{"allow", "^authenticated_user_requests$", "api auth"},
-		{"allow", "^kube_pod_container_status_(running|terminated|waiting|ready)$", "containers"},
-		{"allow", "^kube_pod_container_status_(terminated|waiting)_reason$", "containers health"},
-		{"allow", "^kube_pod_init_container_status_(terminated|waiting)_reason$", "containers health"},
-		{"allow", "^kube_deployment_(created|spec_replicas)$", "deployments"},
-		{"allow", "^kube_deployment_status_replicas.*$", "deployments"},
-		{"allow", "^kube_job_status_failed$", "health"},
-		{"allow", "^kube_persistentvolume_status_phase$", "health"},
-		{"allow", "^kube_deployment_status_replicas_unavailable$", "deployments"},
-		{"allow", "^kube_pod_start_time$", "pods"},
-		{"allow", "^kube_pod_status_condition$", "pods"},
-		{"allow", "^kube_pod_status_phase$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"},
-		{"allow", "^kube_pod_status_(ready|scheduled)$", "tags", "and(condition:true)", "pods"},
-		{"allow", "^kube_(service_labels|deployment_labels|pod_container_info|pod_deleted)$", "ksm inventory"},
-		{"allow", "^(node|kubelet_running_pod_count|Ready)$", "nodes"},
-		{"allow", "^NetworkUnavailable$", "node status"},
-		{"allow", "^kube_node_status_condition$", "node status health"},
-		{"allow", "^(Disk|Memory|PID)Pressure$", "node status"},
-		{"allow", "^capacity_.*$", "node capacity"},
-		{"allow", "^kube_namespace_status_phase$", "tags", "and(or(phase:Active,phase:Terminating))", "namespaces"},
-		{"allow", "^utilization$", "utilization health"},
-		{"allow", "^kube_deployment_(metadata|status_observed)_generation$", "health"},
-		{"allow", "^kube_daemonset_status_(current|desired)_number_scheduled$", "health"},
-		{"allow", "^kube_statefulset_status_(replicas|replicas_ready)$", "health"},
-		{"allow", "^deployment_generation_delta$", "health"},
-		{"allow", "^daemonset_scheduled_delta$", "health"},
-		{"allow", "^statefulset_replica_delta$", "health"},
-		{"allow", "^coredns_.*$", "dns health"},
-		{"allow", "^events$", "events"},
-		{"allow", "^collect_.*$", "agent collection stats"},
-		{"allow", "^authentication_attempts$", "api auth health"},
-		{"deny", "^.+$", "all other metrics"},
-	}
-
-	mfConfigFile := path.Join(string(os.PathSeparator), "ck8sa", "metric-filters.json")
+	mfConfigFile := viper.GetString(keys.MetricFiltersFile)
 	data, err := ioutil.ReadFile(mfConfigFile)
 	if err != nil {
 		c.log.Warn().Err(err).Str("metric_filter_config", mfConfigFile).Msg("using defaults")
-		return defaults
+		return c.defaultFilters()
 	}
 
 	var mf metricFilters
 	if err := json.Unmarshal(data, &mf); err != nil {
 		c.log.Warn().Err(err).Str("metric_filter_config", mfConfigFile).Msg("using defaults")
-		return defaults
+		return c.defaultFilters()
 	}
 
+	return mf.Filters
+}
+
+func (c *Check) defaultFilters() [][]string {
+	defaultMetricFiltersData := []byte(`
+{
+	"metric_filters": [
+	["allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"],
+	["allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"],
+	["allow", "^usageNanoCores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"],
+	["allow", "^apiserver_request_total$", "tags", "and(or(code:5*,code:4*))", "api req errors"],
+	["allow", "^authenticated_user_requests$", "api auth"],
+	["allow", "^kube_pod_container_status_(running|terminated|waiting|ready)$", "containers"],
+	["allow", "^kube_pod_container_status_(terminated|waiting)_reason$", "containers health"],
+	["allow", "^kube_pod_init_container_status_(terminated|waiting)_reason$", "containers health"],
+	["allow", "^kube_deployment_(created|spec_replicas)$", "deployments"],
+	["allow", "^kube_deployment_status_(replicas|replicas_updated|replicas_available|replicas_unavailable)$", "deployments"],
+	["allow", "^kube_job_status_failed$", "health"],
+	["allow", "^kube_persistentvolume_status_phase$", "health"],
+	["allow", "^kube_deployment_status_replicas_unavailable$", "deployments"],
+	["allow", "^kube_pod_start_time$", "pods"],
+	["allow", "^kube_pod_status_condition$", "pods"],
+	["allow", "^kube_pod_status_phase$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"],
+	["allow", "^kube_pod_status_(ready|scheduled)$", "tags", "and(condition:true)", "pods"],
+	["allow", "^kube_(service_labels|deployment_labels|pod_container_info|pod_deleted)$", "ksm inventory"],
+	["allow", "^(node|kubelet_running_pod_count|Ready)$", "nodes"],
+	["allow", "^NetworkUnavailable$", "node status"],
+	["allow", "^kube_node_status_condition$", "node status health"],
+	["allow", "^(Disk|Memory|PID)Pressure$", "node status"],
+	["allow", "^capacity_.*$", "node capacity"],
+	["allow", "^kube_namespace_status_phase$", "tags", "and(or(phase:Active,phase:Terminating))", "namespaces"],
+	["allow", "^utilization$", "utilization health"],
+	["allow", "^kube_deployment_(metadata|status_observed)_generation$", "health"],
+	["allow", "^kube_daemonset_status_(current|desired)_number_scheduled$", "health"],
+	["allow", "^kube_statefulset_status_(replicas|replicas_ready)$", "health"],
+	["allow", "^deployment_generation_delta$", "health"],
+	["allow", "^daemonset_scheduled_delta$", "health"],
+	["allow", "^statefulset_replica_delta$", "health"],
+    ["allow", "^coredns_(dns|forward)_request_(count_total|duration_seconds_avg)$", "dns health"],
+    ["allow", "^coredns_(dns|forward)_response_rcode_count_total$", "dns health"],
+	["allow", "^events$", "events"],
+	["allow", "^collect_.*$", "agent collection stats"],
+	["allow", "^authentication_attempts$", "api auth health"],
+	["deny", "^.+$", "all other metrics"]
+	]
+}
+`)
+	var mf metricFilters
+	if err := json.Unmarshal(defaultMetricFiltersData, &mf); err != nil {
+		c.log.Warn().Err(err).Msg("parsing default metric filters")
+		return [][]string{
+			{"deny", "^$", "empty"},
+			{"allow", "^.+$", "all"},
+		}
+	}
 	return mf.Filters
 }
