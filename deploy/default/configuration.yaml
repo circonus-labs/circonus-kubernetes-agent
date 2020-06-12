@@ -12,7 +12,7 @@
       labels:
           app.kubernetes.io/name: circonus-kubernetes-agent
     stringData:
-      ## Circonus API Key is REQUIRED
+      ## REQUIRED -- Circonus API Key
       circonus-api-key: ""
 
 ---
@@ -24,116 +24,31 @@
       labels:
           app.kubernetes.io/name: circonus-kubernetes-agent
   data:
-      ## set a name identifying the cluster, to be used in the check 
+      ## REQUIRED -- name identifying the cluster, used in the check 
       ## title and check target when check is created (so agent can find
-      ## the check again when pod is re-deployed)
+      ## the check again when pod is re-deployed) also used in various
+      ## tags on rules, contact group, etc.
       kubernetes-name: ""
-      ##
-      ## Metric filters control which metrics are passed on by the broker
-      ## NOTE: This list is applied to the check every time the agent pod starts.
-      ##       Updates through any other method will be overwritten by this list.
-      metric-filters.json: |
-        {
-          "metric_filters": [
-            ["allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"],
-            ["allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"],
-            ["allow", "^usageNanoCores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"],
-            ["allow", "^apiserver_request_total$", "tags", "and(or(code:5*,code:4*))", "api req errors"],
-            ["allow", "^authenticated_user_requests$", "api auth"],
-            ["allow", "^kube_pod_container_status_(running|terminated|waiting|ready)$", "containers"],
-            ["allow", "^kube_pod_container_status_(terminated|waiting)_reason$", "containers health"],
-            ["allow", "^kube_pod_init_container_status_(terminated|waiting)_reason$", "containers health"],
-            ["allow", "^kube_deployment_(created|spec_replicas)$", "deployments"],
-            ["allow", "^kube_deployment_status_(replicas|replicas_updated|replicas_available|replicas_unavailable)$", "deployments"],
-            ["allow", "^kube_job_status_failed$", "health"],
-            ["allow", "^kube_persistentvolume_status_phase$", "health"],
-            ["allow", "^kube_deployment_status_replicas_unavailable$", "deployments"],
-            ["allow", "^kube_pod_start_time$", "pods"],
-            ["allow", "^kube_pod_status_condition$", "pods"],
-            ["allow", "^kube_pod_status_phase$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"],
-            ["allow", "^kube_pod_status_(ready|scheduled)$", "tags", "and(condition:true)", "pods"],
-            ["allow", "^kube_(service_labels|deployment_labels|pod_container_info|pod_deleted)$", "ksm inventory"],
-            ["allow", "^(node|kubelet_running_pod_count|Ready)$", "nodes"],
-            ["allow", "^NetworkUnavailable$", "node status"],
-            ["allow", "^kube_node_status_condition$", "node status health"],
-            ["allow", "^(Disk|Memory|PID)Pressure$", "node status"],
-            ["allow", "^capacity_.*$", "node capacity"],
-            ["allow", "^kube_namespace_status_phase$", "tags", "and(or(phase:Active,phase:Terminating))", "namespaces"],
-            ["allow", "^utilization$", "utilization health"],
-            ["allow", "^kube_deployment_(metadata|status_observed)_generation$", "health"],
-            ["allow", "^kube_daemonset_status_(current|desired)_number_scheduled$", "health"],
-         		["allow", "^kube_statefulset_status_(replicas|replicas_ready)$", "health"],
-            ["allow", "^deployment_generation_delta$", "health"],
-            ["allow", "^daemonset_scheduled_delta$", "health"],
-            ["allow", "^statefulset_replica_delta$", "health"],
-            ["allow", "^coredns_.*$", "dns health"],
-            ["allow", "^events$", "events"],
-            ["allow", "^collect_.*$", "agent collection stats"],
-            ["allow", "^authentication_attempts$", "api auth health"],
-            ["deny", "^.+$", "all other metrics"]
-          ]
-        }
       ##
       ## alert configuration
       ##
-      ## Note: one of, contact.email OR contact.group_cid, is required - if neither are provided, alerting is disabled
+      ## REQUIRED -- one of, contact.email OR contact.group_cid
+      ##
+      ## Note: if neither supplied, all alertring and some dashboard functionality will be disabled
       ##
       default_alerts.json: |
         {
           "contact": {
             "email": "",
             "group_cid": ""
-          }
-          "rule_settings": [
-            {
-              "rule_id": "cpu_utilization",
-              "threshold": "80"
+          },
+          "rule_settings": { 
+            "cpu_utilization": {
+              "threshold": "75",
+              "window": 900
             },
-            {
-              "rule_id": "memory_pressure",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "disk_pressure",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "pid_pressure",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "crash_loops",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "job_failures",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "persistent_vol_failures",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "nodes_not_ready",
-              "threshold": "0",
-              "window": "1m"
-            },
-            {
-              "rule_id": "pod_pending_delays",
-              "threshold": "0",
-              "window": "1m"
-            },
-            {
-              "rule_id": "deployment_generation_delta",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "daemonset_scheduled_delta",
-              "threshold": "0"
-            },
-            {
-              "rule_id": "statefulset_replica_delta",
-              "threshold": "0"
+            "pod_pending_delays": {
+              "window": 900
             }
-          ]
+          }
         }
