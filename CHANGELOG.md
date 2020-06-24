@@ -1,3 +1,7 @@
+# v0.8.0
+
+* add: kube-state-metrics field selector
+
 # v0.7.1
 
 * add: contributed helm chart
