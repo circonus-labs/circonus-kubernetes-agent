@@ -39,6 +39,8 @@ type CustomRules struct {
 	Rules []apiclient.RuleSet `json:"rules"`
 }
 
+var enableRuleCreation = false
+
 func initializeAlerting(client *apiclient.API, logger zerolog.Logger, clusterName, checkCID string) {
 	configFile := viper.GetString(keys.DefaultAlertsFile)
 	data, err := ioutil.ReadFile(configFile)
@@ -46,6 +48,7 @@ func initializeAlerting(client *apiclient.API, logger zerolog.Logger, clusterNam
 		logger.Warn().Err(err).Str("alert_config", configFile).Msg("skipping")
 		return
 	}
+
 	var da DefaultAlerts
 	if err := json.Unmarshal(data, &da); err != nil {
 		logger.Warn().Err(err).Msg("unable to parse alert config, skipping")
@@ -63,16 +66,18 @@ func initializeAlerting(client *apiclient.API, logger zerolog.Logger, clusterNam
 		return
 	}
 
-	// create/update default rules
-	if err := manageDefaultRules(client, logger, da, clusterName, checkCID, cg); err != nil {
-		logger.Error().Err(err).Msg("alerting default rules")
-		return
-	}
+	if enableRuleCreation {
+		// create/update default rules
+		if err := manageDefaultRules(client, logger, da, clusterName, checkCID, cg); err != nil {
+			logger.Error().Err(err).Msg("alerting default rules")
+			return
+		}
 
-	// create custom rules
-	if err := createCustomRules(client, logger, clusterName, checkCID); err != nil {
-		logger.Error().Err(err).Msg("alerting custom rules")
-		return
+		// create custom rules
+		if err := createCustomRules(client, logger, clusterName, checkCID); err != nil {
+			logger.Error().Err(err).Msg("alerting custom rules")
+			return
+		}
 	}
 }
 
@@ -170,7 +175,7 @@ func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da Default
 			5: {},
 		}
 		rule.Tags = []string{"cluster:" + clusterName}
-		note := release.NAME + " v" + release.VERSION
+		note := release.NAME + " v" + release.VERSION + " -- rid:" + rid
 		rule.Notes = &note
 		switch rid {
 		case "cpu_utilization":
@@ -236,12 +241,29 @@ func makeRule(client *apiclient.API, logger zerolog.Logger, rule apiclient.RuleS
 func defaultRules() (map[string]apiclient.RuleSet, error) {
 	defaultRuleSetsData := []byte(`
 {
-    "crashloops": {
+    "crashloops_container": {
         "derive": null,
         "filter": "and(reason:CrashLoopBackOff)",
-        "metric_pattern": "^kube_pod.*container_status_waiting_reason$",
+        "metric_name": "kube_pod_container_status_waiting_reason",
         "metric_type": "numeric",
-        "name": "Kubernetes CrashLoops ({cluster_name})",
+        "name": "Kubernetes CrashLoops container ({cluster_name})",
+        "rules": [
+            {
+                "wait": 0,
+                "severity": 1,
+                "windowing_function": null,
+                "value": "0",
+                "criteria": "max value",
+                "windowing_duration": 300
+            }
+        ]
+    },
+    "crashloops_init_container": {
+        "derive": null,
+        "filter": "and(reason:CrashLoopBackOff)",
+        "metric_name": "kube_pod_init_container_status_waiting_reason",
+        "metric_type": "numeric",
+        "name": "Kubernetes CrashLoops init container ({cluster_name})",
         "rules": [
             {
                 "wait": 0,
@@ -256,7 +278,7 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
     "cpu_utilization": {
         "derive": "average",
         "filter": "and(resource:cpu)",
-        "metric_pattern": "^utilization$",
+        "metric_name": "utilization",
         "metric_type": "numeric",
         "name": "Kubernetes CPU ({cluster_name})",
         "rules": [
@@ -273,7 +295,7 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
     "disk_pressure": {
         "derive": null,
         "filter": "and(condition:DiskPressure,status:true)",
-        "metric_pattern": "^kube_node_status_condition$",
+        "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
         "name": "Kubernetes Disk Pressure ({cluster_name})",
         "rules": [
@@ -290,7 +312,7 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
     "memory_pressure": {
         "derive": null,
         "filter": "and(condition:MemoryPressure,status:true)",
-        "metric_pattern": "^kube_node_status_condition$",
+        "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
         "name": "Kubernetes Memory Pressure ({cluster_name})",
         "rules": [
@@ -307,7 +329,7 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
     "pid_pressure": {
         "derive": null,
         "filter": "and(condition:PIDPressure,status:true)",
-        "metric_pattern": "^kube_node_status_condition$",
+        "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
         "name": "Kubernetes PID Pressure ({cluster_name})",
         "rules": [
@@ -324,7 +346,7 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
     "network_unavailable": {
         "derive": null,
         "filter": "and(condition:NetworkUnavailable,status:true)",
-        "metric_pattern": "^kube_node_status_condition$",
+        "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
         "name": "Kubernetes Network Unavailable ({cluster_name})",
         "rules": [
@@ -340,7 +362,7 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
     },
     "job_failures": {
         "derive": null,
-        "metric_pattern": "^kube_job_status_failed$",
+        "metric_name": "kube_job_status_failed",
         "metric_type": "numeric",
         "name": "Kubernetes Job Failures ({cluster_name})",
         "rules": [
@@ -357,7 +379,7 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
     "persistent_volume_failures": {
         "derive": null,
         "filter": "and(phase:Failed)",
-        "metric_pattern": "^kube_persistentvolume_status_phase$",
+        "metric_name": "kube_persistentvolume_status_phase",
         "metric_type": "numeric",
         "name": "Kubernetes Persistent Volume Failures ({cluster_name})",
         "rules": [
@@ -374,7 +396,7 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
     "pod_pending_delays": {
         "derive": "average",
         "filter": "and(phase:Pending)",
-        "metric_pattern": "^kube_pod_status_phase$",
+        "metric_name": "kube_pod_status_phase",
         "metric_type": "numeric",
         "name": "Kubernetes Pod Pending Delays ({cluster_name})",
         "rules": [
@@ -390,7 +412,7 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
     },
     "deployment_glitches": {
         "derive": null,
-        "metric_pattern": "^deployment_generation_delta$",
+        "metric_name": "deployment_generation_delta",
         "metric_type": "numeric",
         "name": "Kubernetes Deployment Glitches ({cluster_name})",
         "rules": [
@@ -414,7 +436,7 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
     },
     "daemonsets_not_ready": {
         "derive": null,
-        "metric_pattern": "^daemonset_scheduled_delta$",
+        "metric_name": "daemonset_scheduled_delta",
         "metric_type": "numeric",
         "name": "Kubernetes DaemonSets Not Ready ({cluster_name})",
         "rules": [
@@ -438,7 +460,7 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
     },
     "statefulsets_not_ready": {
         "derive": null,
-        "metric_pattern": "^statefulset_replica_delta$",
+        "metric_name": "statefulset_replica_delta",
         "metric_type": "numeric",
         "name": "Kubernetes StatefulSets Not Ready ({cluster_name})",
         "rules": [
