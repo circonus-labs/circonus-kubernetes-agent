@@ -209,8 +209,15 @@ func (ksm *KSM) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error
 		return nil, err
 	}
 
+	if ksm.config.KSMFieldSelectorQuery == "" {
+		ksm.log.Error().
+			Str("field_selector_query", ksm.config.KSMFieldSelectorQuery).
+			Msg("invalid service definition, KSM field selectory query not found")
+		return nil, errors.New("invalid service definition, missing KSM field selector query")
+	}
+
 	q := u.Query()
-	q.Set("fieldSelector", "metadata.name=kube-state-metrics")
+	q.Set("fieldSelector", ksm.config.KSMFieldSelectorQuery)
 	u.RawQuery = q.Encode()
 
 	client, err := k8s.NewAPIClient(tlsConfig, ksm.apiTimelimit)
