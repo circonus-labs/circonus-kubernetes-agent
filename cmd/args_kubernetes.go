@@ -209,6 +209,25 @@ func init() {
 
 	{
 		const (
+			key          = keys.K8SKSMFieldSelectorQuery
+			longOpt      = "k8s-ksm-field-selector-query"
+			envVar       = release.ENVPREFIX + "_K8S_KSM_FIELD_SELECTOR_QUERY"
+			description  = "Kube-state-metrics fieldSelector query for finding the correct KSM installation"
+			defaultValue = defaults.K8SKSMFieldSelectorQuery
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		const (
 			key          = keys.K8SEnableAPIServer
 			longOpt      = "k8s-enable-api-server"
 			envVar       = release.ENVPREFIX + "_K8S_ENABLE_API_SERVER"

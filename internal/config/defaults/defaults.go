@@ -76,6 +76,7 @@ const (
 	K8SEnableKubeStateMetrics = true                                                  // dashobard
 	K8SKSMMetricsPortName     = "http-metrics"                                        // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
 	K8SKSMTelemetryPortName   = "telemetry"                                           // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
+	K8SKSMFieldSelectorQuery  = "metadata.name=kube-state-metrics"                    // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L19
 	K8SEnableAPIServer        = true                                                  // dashboard
 	K8SEnableMetricsServer    = false                                                 // deprecated
 	K8SEnableNodes            = true                                                  // dashboard

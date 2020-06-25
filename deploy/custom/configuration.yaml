@@ -70,6 +70,8 @@
       kubernetes-ksm-metrics-port-name: "http-metrics"
       ## kube-state-metrics telemetry port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
       kubernetes-ksm-telemetry-port-name: "telemetry"
+      ## kube-state-metrics fieldSelector query, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
+      kubernetes-ksm-field-selector-query: "metadata.name=kube-state-metrics"
       ## collect metrics from api-server - default is enabled for dashboard
       kubernetes-enable-api-server: "true"
       ## collect node metrics - default is enabled for dashboard
