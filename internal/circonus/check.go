@@ -53,6 +53,7 @@ type MetricFilter struct {
 type Check struct {
 	config          *config.Circonus
 	clusterName     string
+	clusterTag      string
 	brokerTLSConfig *tls.Config
 	checkBundleCID  string
 	checkUUID       string
@@ -74,6 +75,7 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterName str
 	c := &Check{
 		config:      cfg,
 		clusterName: clusterName,
+		clusterTag:  "cluster:" + clusterName,
 		log:         parentLogger.With().Str("pkg", "circonus.check").Logger(),
 	}
 
@@ -117,7 +119,7 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterName str
 		return nil, err
 	}
 
-	initializeAlerting(client, c.log, clusterName, c.checkCID, c.checkUUID)
+	initializeAlerting(client, c.log, c.clusterName, c.clusterTag, c.checkCID, c.checkUUID)
 
 	{
 		cfg := &cgm.Config{
@@ -310,6 +312,10 @@ func (c *Check) updateMetricFilters(client *apiclient.API, cfg *config.Circonus,
 		checkMetricFilters = filters
 	}
 
+	if !strings.Contains(strings.Join(b.Tags, ","), c.clusterTag) {
+		b.Tags = append(b.Tags, c.clusterTag)
+	}
+
 	b.MetricFilters = checkMetricFilters
 	bundle, err := client.UpdateCheckBundle(b)
 	if err != nil {
@@ -339,7 +345,7 @@ func (c *Check) createCheckBundle(client *apiclient.API, cfg *config.Circonus) (
 	}
 
 	tagList := strings.Split(cfg.Check.Tags, ",")
-	tagList = append(tagList, "cluster:"+c.clusterName)
+	tagList = append(tagList, c.clusterTag)
 
 	checkConfig := &apiclient.CheckBundle{
 		Brokers: []string{cfg.Check.BrokerCID},
