@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
@@ -39,9 +41,7 @@ type CustomRules struct {
 	Rules []apiclient.RuleSet `json:"rules"`
 }
 
-var enableRuleCreation = false
-
-func initializeAlerting(client *apiclient.API, logger zerolog.Logger, clusterName, checkCID string) {
+func initializeAlerting(client *apiclient.API, logger zerolog.Logger, clusterName, clusterTag, checkCID, checkUUID string) {
 	configFile := viper.GetString(keys.DefaultAlertsFile)
 	data, err := ioutil.ReadFile(configFile)
 	if err != nil {
@@ -60,28 +60,26 @@ func initializeAlerting(client *apiclient.API, logger zerolog.Logger, clusterNam
 	}
 
 	// find/create contact
-	cg, err := createContact(client, logger, da, clusterName)
+	cg, err := createContact(client, logger, da, clusterName, clusterTag)
 	if err != nil {
 		logger.Error().Err(err).Msg("alerting contact")
 		return
 	}
 
-	if enableRuleCreation {
-		// create/update default rules
-		if err := manageDefaultRules(client, logger, da, clusterName, checkCID, cg); err != nil {
-			logger.Error().Err(err).Msg("alerting default rules")
-			return
-		}
+	// create/update default rules
+	if err := manageDefaultRules(client, logger, da, clusterName, clusterTag, checkCID, checkUUID, cg); err != nil {
+		logger.Error().Err(err).Msg("alerting default rules")
+		return
+	}
 
-		// create custom rules
-		if err := createCustomRules(client, logger, clusterName, checkCID); err != nil {
-			logger.Error().Err(err).Msg("alerting custom rules")
-			return
-		}
+	// create custom rules
+	if err := createCustomRules(client, logger, clusterName, clusterTag, checkCID); err != nil {
+		logger.Error().Err(err).Msg("alerting custom rules")
+		return
 	}
 }
 
-func createContact(client *apiclient.API, logger zerolog.Logger, da DefaultAlerts, clusterName string) (*apiclient.ContactGroup, error) {
+func createContact(client *apiclient.API, logger zerolog.Logger, da DefaultAlerts, clusterName, clusterTag string) (*apiclient.ContactGroup, error) {
 	logger.Debug().Msg("fetch/create altering contact")
 
 	// group_cid takes precedence as it is the most specific
@@ -95,10 +93,9 @@ func createContact(client *apiclient.API, logger zerolog.Logger, da DefaultAlert
 	}
 
 	cgName := clusterName + " default alerts"
-	cgTag := "cluster:" + clusterName
 
 	// find
-	query := apiclient.SearchQueryType(cgName + " (active:1)(tags:" + cgTag + ")")
+	query := apiclient.SearchQueryType(cgName + " (active:1)(tags:" + clusterTag + ")")
 	cgs, err := client.SearchContactGroups(&query, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "searching for contact group (%s)", query)
@@ -142,7 +139,7 @@ func createContact(client *apiclient.API, logger zerolog.Logger, da DefaultAlert
 				},
 			},
 		},
-		Tags: []string{cgTag},
+		Tags: []string{clusterTag},
 	}
 
 	cg, err := client.CreateContactGroup(cfg)
@@ -153,50 +150,194 @@ func createContact(client *apiclient.API, logger zerolog.Logger, da DefaultAlert
 	return cg, nil
 }
 
-func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da DefaultAlerts, clusterName, checkCID string, cg *apiclient.ContactGroup) error {
+func addTag(tags []string, newTag string) []string {
+	tagList := map[string]bool{newTag: true}
+	for _, tag := range tags {
+		// if tag == "" {
+		//     continue
+		// }
+		if _, found := tagList[tag]; !found {
+			tagList[tag] = true
+		}
+	}
+	newTagList := make([]string, len(tagList))
+	i := 0
+	for tag := range tagList {
+		newTagList[i] = tag
+		i++
+	}
+	sort.Strings(newTagList)
+	return newTagList
+}
+
+func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da DefaultAlerts, clusterName, clusterTag, checkCID, checkUUID string, cg *apiclient.ContactGroup) error {
 	logger.Debug().Msg("manage default alerting rules")
-	// create default rules with settings from configuration
 	rules, err := defaultRules()
 	if err != nil {
 		return errors.Wrap(err, "loading default rules")
 	}
-	for rid, rule := range rules {
-		if rule.Name == "" {
-			rule.Name = rid + " (" + clusterName + ")"
+
+	for rid, ruleTemplate := range rules {
+
+		if ruleTemplate.Name == "" {
+			ruleTemplate.Name = rid + " (" + clusterName + ")"
 		} else {
-			rule.Name = strings.Replace(rule.Name, "{cluster_name}", clusterName, 1)
+			ruleTemplate.Name = strings.Replace(ruleTemplate.Name, "{cluster_name}", clusterName, 1)
 		}
-		rule.CheckCID = checkCID
-		rule.ContactGroups = map[uint8][]string{
+
+		ruleTemplate.CheckCID = checkCID
+		ruleTemplate.Tags = addTag(ruleTemplate.Tags, clusterTag)
+
+		ruleTemplate.ContactGroups = map[uint8][]string{
 			1: {cg.CID},
 			2: {},
 			3: {},
 			4: {},
 			5: {},
 		}
-		rule.Tags = []string{"cluster:" + clusterName}
-		note := release.NAME + " v" + release.VERSION + " -- rid:" + rid
-		rule.Notes = &note
+
+		note := release.NAME + " default rule for " + rid + ". NOTE: any changes (except contact groups) to default rules will be overwritten at next deployment."
+		ruleTemplate.Notes = &note
+
 		switch rid {
 		case "cpu_utilization":
 			if settings, found := da.RuleSettings["cpu_utilization"]; found {
-				rule.Rules[0].Value = settings.Threshold
-				rule.Rules[0].WindowingDuration = settings.Window
+				v, err := strconv.Atoi(settings.Threshold)
+				switch {
+				case err != nil:
+					logger.Warn().
+						Err(err).
+						Str("rule_id", rid).
+						Str("threshold", settings.Threshold).
+						Msg("invalid threshold, unable to parse, using default")
+				case v < 1 || v > 99:
+					logger.Warn().
+						Str("rule_id", rid).
+						Str("threshold", settings.Threshold).
+						Msg("invalid threshold, acceptable 1-99, using default")
+				default:
+					ruleTemplate.Rules[0].Value = settings.Threshold
+				}
+				if settings.Window > 59 {
+					ruleTemplate.Rules[0].WindowingDuration = settings.Window
+				}
 			}
 		case "pod_pending_delays":
 			if settings, found := da.RuleSettings["pod_pending_delays"]; found {
-				rule.Rules[0].WindowingDuration = settings.Window
+				if settings.Window > 59 {
+					ruleTemplate.Rules[0].WindowingDuration = settings.Window
+				}
 			}
 		}
-		logger.Debug().Str("rule_id", rid).Msg("creating/updating rule")
-		if err := makeRule(client, logger, rule); err != nil {
-			logger.Warn().Err(err).Str("rule_id", rid).Interface("rule_cfg", rule).Msg("creating/updating rule")
+
+		//
+		// search for existing rule
+		//
+		query := apiclient.SearchQueryType(fmt.Sprintf(`(name:"%s")(active_check:1)(check_uuid:"%s")(tags:%s)`, ruleTemplate.Name, checkUUID, clusterTag))
+		existingRules, err := client.SearchRuleSets(&query, nil)
+		if err != nil {
+			logger.Error().Err(err).Str("query", string(query)).Msg("searching, skipping rule")
+			continue
+		}
+		if len(*existingRules) == 0 {
+			logger.Debug().Str("rule_id", rid).Msg("creating rule")
+			if err := makeRule(client, logger, ruleTemplate, true); err != nil {
+				logger.Warn().Err(err).Str("rule_id", rid).Interface("rule_cfg", ruleTemplate).Msg("creating rule")
+			}
+			continue
+		}
+
+		if len(*existingRules) > 1 {
+			logger.Error().Str("query", string(query)).Int("num_rules", len(*existingRules)).Interface("rules", *existingRules).Msg("more than one rule matching search criteria found")
+			continue
+		}
+
+		update := false
+		delete := false
+
+		origRule := (*existingRules)[0]
+
+		ruleTemplate.CID = origRule.CID
+		ruleTemplate.Host = origRule.Host
+		ruleTemplate.Tags = addTag(origRule.Tags, clusterTag)
+		ruleTemplate.Derive = origRule.Derive
+		if len(origRule.ContactGroups) > 0 {
+			for sevLevel, cgList := range origRule.ContactGroups {
+				if sevLevel != 1 {
+					continue
+				}
+				add := true
+				for _, cgCID := range cgList {
+					if cgCID == cg.CID {
+						add = false
+						break
+					}
+				}
+				if add {
+					origRule.ContactGroups[sevLevel] = append(origRule.ContactGroups[sevLevel], cg.CID)
+					break
+				}
+			}
+			ruleTemplate.ContactGroups = origRule.ContactGroups
+		}
+
+		// if the metric criteria change, a new rule will be created even on a PUT (update)
+		// mark the original to be deleted if any of these criteria are true
+		switch {
+		case origRule.MetricPattern != ruleTemplate.MetricPattern:
+			delete = true
+		case origRule.MetricName != ruleTemplate.MetricName:
+			delete = true
+		case origRule.Filter != ruleTemplate.Filter:
+			delete = true
+		}
+
+		if delete {
+			// empty out the private fields
+			ruleTemplate.CID = ""
+			ruleTemplate.Host = ""
+			logger.Debug().Str("rule_id", rid).Msg("creating rule")
+			if err := makeRule(client, logger, ruleTemplate, true); err != nil {
+				logger.Warn().Err(err).Str("rule_id", rid).Interface("rule_cfg", ruleTemplate).Msg("creating rule")
+				continue // if there's an error creating, leave the old rule in place
+			}
+			logger.Debug().Str("rule_id", rid).Str("cid", origRule.CID).Msg("deleting old rule")
+			if _, err := client.DeleteRuleSetByCID(apiclient.CIDType(&origRule.CID)); err != nil {
+				logger.Warn().Err(err).Str("rule_id", rid).Interface("rule_cfg", origRule).Msg("deleting old rule")
+			}
+			continue
+		}
+
+		origData, err := json.Marshal(origRule)
+		if err != nil {
+			logger.Warn().Err(err).Interface("orig_rule", origRule).Msg("encoding original rule")
+			continue
+		}
+		mergedData, err := json.Marshal(ruleTemplate)
+		if err != nil {
+			logger.Warn().Err(err).Interface("merged_rule", ruleTemplate).Msg("encoding merged rule")
+			continue
+		}
+
+		if string(origData) != string(mergedData) {
+			logger.Debug().RawJSON("orig", origData).RawJSON("merged", mergedData).Msg("not the same, updating rule")
+			update = true
+		}
+
+		if update {
+			logger.Debug().Str("rule_id", rid).Msg("updating rule")
+			if err := makeRule(client, logger, ruleTemplate, false); err != nil {
+				logger.Warn().Err(err).Str("rule_id", rid).Interface("rule_cfg", ruleTemplate).Msg("updating rule")
+			}
+		} else {
+			logger.Debug().Str("rule_id", rid).Msg("unchanged, no update")
 		}
 	}
+
 	return nil
 }
 
-func createCustomRules(client *apiclient.API, logger zerolog.Logger, clusterName, checkCID string) error {
+func createCustomRules(client *apiclient.API, logger zerolog.Logger, clusterName, clusterTag, checkCID string) error {
 	logger.Debug().Msg("create custom alerting rules")
 	configFile := viper.GetString(keys.CustomRulesFile)
 	data, err := ioutil.ReadFile(configFile)
@@ -213,13 +354,18 @@ func createCustomRules(client *apiclient.API, logger zerolog.Logger, clusterName
 		return err
 	}
 
+	create := true
+
+	// "managing" custom rules is more complex. for the moment, we'll rely on API to return
+	// an existing ruleset if the config matches.
 	for _, rule := range cr.Rules {
 		// create custom rules from configuration
 		if rule.CheckCID == "" {
 			rule.CheckCID = checkCID
 		}
-		rule.Tags = append(rule.Tags, "cluster:"+clusterName)
-		if err := makeRule(client, logger, rule); err != nil {
+		rule.Name = strings.Replace(rule.Name, "{cluster_name}", clusterName, 1)
+		rule.Tags = append(rule.Tags, clusterTag)
+		if err := makeRule(client, logger, rule, create); err != nil {
 			return err
 		}
 	}
@@ -227,13 +373,21 @@ func createCustomRules(client *apiclient.API, logger zerolog.Logger, clusterName
 	return nil
 }
 
-func makeRule(client *apiclient.API, logger zerolog.Logger, rule apiclient.RuleSet) error {
-	r, err := client.CreateRuleSet(&rule)
-	if err != nil {
-		return err
-	}
+func makeRule(client *apiclient.API, logger zerolog.Logger, rule apiclient.RuleSet, create bool) error {
 
-	logger.Debug().Interface("rule", r).Msg("rule set")
+	if create {
+		r, err := client.CreateRuleSet(&rule)
+		if err != nil {
+			return err
+		}
+		logger.Debug().Interface("rule", r).Msg("created rule set")
+	} else {
+		r, err := client.UpdateRuleSet(&rule)
+		if err != nil {
+			return err
+		}
+		logger.Debug().Interface("rule", r).Msg("updated rule set")
+	}
 
 	return nil
 }
@@ -242,41 +396,36 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
 	defaultRuleSetsData := []byte(`
 {
     "crashloops_container": {
-        "derive": null,
         "filter": "and(reason:CrashLoopBackOff)",
         "metric_name": "kube_pod_container_status_waiting_reason",
         "metric_type": "numeric",
-        "name": "Kubernetes CrashLoops container ({cluster_name})",
+        "name": "Kubernetes CrashLoops ({cluster_name})",
         "rules": [
             {
                 "wait": 0,
                 "severity": 1,
-                "windowing_function": null,
                 "value": "0",
-                "criteria": "max value",
-                "windowing_duration": 300
+                "windowing_duration": 300,
+                "criteria": "max value"
             }
         ]
     },
     "crashloops_init_container": {
-        "derive": null,
         "filter": "and(reason:CrashLoopBackOff)",
         "metric_name": "kube_pod_init_container_status_waiting_reason",
         "metric_type": "numeric",
-        "name": "Kubernetes CrashLoops init container ({cluster_name})",
+        "name": "Kubernetes CrashLoops (Init) ({cluster_name})",
         "rules": [
             {
                 "wait": 0,
                 "severity": 1,
-                "windowing_function": null,
                 "value": "0",
-                "criteria": "max value",
-                "windowing_duration": 300
+                "windowing_duration": 300,
+                "criteria": "max value"
             }
         ]
     },
     "cpu_utilization": {
-        "derive": "average",
         "filter": "and(resource:cpu)",
         "metric_name": "utilization",
         "metric_type": "numeric",
@@ -287,13 +436,12 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
                 "severity": 1,
                 "wait": 0,
                 "windowing_duration": 900,
-                "value": "60",
+                "value": "75",
                 "criteria": "max value"
             }
-        ]
+        ]    
     },
     "disk_pressure": {
-        "derive": null,
         "filter": "and(condition:DiskPressure,status:true)",
         "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
@@ -302,32 +450,28 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
             {
                 "wait": 0,
                 "severity": 1,
-                "windowing_function": null,
                 "criteria": "max value",
-                "value": "0",
-                "windowing_duration": 300
+                "windowing_duration": 300,
+                "value": "0"
             }
         ]
     },
     "memory_pressure": {
-        "derive": null,
         "filter": "and(condition:MemoryPressure,status:true)",
         "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
         "name": "Kubernetes Memory Pressure ({cluster_name})",
         "rules": [
             {
-                "windowing_function": null,
                 "severity": 1,
                 "wait": 0,
-                "windowing_duration": 300,
                 "criteria": "max value",
+                "windowing_duration": 300,
                 "value": "0"
             }
         ]
     },
     "pid_pressure": {
-        "derive": null,
         "filter": "and(condition:PIDPressure,status:true)",
         "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
@@ -335,16 +479,14 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "rules": [
             {
                 "severity": 1,
-                "windowing_function": null,
                 "wait": 0,
-                "windowing_duration": 300,
                 "value": "0",
+                "windowing_duration": 300,
                 "criteria": "max value"
             }
         ]
     },
     "network_unavailable": {
-        "derive": null,
         "filter": "and(condition:NetworkUnavailable,status:true)",
         "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
@@ -352,32 +494,29 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "rules": [
             {
                 "severity": 1,
-                "windowing_function": null,
                 "wait": 0,
-                "windowing_duration": 300,
                 "value": "0",
+                "windowing_duration": 300,
                 "criteria": "max value"
             }
         ]
     },
     "job_failures": {
-        "derive": null,
+        "filter": "and(job_name:*)",
         "metric_name": "kube_job_status_failed",
         "metric_type": "numeric",
         "name": "Kubernetes Job Failures ({cluster_name})",
         "rules": [
             {
-                "windowing_duration": 300,
                 "value": "0",
                 "criteria": "max value",
                 "severity": 1,
-                "windowing_function": null,
+                "windowing_duration": 300,
                 "wait": 0
             }
-        ]
+        ]        
     },
     "persistent_volume_failures": {
-        "derive": null,
         "filter": "and(phase:Failed)",
         "metric_name": "kube_persistentvolume_status_phase",
         "metric_type": "numeric",
@@ -386,15 +525,13 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
             {
                 "criteria": "max value",
                 "value": "0",
-                "windowing_duration": 300,
                 "wait": 0,
-                "windowing_function": null,
+                "windowing_duration": 300,
                 "severity": 1
             }
-        ]
+        ]        
     },
     "pod_pending_delays": {
-        "derive": "average",
         "filter": "and(phase:Pending)",
         "metric_name": "kube_pod_status_phase",
         "metric_type": "numeric",
@@ -408,10 +545,10 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
                 "value": "0.99",
                 "criteria": "max value"
             }
-        ]
+        ]        
     },
     "deployment_glitches": {
-        "derive": null,
+        "filter": "and(deployment:*)",
         "metric_name": "deployment_generation_delta",
         "metric_type": "numeric",
         "name": "Kubernetes Deployment Glitches ({cluster_name})",
@@ -419,66 +556,60 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
             {
                 "criteria": "max value",
                 "value": "0",
-                "windowing_duration": 300,
                 "wait": 0,
-                "windowing_function": null,
+                "windowing_duration": 300,
                 "severity": 1
             },
             {
                 "severity": 1,
-                "windowing_function": null,
                 "wait": 0,
-                "windowing_duration": 300,
                 "criteria": "min value",
+                "windowing_duration": 300,
                 "value": "0"
             }
-        ]
+        ]        
     },
     "daemonsets_not_ready": {
-        "derive": null,
+        "filter": "and(daemonset:*)",
         "metric_name": "daemonset_scheduled_delta",
         "metric_type": "numeric",
         "name": "Kubernetes DaemonSets Not Ready ({cluster_name})",
         "rules": [
             {
-                "windowing_function": null,
+                "criteria": "max value",
                 "severity": 1,
                 "wait": 0,
                 "windowing_duration": 300,
-                "criteria": "max value",
                 "value": "0"
             },
             {
-                "wait": 0,
-                "severity": 1,
-                "windowing_function": null,
                 "criteria": "min value",
+                "severity": 1,
                 "value": "0",
+                "wait": 0,
                 "windowing_duration": 300
             }
         ]
     },
     "statefulsets_not_ready": {
-        "derive": null,
+        "filter": "and(statefulset:*)",
         "metric_name": "statefulset_replica_delta",
         "metric_type": "numeric",
         "name": "Kubernetes StatefulSets Not Ready ({cluster_name})",
         "rules": [
             {
                 "severity": 1,
-                "windowing_function": null,
                 "wait": 0,
-                "windowing_duration": 300,
                 "value": "0",
+                "windowing_duration": 300,
                 "criteria": "max value"
             },
             {
                 "criteria": "min value",
                 "value": "0",
-                "windowing_duration": 300,
                 "wait": 0,
-                "severity": 1,
-                "windowing_function": null
+                "windowing_duration": 300,
+                "severity": 1
             }
         ]
     }
