@@ -171,6 +171,25 @@ func init() {
 
 	{
 		const (
+			key          = keys.K8SKSMRequestMode
+			longOpt      = "k8s-ksm-request-mode"
+			envVar       = release.ENVPREFIX + "_K8S_KSM_REQUEST_MODE"
+			description  = "Kube-state-metrics request mode, proxy or direct"
+			defaultValue = defaults.K8SKSMRequestMode
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		const (
 			key          = keys.K8SKSMMetricsPortName
 			longOpt      = "k8s-ksm-metrics-port-name"
 			envVar       = release.ENVPREFIX + "_K8S_KSM_METRICS_PORT_NAME"

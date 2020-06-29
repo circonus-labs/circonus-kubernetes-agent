@@ -34,6 +34,7 @@ type Cluster struct {
 	BearerTokenFile        string `mapstructure:"bearer_token_file" json:"bearer_token_file" toml:"bearer_token_file" yaml:"bearer_token_file"`
 	EnableEvents           bool   `mapstructure:"enable_events" json:"enable_events" toml:"enable_events" yaml:"enable_events"`
 	EnableKubeStateMetrics bool   `mapstructure:"enable_kube_state_metrics" json:"enable_kube_state_metrics" toml:"enable_kube_state_metrics" yaml:"enable_kube_state_metrics"`
+	KSMRequestMode         string `mapstructure:"ksm_request_mode" json:"ksm_request_mode" toml:"ksm_request_mode" yaml:"ksm_request_mode"`
 	KSMMetricsPortName     string `mapstructure:"ksm_metrics_port_name" json:"ksm_metrics_port_name" toml:"ksm_metrics_port_name" yaml:"ksm_metrics_port_name"`
 	KSMTelemetryPortName   string `mapstructure:"ksm_telemetry_port_name" json:"ksm_telemetry_port_name" toml:"ksm_telemetry_port_name" yaml:"ksm_telemetry_port_name"`
 	KSMFieldSelectorQuery  string `mapstructure:"ksm_field_selector_query" json:"ksm_field_selector_query" toml:"ksm_field_selector_query" yaml:"ksm_field_selector_query"`
