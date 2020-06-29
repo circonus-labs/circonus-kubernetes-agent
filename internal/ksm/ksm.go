@@ -234,7 +234,7 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 						proto = "https"
 					}
 					telemetryURL := fmt.Sprintf("%s://%s/metrics", proto, addr)
-					if err := ksm.metrics(ctx, nil, telemetryURL); err != nil {
+					if err := ksm.telemetry(ctx, nil, telemetryURL); err != nil {
 						ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("telemetry")
 					}
 					wg.Done()
@@ -408,7 +408,7 @@ func (ksm *KSM) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error
 }
 
 func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL string) error {
-	ksm.log.Debug().Str("url", metricURL).Msg("metrics")
+	ksm.log.Debug().Str("mode", ksm.config.KSMRequestMode).Str("url", metricURL).Msg("metrics")
 
 	var client *http.Client
 	var req *http.Request
@@ -493,7 +493,7 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 }
 
 func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryURL string) error {
-	ksm.log.Debug().Str("url", telemetryURL).Msg("telemetry")
+	ksm.log.Debug().Str("mode", ksm.config.KSMRequestMode).Str("url", telemetryURL).Msg("telemetry")
 
 	var client *http.Client
 	var req *http.Request
