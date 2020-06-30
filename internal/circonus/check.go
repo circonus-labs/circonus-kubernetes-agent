@@ -156,7 +156,7 @@ func (c *Check) createAPIClient() (*apiclient.API, error) {
 		TokenApp: c.config.API.App,
 		URL:      c.config.API.URL,
 		Debug:    c.config.API.Debug,
-		Log:      logshim{logh: c.log.With().Str("pkg", "apicli").Logger()},
+		Log:      apiLogshim{logh: c.log.With().Str("pkg", "apicli").Logger()},
 	}
 	if c.config.API.CAFile != "" {
 		cert, err := ioutil.ReadFile(c.config.API.CAFile)
