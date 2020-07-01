@@ -135,7 +135,7 @@
             ["allow", "^utilization$", "utilization health"],
             ["allow", "^kube_deployment_(metadata|status_observed)_generation$", "health"],
             ["allow", "^kube_daemonset_status_(current|desired)_number_scheduled$", "health"],
-         		["allow", "^kube_statefulset_status_(replicas|replicas_ready)$", "health"],
+            ["allow", "^kube_statefulset_status_(replicas|replicas_ready)$", "health"],
             ["allow", "^deployment_generation_delta$", "health"],
             ["allow", "^daemonset_scheduled_delta$", "health"],
             ["allow", "^statefulset_replica_delta$", "health"],
