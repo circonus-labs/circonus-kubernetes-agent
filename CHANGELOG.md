@@ -1,5 +1,6 @@
 # v0.9.0
 
+* upd: deployment configurations to v0.9.0
 * add: ksm request mode (direct or proxy)
 * mrg: ksm field selector update v0.8.0
 * upd: use json for default rules, reduce friction of maintenance (both configuration.yaml and check.go use json)
