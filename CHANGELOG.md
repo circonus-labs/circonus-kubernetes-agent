@@ -1,5 +1,7 @@
 # v0.9.0
 
+* add: ksm request mode (direct or proxy)
+* mrg: ksm field selector update v0.8.0
 * upd: use json for default rules, reduce friction of maintenance (both configuration.yaml and check.go use json)
 * upd: metric filter rules for coredns health metrics
 * add: default alerting and custom rules support
@@ -15,6 +17,10 @@
 * add: metric filter rules for health dashboard
 * add: node cpu utilization for health dashboard
 * add: cluster name to check for tagging check, rules, contacts
+
+# v0.8.0
+
+* add: kube-state-metrics field selector
 
 # v0.7.1
 
