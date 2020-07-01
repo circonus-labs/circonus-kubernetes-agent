@@ -65,6 +65,7 @@ func initializeAlerting(client *apiclient.API, logger zerolog.Logger, clusterNam
 		logger.Error().Err(err).Msg("alerting contact")
 		return
 	}
+	logger.Debug().Str("contact", cg.Name).Str("cid", cg.CID).Msg("using contact group")
 
 	// create/update default rules
 	if err := manageDefaultRules(client, logger, da, clusterName, clusterTag, checkCID, checkUUID, cg); err != nil {
