@@ -1,0 +1,72 @@
+---
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: circonus-kubernetes-agent
+    labels:
+      app.kubernetes.io/name: circonus-kubernetes-agent
+      app.kubernetes.io/version: v0.7.1
+  spec:
+    selector:
+      matchLabels:
+        app.kubernetes.io/name: circonus-kubernetes-agent
+        app.kubernetes.io/version: v0.7.1
+    replicas: 1
+    template:
+      metadata:
+        name: circonus-kubernetes-agent
+        labels:
+          app.kubernetes.io/name: circonus-kubernetes-agent
+          app.kubernetes.io/version: v0.7.1
+      spec:
+        serviceAccountName: circonus-kubernetes-agent
+        containers:
+          - name: circonus-kubernetes-agent
+            image: circonuslabs/circonus-kubernetes-agent:v0.7.1
+            ## for ARM64, remove line above and uncomment line below
+            #image: circonuslabs/circonus-kubernetes-agent-arm64:v0.7.1
+            command: ["/circonus-kubernetes-agentd"]
+            env:
+              - name: CKA_CIRCONUS_API_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: cka-secrets-v1
+                    key: circonus-api-key
+              - name: CKA_K8S_NAME
+                valueFrom:
+                  configMapKeyRef:
+                    name: cka-config-v1
+                    key: kubernetes-name
+              - name: GODEBUG
+                value: "madvdontneed=1"
+            ##
+            ## No single set of resource settings is optimal for
+            ## all clusters. Factors such as number of nodes, pods, 
+            ## and containers all play a role. Run without resource
+            ## settings, tune resource/time balance, monitor actual 
+            ## utilization, then set requests and limits applicable 
+            ## to the specific environment.
+            ##
+            # resources:
+            #   requests:
+            #     memory: "64Mi"
+            #     cpu: "250m"
+            #   limits:
+            #     memory: "512Mi"
+            #     cpu: "500m"
+            livenessProbe:
+              httpGet:
+                path: /health
+                port: 8080                
+              initialDelaySeconds: 30
+            volumeMounts:
+              - name: configs
+                mountPath: /ck8sa
+                readOnly: true
+        volumes:
+          - name: configs
+            configMap:
+              name: cka-config-v1
+              items:
+                - key: default-alerts.json
+                  path: default-alerts.json

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
 )
 
@@ -66,5 +67,6 @@ func NewAPIRequest(token string, reqURL string) (*http.Request, error) {
 		return nil, errors.Wrap(err, "creating k8s api request")
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("User-Agent", release.NAME+"/"+release.VERSION)
 	return req, nil
 }

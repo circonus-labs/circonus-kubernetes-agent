@@ -81,6 +81,15 @@ const (
 	// DefaultStreamtags a specific set of tags to include with _all_ metrics collected
 	DefaultStreamtags = "circonus.default_streamtags"
 
+	// MetricFiltersFile a file with metric filter rules
+	MetricFiltersFile = "circonus.metric_filters_file"
+
+	// DefaultAlertsFile a file with default alerting settings
+	DefaultAlertsFile = "circonus.default_alerts_file"
+
+	// CustomRulesFile a file with custom rulesets
+	CustomRulesFile = "circonus.custom_rules_file"
+
 	// TraceSubmits enables writing all metrics sent to circonus to files
 	TraceSubmits = "circonus.trace_submits"
 
@@ -149,6 +158,7 @@ const (
 
 	// K8SEnableKubeStateMetrics enable kube-state-metrics
 	K8SEnableKubeStateMetrics = "kubernetes.enable_kube_state_metrics"
+	K8SKSMRequestMode         = "kubernetes.ksm_request_mode"
 	K8SKSMMetricsPortName     = "kubernetes.ksm_metrics_port_name"
 	K8SKSMTelemetryPortName   = "kubernetes.ksm_telemetry_port_name"
 	K8SKSMFieldSelectorQuery  = "kubernetes.ksm_field_selector_query"

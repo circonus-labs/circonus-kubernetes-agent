@@ -1,3 +1,23 @@
+# v0.9.0
+
+* add: ksm request mode (direct or proxy)
+* mrg: ksm field selector update v0.8.0
+* upd: use json for default rules, reduce friction of maintenance (both configuration.yaml and check.go use json)
+* upd: metric filter rules for coredns health metrics
+* add: default alerting and custom rules support
+* add: `_avg` for prom histograms (sum/count) for health dashboard dns metrics
+* add: config items for configmap json files (metric-filters.json, default-rules.json, custom-rules.json)
+* upd: default settings enable required collections for dashbaord
+* upd: split deployment configurations into two: `deploy/default/` (simplified) and `deploy/custom/` full control
+* upd: dns metrics, use `pod` for tag
+* upd: metric filters
+* add: health dashboard specific metrics
+* upd: remove nodeSelector from deployment.yaml (old k8s versions lack `kubernetes.io/os: linux` label)
+* upd: configuration.yaml to enable needed collection to support dashboard
+* add: metric filter rules for health dashboard
+* add: node cpu utilization for health dashboard
+* add: cluster name to check for tagging check, rules, contacts
+
 # v0.8.0
 
 * add: kube-state-metrics field selector
