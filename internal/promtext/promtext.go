@@ -98,6 +98,13 @@ func QueueMetrics(
 					circonus.MetricTypeFloat64,
 					streamTags, parentMeasurementTags,
 					m.GetHistogram().GetSampleSum(), ts)
+				// add average, requested for dns dashboard
+				_ = check.QueueMetricSample(
+					metrics, metricName+"_avg",
+					circonus.MetricTypeFloat64,
+					streamTags, parentMeasurementTags,
+					m.GetHistogram().GetSampleSum()/float64(m.GetHistogram().GetSampleCount()), ts)
+
 				if emitHistogramBuckets {
 					if circCumulativeHistogram {
 						var htags []string

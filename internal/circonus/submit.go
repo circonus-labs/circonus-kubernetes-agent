@@ -212,7 +212,7 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 
 	retryClient := retryablehttp.NewClient()
 	retryClient.HTTPClient = c.client
-	retryClient.Logger = logshim{logh: c.log.With().Str("pkg", "retryablehttp").Logger()}
+	retryClient.Logger = submitLogshim{logh: c.log.With().Str("pkg", "retryablehttp").Logger()}
 	retryClient.RetryWaitMin = 50 * time.Millisecond
 	retryClient.RetryWaitMax = 1 * time.Second
 	retryClient.RetryMax = 10

@@ -34,6 +34,7 @@ type Cluster struct {
 	BearerTokenFile        string `mapstructure:"bearer_token_file" json:"bearer_token_file" toml:"bearer_token_file" yaml:"bearer_token_file"`
 	EnableEvents           bool   `mapstructure:"enable_events" json:"enable_events" toml:"enable_events" yaml:"enable_events"`
 	EnableKubeStateMetrics bool   `mapstructure:"enable_kube_state_metrics" json:"enable_kube_state_metrics" toml:"enable_kube_state_metrics" yaml:"enable_kube_state_metrics"`
+	KSMRequestMode         string `mapstructure:"ksm_request_mode" json:"ksm_request_mode" toml:"ksm_request_mode" yaml:"ksm_request_mode"`
 	KSMMetricsPortName     string `mapstructure:"ksm_metrics_port_name" json:"ksm_metrics_port_name" toml:"ksm_metrics_port_name" yaml:"ksm_metrics_port_name"`
 	KSMTelemetryPortName   string `mapstructure:"ksm_telemetry_port_name" json:"ksm_telemetry_port_name" toml:"ksm_telemetry_port_name" yaml:"ksm_telemetry_port_name"`
 	KSMFieldSelectorQuery  string `mapstructure:"ksm_field_selector_query" json:"ksm_field_selector_query" toml:"ksm_field_selector_query" yaml:"ksm_field_selector_query"`
@@ -68,6 +69,9 @@ type Circonus struct {
 	Check             Check  `json:"check" toml:"check" yaml:"check"`
 	TraceSubmits      string `mapstructure:"trace_submits" json:"trace_submits" toml:"trace_submits" yaml:"trace_submits"` // trace metrics being sent to circonus
 	DefaultStreamtags string `mapstructure:"default_streamtags" json:"default_streamtags" toml:"default_streamtags" yaml:"default_streamtags"`
+	MetricFiltersFile string `mapstructure:"metric_filters_file" json:"metric_filters_file" toml:"metric_filters_file" yaml:"metric_filters_file"`
+	DefaultAlertsFile string `mapstructure:"default_alerts_file" json:"default_alerts_file" toml:"default_alerts_file" yaml:"default_alerts_file"`
+	CustomRulesFile   string `mapstructure:"custom_rules_file" json:"custom_rules_file" toml:"custom_rules_file" yaml:"custom_rules_file"`
 	// hidden circonus settings for development and debugging
 	Base64Tags       bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"base64_tags" json:"base64_tags" toml:"base64_tags" yaml:"base64_tags"`
 	DryRun           bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"dry_run" json:"dry_run" toml:"dry_run" yaml:"dry_run"`                             // simulate sending metrics, print them to stdout

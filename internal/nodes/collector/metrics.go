@@ -9,16 +9,45 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 )
 
-func (nc *Collector) queueCPU(dest map[string]circonus.MetricSample, stats *cpu, parentStreamTags []string, parentMeasurementTags []string) {
+func (nc *Collector) queueCPU(dest map[string]circonus.MetricSample, stats *cpu, isNode bool, parentStreamTags []string, parentMeasurementTags []string) {
 	cores := "usageNanoCores"
 	seconds := "usageCoreNanoSeconds"
+	utilization := "utilization"
 
 	var streamTags []string
 	streamTags = append(streamTags, parentStreamTags...)
 	streamTags = append(streamTags, "resource:cpu")
 	_ = nc.check.QueueMetricSample(dest, cores, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.UsageNanoCores, nc.ts)
-	streamTags = append(streamTags, "units:seconds")
-	_ = nc.check.QueueMetricSample(dest, seconds, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.UsageCoreNanoSeconds, nc.ts)
+	{
+		var st []string
+		st = append(st, streamTags...)
+		st = append(st, "units:seconds")
+		_ = nc.check.QueueMetricSample(dest, seconds, circonus.MetricTypeUint64, st, parentMeasurementTags, stats.UsageCoreNanoSeconds, nc.ts)
+	}
+
+	// if node, add % utilized
+	if isNode {
+		if ns, ok := GetNodeStat(nc.node.Metadata.Name); ok {
+			if ns.LastCPUNanoSeconds > 0 {
+				var st []string
+				st = append(st, streamTags...)
+				st = append(st, "units:percent")
+				pct := float64(0)
+
+				if ns.LastCPUNanoSeconds > 0 && stats.UsageCoreNanoSeconds > 0 && ns.CPUCapacity > 0 {
+					// calc ref: https://github.com/kubernetes-retired/heapster/issues/650#issuecomment-147795824
+					usage := float64(stats.UsageCoreNanoSeconds - ns.LastCPUNanoSeconds)
+					capacity := float64(ns.CPUCapacity * 1e+9)
+					pct = usage / capacity
+				}
+
+				_ = nc.check.QueueMetricSample(dest, utilization, circonus.MetricTypeFloat64, st, parentMeasurementTags, pct, nc.ts)
+			}
+
+			ns.LastCPUNanoSeconds = stats.UsageCoreNanoSeconds
+			SetNodeStat(nc.node.Metadata.Name, ns)
+		}
+	}
 }
 
 func (nc *Collector) queueMemory(dest map[string]circonus.MetricSample, stats *memory, parentStreamTags []string, parentMeasurementTags []string, isNode bool) {

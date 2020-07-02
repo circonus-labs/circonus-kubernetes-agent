@@ -32,6 +32,9 @@ const (
 	CheckTags          = ""
 	CheckTarget        = "" // defaults to cluster name
 	DefaultStreamtags  = ""
+	MetricFiltersFile  = "/ck8sa/metric-filters.json" // assumes running in a pod, ConfigMap mounted volume
+	DefaultAlertsFile  = "/ck8sa/default-alerts.json" // assumes running in a pod, ConfigMap mounted volume
+	CustomRulesFile    = "/ck8sa/custom-rules.json"   // assumes running in a pod, ConfigMap mounted volume
 	CheckTitle         = ""
 	TraceSubmits       = ""
 	// hidden circonus settings for development and debugging
@@ -69,23 +72,24 @@ const (
 	K8SAPICAFile              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 	K8SBearerToken            = ""
 	K8SBearerTokenFile        = "/var/run/secrets/kubernetes.io/serviceaccount/token" //nolint:gosec
-	K8SEnableEvents           = false
-	K8SEnableKubeStateMetrics = false
-	K8SKSMMetricsPortName     = "http-metrics"                     // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
-	K8SKSMTelemetryPortName   = "telemetry"                        // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
-	K8SKSMFieldSelectorQuery  = "metadata.name=kube-state-metrics" // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L19
-	K8SEnableAPIServer        = false
-	K8SEnableMetricsServer    = false
-	K8SEnableNodes            = true
-	K8SEnableNodeStats        = true
-	K8SEnableNodeMetrics      = true
-	K8SEnableCadvisorMetrics  = false
-	K8SEnableKubeDNSMetrics   = false
-	K8SNodeSelector           = "" // blank=all
-	K8SIncludePods            = true
-	K8SPodLabelKey            = "" // blank=all
-	K8SPodLabelVal            = "" // blank=all
-	K8SIncludeContainers      = false
+	K8SEnableEvents           = true                                                  // dashboard
+	K8SEnableKubeStateMetrics = true                                                  // dashobard
+	K8SKSMRequestMode         = "direct"                                              // 'direct' or 'proxy' modes supported
+	K8SKSMMetricsPortName     = "http-metrics"                                        // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
+	K8SKSMTelemetryPortName   = "telemetry"                                           // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
+	K8SKSMFieldSelectorQuery  = "metadata.name=kube-state-metrics"                    // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L19
+	K8SEnableAPIServer        = true                                                  // dashboard
+	K8SEnableMetricsServer    = false                                                 // deprecated
+	K8SEnableNodes            = true                                                  // dashboard
+	K8SEnableNodeStats        = true                                                  // dashboard
+	K8SEnableNodeMetrics      = true                                                  // dashboard
+	K8SEnableCadvisorMetrics  = false                                                 // not needed by dashboard and is deprecated by k8s
+	K8SEnableKubeDNSMetrics   = true                                                  // dashboard
+	K8SNodeSelector           = ""                                                    // blank=all
+	K8SIncludePods            = true                                                  // dashboard
+	K8SPodLabelKey            = ""                                                    // blank=all
+	K8SPodLabelVal            = ""                                                    // blank=all
+	K8SIncludeContainers      = false                                                 // not needed by dashboard
 	K8SAPITimelimit           = "10s"
 )
 

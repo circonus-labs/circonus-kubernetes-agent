@@ -1,0 +1,182 @@
+##
+## NOTE: Change settings here, in the corresonding
+##       Secret or ConfigMap entry. Ensure settings
+##       are uncommeted here AND deployment.yaml
+##       in order for it to take effect.
+##
+---
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      # versioned, cadence independent of app version
+      name: cka-secrets-v1
+      labels:
+          app.kubernetes.io/name: circonus-kubernetes-agent
+    stringData:
+      ## Circonus API Key is REQUIRED
+      circonus-api-key: ""
+      ## For in-cluster operation, the service account token
+      ## will be used. Only set this to use a DIFFERENT token 
+      ## than the kubernetes-bearer-token-file setting
+      ## below. The file will always take precedence, ensure 
+      ## kubernetes-bearer-token-file is set to "" when using 
+      ## this setting.
+      #kubernetes-bearer-token: ""
+
+---
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+      # versioned, cadence independent of app version
+      name: cka-config-v1
+      labels:
+          app.kubernetes.io/name: circonus-kubernetes-agent
+  data:
+      #circonus-api-key-file: ""
+      #circonus-api-app: "circonus-kubernetes-agent"
+      #circonus-api-url: "https://api.circonus.com"
+      #circonus-api-ca-file: ""
+      #circonus-api-debug: "false"
+      ## broker to use when creating a new httptrap check
+      #circonus-check-broker-cid: "/broker/35"
+      #circonus-check-broker-ca-file: ""
+      ## create a check, if one cannot be found using the target
+      #circonus-check-create: "true"
+      ## or, turn create off, and specify a check which has already been created
+      #circonus-check-bundle-cid: ""
+      ## comman delimited list of k:v tags to add to the check
+      #circonus-check-tags: ""
+      ## Use a static target to ensure that the agent can find the check
+      ## the next time the pod starts. Otherwise, the pod's hostname will
+      ## be used and a new check would be created each time the pod is
+      ## created when create is enabled.
+      circonus-check-target: ""
+      ## set a custom display title for the check when it is created
+      #circonus-check-title: ""
+      ## comma delimited list of k:v streamtags to add to every metric
+      #circonus-default-streamtags: ""
+      ##
+      ## set a name identifying the cluster, to be used in the check 
+      ## title when it is created
+      kubernetes-name: ""
+      #kubernetes-api-url: "https://kubernetes"
+      #kubernetes-api-ca-file: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+      #kubernetes-bearer-token-file: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+      ## collect event metrics - default is enabled for dashboard
+      kubernetes-enable-events: "true"
+      ## collect metrics from kube-state-metrics if running - default is enabled for dashboard
+      kubernetes-enable-kube-state-metrics: "true"
+      ## kube-state-metrics reqeust mode (direct or proxy) proxy goes through api-server, direct uses the service endpoint ip
+      kubernetes-ksm-reqeust-mode: "direct"
+      ## kube-state-metrics metrics port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
+      kubernetes-ksm-metrics-port-name: "http-metrics"
+      ## kube-state-metrics telemetry port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
+      kubernetes-ksm-telemetry-port-name: "telemetry"
+      ## kube-state-metrics fieldSelector query, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
+      kubernetes-ksm-field-selector-query: "metadata.name=kube-state-metrics"
+      ## collect metrics from api-server - default is enabled for dashboard
+      kubernetes-enable-api-server: "true"
+      ## collect node metrics - default is enabled for dashboard
+      kubernetes-enable-nodes: "true"
+      ## expression to use for node labelSelector - blank = all nodes
+      kubernetes-node-selector: ""
+      ## collect kublet /stats/summary performance metrics (e.g. cpu, memory, fs) - default is enabled for dashboard
+      kubernetes-enable-node-stats: "true"
+      ## collect kublet /metrics observation metrics - default is enabled for dashboard
+      kubernetes-enable-node-metrics: "true"
+      ## enable kubelet cadvisor metrics (note: being deprecated by k8s)
+      kubernetes-enable-cadvisor-metrics: "false"
+      ## enable kube-dns metrics - default is enabled for dashboard
+      kubernetes-enable-kube-dns-metrics: "true"
+      ## include pod metrics, requires nodes to be enabled - - default is enabled for dashboard
+      kubernetes-include-pod-metrics: "true"
+      ## include only pods with this label key, blank = all pods
+      kubernetes-pod-label-key: ""
+      ## include only pods with label key and value, blank = all pods with label key
+      kubernetes-pod-label-val: ""
+      ## include container metrics, requires nodes+pods to be enabled
+      kubernetes-include-container-metrics: "false"
+      ## collection interval, how often to collect metrics (note if a previous 
+      ## collection is still in progress another will NOT be started)
+      #kubernetes-collection-interval: "1m"
+      ## api request timelimit
+      #kubernetes-api-timelimit: "10s"
+      ##
+      ## Metric filters control which metrics are passed on by the broker
+      ## NOTE: This list is applied to the check every time the agent pod starts.
+      ##       Updates through any other method will be overwritten by this list.
+      metric-filters.json: |
+        {
+          "metric_filters": [
+            ["allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"],
+            ["allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"],
+            ["allow", "^usageNanoCores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"],
+            ["allow", "^apiserver_request_total$", "tags", "and(or(code:5*,code:4*))", "api req errors"],
+            ["allow", "^authenticated_user_requests$", "api auth"],
+            ["allow", "^kube_pod_container_status_(running|terminated|waiting|ready)$", "containers"],
+            ["allow", "^kube_pod_container_status_(terminated|waiting)_reason$", "containers health"],
+            ["allow", "^kube_pod_init_container_status_(terminated|waiting)_reason$", "containers health"],
+            ["allow", "^kube_deployment_(created|spec_replicas)$", "deployments"],
+            ["allow", "^kube_deployment_status_(replicas|replicas_updated|replicas_available|replicas_unavailable)$", "deployments"],
+            ["allow", "^kube_job_status_failed$", "health"],
+            ["allow", "^kube_persistentvolume_status_phase$", "health"],
+            ["allow", "^kube_deployment_status_replicas_unavailable$", "deployments"],
+            ["allow", "^kube_pod_start_time$", "pods"],
+            ["allow", "^kube_pod_status_condition$", "pods"],
+            ["allow", "^kube_pod_status_phase$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"],
+            ["allow", "^kube_pod_status_(ready|scheduled)$", "tags", "and(condition:true)", "pods"],
+            ["allow", "^kube_(service_labels|deployment_labels|pod_container_info|pod_deleted)$", "ksm inventory"],
+            ["allow", "^(node|kubelet_running_pod_count|Ready)$", "nodes"],
+            ["allow", "^NetworkUnavailable$", "node status"],
+            ["allow", "^kube_node_status_condition$", "node status health"],
+            ["allow", "^(Disk|Memory|PID)Pressure$", "node status"],
+            ["allow", "^capacity_.*$", "node capacity"],
+            ["allow", "^kube_namespace_status_phase$", "tags", "and(or(phase:Active,phase:Terminating))", "namespaces"],
+            ["allow", "^utilization$", "utilization health"],
+            ["allow", "^kube_deployment_(metadata|status_observed)_generation$", "health"],
+            ["allow", "^kube_daemonset_status_(current|desired)_number_scheduled$", "health"],
+            ["allow", "^kube_statefulset_status_(replicas|replicas_ready)$", "health"],
+            ["allow", "^deployment_generation_delta$", "health"],
+            ["allow", "^daemonset_scheduled_delta$", "health"],
+            ["allow", "^statefulset_replica_delta$", "health"],
+            ["allow", "^coredns_(dns|forward)_request_(count_total|duration_seconds_avg)$", "dns health"],
+            ["allow", "^coredns_(dns|forward)_response_rcode_count_total$", "dns health"],
+            ["allow", "^events$", "events"],
+            ["allow", "^collect_.*$", "agent collection stats"],
+            ["allow", "^authentication_attempts$", "api auth health"],
+            ["deny", "^.+$", "all other metrics"]
+          ]
+        }
+      ##
+      ## alert configuration
+      ##
+      ## REQUIRED -- one of, contact.email OR contact.group_cid
+      ##
+      ## Note: if neither supplied, all alertring and some dashboard functionality will be disabled
+      ##
+      default_alerts.json: |
+        {
+          "contact": {
+            "email": "",
+            "group_cid": ""
+          },
+          "rule_settings": [
+            "cpu_utilization": {
+              "threshold": "75",
+              "window": 900
+            },
+            "pod_pending_delays": {
+              "window": 900
+            }
+          ]
+        }
+      ##
+      ## "rules" is an array of custom alert rule set objects (see https://login.circonus.com/resources/api/calls/rule_set 
+      ## for more information on object format alternatively, use the UI to view the API Object of an existing rule set)
+      ##
+      custom_rules.json: |
+        {
+          "rules":[
+
+          ]
+        }

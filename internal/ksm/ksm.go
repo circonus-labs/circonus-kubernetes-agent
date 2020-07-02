@@ -28,6 +28,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/expfmt"
 	"github.com/rs/zerolog"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 type KSM struct {
@@ -40,11 +43,19 @@ type KSM struct {
 	ts *time.Time
 }
 
+const (
+	modeProxy  = "proxy"
+	modeDirect = "direct"
+)
+
 // NOTES:
 // curl -v localhost:8080/api/v1/services?fieldSelector=metadata.name%3Dkube-state-metrics
-// the spec.ports.name
-// combine selfLink with ':http-metrics/proxy/metrics' for metrics
-// combine selfLink with ':telemetry/proxy/metrics' for ksm telemetry
+// for "proxy" mode:
+//   the spec.ports.name
+//   combine selfLink with ':http-metrics/proxy/metrics' for metrics
+//   combine selfLink with ':telemetry/proxy/metrics' for ksm telemetry
+// for "direct" mode:
+//   use service endpoint w/ports (configured for each port name)
 
 func New(cfg *config.Cluster, parentLogger zerolog.Logger, check *circonus.Check) (*KSM, error) {
 	if cfg == nil {
@@ -121,8 +132,6 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 		ksm.Unlock()
 		return
 	}
-
-	metricPath := "/proxy/metrics"
 	metricPortName := ""
 	telemetryPortName := ""
 	for _, p := range svc.Spec.Ports {
@@ -155,39 +164,86 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 
 	var wg sync.WaitGroup
 
-	// NOTE: w/re to ksm being run with HTTPS - https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#manually-constructing-apiserver-proxy-urls
-	//       if the port name is prefixed with 'https-', "https:" will be added before the service name in the selfLink below.
+	switch ksm.config.KSMRequestMode {
+	case modeProxy:
+		metricPath := "/proxy/metrics"
 
-	if metricPortName != "" {
-		wg.Add(1)
-		go func() {
-			svcPath := svc.Metadata.SelfLink
-			if strings.HasPrefix(metricPortName, "https-") {
-				svcPath = strings.Replace(svcPath, svc.Metadata.Name, "https:"+svc.Metadata.Name, -1)
-			}
+		// NOTE: w/re to ksm being run with HTTPS - https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#manually-constructing-apiserver-proxy-urls
+		//       if the port name is prefixed with 'https-', "https:" will be added before the service name in the selfLink below.
 
-			metricURL := ksm.config.URL + svcPath + ":" + metricPortName + metricPath
-			if err := ksm.metrics(ctx, tlsConfig, metricURL); err != nil {
-				ksm.log.Error().Err(err).Str("url", metricURL).Msg("http-metrics")
-			}
-			wg.Done()
-		}()
-	}
+		if metricPortName != "" {
+			wg.Add(1)
+			go func() {
+				svcPath := svc.Metadata.SelfLink
+				if strings.HasPrefix(metricPortName, "https-") {
+					svcPath = strings.Replace(svcPath, svc.Metadata.Name, "https:"+svc.Metadata.Name, -1)
+				}
 
-	if telemetryPortName != "" {
-		wg.Add(1)
-		go func() {
-			svcPath := svc.Metadata.SelfLink
-			if strings.HasPrefix(metricPortName, "https-") {
-				svcPath = strings.Replace(svcPath, svc.Metadata.Name, "https:"+svc.Metadata.Name, -1)
-			}
+				metricURL := ksm.config.URL + svcPath + ":" + metricPortName + metricPath
+				if err := ksm.metrics(ctx, tlsConfig, metricURL); err != nil {
+					ksm.log.Error().Err(err).Str("url", metricURL).Msg("http-metrics")
+				}
+				wg.Done()
+			}()
+		}
 
-			telemetryURL := ksm.config.URL + svcPath + ":" + telemetryPortName + metricPath
-			if err := ksm.telemetry(ctx, tlsConfig, telemetryURL); err != nil {
-				ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("telemetry")
+		if telemetryPortName != "" {
+			wg.Add(1)
+			go func() {
+				svcPath := svc.Metadata.SelfLink
+				if strings.HasPrefix(telemetryPortName, "https-") {
+					svcPath = strings.Replace(svcPath, svc.Metadata.Name, "https:"+svc.Metadata.Name, -1)
+				}
+
+				telemetryURL := ksm.config.URL + svcPath + ":" + telemetryPortName + metricPath
+				if err := ksm.telemetry(ctx, tlsConfig, telemetryURL); err != nil {
+					ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("telemetry")
+				}
+				wg.Done()
+			}()
+		}
+
+	case modeDirect:
+		addresses, err := ksm.getEndpointIP(metricPortName, telemetryPortName)
+		if err != nil {
+			ksm.log.Error().Err(err).Msg("getting ksm addresses")
+			return
+		}
+		if metricPortName != "" {
+			if addr, ok := addresses[metricPortName]; ok && addr != "" {
+				wg.Add(1)
+				go func() {
+					proto := "http"
+					if strings.HasPrefix(metricPortName, "https-") {
+						proto = "https"
+					}
+					metricURL := fmt.Sprintf("%s://%s/metrics", proto, addr)
+					if err := ksm.metrics(ctx, nil, metricURL); err != nil {
+						ksm.log.Error().Err(err).Str("url", metricURL).Msg("http-metrics")
+					}
+					wg.Done()
+				}()
 			}
-			wg.Done()
-		}()
+		}
+		if telemetryPortName != "" {
+			if addr, ok := addresses[telemetryPortName]; ok && addr != "" {
+				wg.Add(1)
+				go func() {
+					proto := "http"
+					if strings.HasPrefix(telemetryPortName, "https-") {
+						proto = "https"
+					}
+					telemetryURL := fmt.Sprintf("%s://%s/metrics", proto, addr)
+					if err := ksm.telemetry(ctx, nil, telemetryURL); err != nil {
+						ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("telemetry")
+					}
+					wg.Done()
+				}()
+			}
+		}
+	default:
+		ksm.log.Warn().Str("mode", ksm.config.KSMRequestMode).Msg("unknown request mode, skipping ksm collection")
+		return
 	}
 
 	wg.Wait()
@@ -201,6 +257,81 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	ksm.Lock()
 	ksm.running = false
 	ksm.Unlock()
+}
+
+func (ksm *KSM) getEndpointIP(metricPortName, telemetryPortName string) (map[string]string, error) {
+	if ksm.config.KSMFieldSelectorQuery == "" {
+		ksm.log.Error().
+			Str("field_selector_query", ksm.config.KSMFieldSelectorQuery).
+			Msg("invalid service definition, KSM field selectory query not found")
+		return nil, errors.New("invalid service definition, missing KSM field selector query")
+	}
+
+	var cfg *rest.Config
+	if c, err := rest.InClusterConfig(); err != nil {
+		if err != rest.ErrNotInCluster {
+			return nil, errors.Wrap(err, "unable to get DNS metrics, must be in cluster")
+		}
+		// not in cluster, use supplied customer config for cluster
+		cfg = &rest.Config{}
+		if ksm.config.BearerToken != "" {
+			cfg.BearerToken = ksm.config.BearerToken
+		}
+		if ksm.config.URL != "" {
+			cfg.Host = ksm.config.URL
+		}
+		if ksm.config.CAFile != "" {
+			cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: ksm.config.CAFile}
+		}
+	} else {
+		cfg = c // use in-cluster config
+	}
+
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "initializing cleint set")
+	}
+
+	endpoints, err := clientset.CoreV1().Endpoints("").List(metav1.ListOptions{FieldSelector: ksm.config.KSMFieldSelectorQuery})
+	if err != nil {
+		return nil, err
+	}
+
+	urls := make(map[string]string)
+	metricAddress := ""
+	telemetryAddress := ""
+
+	for _, endpoint := range endpoints.Items {
+		for _, subset := range endpoint.Subsets {
+			if len(subset.Addresses) == len(subset.Ports) {
+				// it's 1:1 addr[0] goes with port[0], addr[1] with port[1], etc.
+				for idx, addr := range subset.Addresses {
+					switch subset.Ports[idx].Name {
+					case metricPortName:
+						metricAddress = fmt.Sprintf("%s:%d", addr.IP, subset.Ports[idx].Port)
+					case telemetryPortName:
+						telemetryAddress = fmt.Sprintf("%s:%d", addr.IP, subset.Ports[idx].Port)
+					}
+				}
+			} else if len(subset.Addresses) == 1 && len(subset.Ports) > 1 {
+				// all ports go with the one address
+				for _, port := range subset.Ports {
+					switch port.Name {
+					case metricPortName:
+						metricAddress = fmt.Sprintf("%s:%d", subset.Addresses[0].IP, port.Port)
+					case telemetryPortName:
+						telemetryAddress = fmt.Sprintf("%s:%d", subset.Addresses[0].IP, port.Port)
+
+					}
+				}
+			}
+		}
+	}
+
+	urls[metricPortName] = metricAddress
+	urls[telemetryPortName] = telemetryAddress
+
+	return urls, nil
 }
 
 func (ksm *KSM) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error) {
@@ -277,17 +408,37 @@ func (ksm *KSM) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error
 }
 
 func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL string) error {
-	client, err := k8s.NewAPIClient(tlsConfig, ksm.apiTimelimit)
-	if err != nil {
-		return errors.Wrap(err, "/metrics cli")
-	}
-	defer client.CloseIdleConnections()
+	ksm.log.Debug().Str("mode", ksm.config.KSMRequestMode).Str("url", metricURL).Msg("metrics")
 
-	ksm.log.Debug().Str("url", metricURL).Msg("metrics")
-	req, err := k8s.NewAPIRequest(ksm.config.BearerToken, metricURL)
-	if err != nil {
-		return errors.Wrap(err, "/metrics req")
+	var client *http.Client
+	var req *http.Request
+
+	switch ksm.config.KSMRequestMode {
+	case modeProxy:
+		c, err := k8s.NewAPIClient(tlsConfig, ksm.apiTimelimit)
+		if err != nil {
+			return errors.Wrap(err, "/metrics cli")
+		}
+		r, err := k8s.NewAPIRequest(ksm.config.BearerToken, metricURL)
+		if err != nil {
+			return errors.Wrap(err, "/metrics req")
+		}
+		client = c
+		req = r
+	case modeDirect:
+		client = &http.Client{}
+		if strings.HasPrefix(metricURL, "https:") {
+			client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} //nolint:gosec
+		}
+		r, err := http.NewRequest("GET", metricURL, nil)
+		if err != nil {
+			return errors.Wrap(err, "/metrics req")
+		}
+		r.Header.Add("User-Agent", release.NAME+"/"+release.VERSION)
+		req = r
 	}
+
+	defer client.CloseIdleConnections()
 
 	start := time.Now()
 	resp, err := client.Do(req)
@@ -295,7 +446,7 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "metrics"},
-			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
 			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
 		})
 		return err
@@ -304,7 +455,7 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 	ksm.check.AddHistSample("collect_latency", cgm.Tags{
 		cgm.Tag{Category: "source", Value: release.NAME},
 		cgm.Tag{Category: "request", Value: "metrics"},
-		cgm.Tag{Category: "proxy", Value: "api-server"},
+		cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
 		cgm.Tag{Category: "target", Value: "kube-state-metrics"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
@@ -313,7 +464,7 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "metrics"},
-			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
 			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
 			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
 		})
@@ -342,17 +493,38 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 }
 
 func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryURL string) error {
-	client, err := k8s.NewAPIClient(tlsConfig, ksm.apiTimelimit)
-	if err != nil {
-		return errors.Wrap(err, "/telemetry cli")
-	}
-	defer client.CloseIdleConnections()
+	ksm.log.Debug().Str("mode", ksm.config.KSMRequestMode).Str("url", telemetryURL).Msg("telemetry")
 
-	ksm.log.Debug().Str("url", telemetryURL).Msg("telemetry")
-	req, err := k8s.NewAPIRequest(ksm.config.BearerToken, telemetryURL)
-	if err != nil {
-		return errors.Wrap(err, "/telemetry req")
+	var client *http.Client
+	var req *http.Request
+
+	switch ksm.config.KSMRequestMode {
+	case modeProxy:
+		c, err := k8s.NewAPIClient(tlsConfig, ksm.apiTimelimit)
+		if err != nil {
+			return errors.Wrap(err, "/telemetry cli")
+		}
+		r, err := k8s.NewAPIRequest(ksm.config.BearerToken, telemetryURL)
+		if err != nil {
+			return errors.Wrap(err, "/telemetry req")
+		}
+		client = c
+		req = r
+
+	case modeDirect:
+		client = &http.Client{}
+		if strings.HasPrefix(telemetryURL, "https:") {
+			client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} //nolint:gosec
+		}
+		r, err := http.NewRequest("GET", telemetryURL, nil)
+		if err != nil {
+			return errors.Wrap(err, "/telemetry req")
+		}
+		r.Header.Add("User-Agent", release.NAME+"/"+release.VERSION)
+		req = r
 	}
+
+	defer client.CloseIdleConnections()
 
 	start := time.Now()
 	resp, err := client.Do(req)
@@ -360,7 +532,7 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "telemetry"},
-			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
 			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
 		})
 		return err
@@ -369,7 +541,7 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 	ksm.check.AddHistSample("collect_latency", cgm.Tags{
 		cgm.Tag{Category: "source", Value: release.NAME},
 		cgm.Tag{Category: "request", Value: "telemetry"},
-		cgm.Tag{Category: "proxy", Value: "api-server"},
+		cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
 		cgm.Tag{Category: "target", Value: "kube-state-metrics"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
@@ -378,7 +550,7 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "telemetry"},
-			cgm.Tag{Category: "proxy", Value: "api-server"},
+			cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
 			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
 			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
 		})

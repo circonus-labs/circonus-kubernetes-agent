@@ -283,6 +283,61 @@ func init() {
 		viper.SetDefault(key, defaultValue)
 	}
 
+	{
+		const (
+			key          = keys.MetricFiltersFile
+			longOpt      = "metric-filters-file"
+			envVar       = release.ENVPREFIX + "_CIRCONUS_METRIC_FILTERS_FILE"
+			description  = "Circonus Check metric filters configuration file"
+			defaultValue = defaults.MetricFiltersFile
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+	{
+		const (
+			key          = keys.DefaultAlertsFile
+			longOpt      = "default-alerts-file"
+			envVar       = release.ENVPREFIX + "_CIRCONUS_DEFAULT_ALERTS_FILE"
+			description  = "Circonus default alerts configuration file"
+			defaultValue = defaults.DefaultAlertsFile
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+	{
+		const (
+			key          = keys.CustomRulesFile
+			longOpt      = "custom-rules-file"
+			envVar       = release.ENVPREFIX + "_CIRCONUS_CUSTOM_RULES_FILE"
+			description  = "Circonus custom rules configuration file"
+			defaultValue = defaults.CustomRulesFile
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
+
 	//
 	// hidden circonus options for development and debugging
 	//

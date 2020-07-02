@@ -186,6 +186,15 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 				streamTags, parentMeasurementTags,
 				uint64(v),
 				nc.ts)
+			if ns, ok := GetNodeStat(nc.node.Metadata.Name); ok {
+				ns.CPUCapacity = uint64(v)
+				SetNodeStat(nc.node.Metadata.Name, ns)
+			} else {
+				ns := NodeStat{
+					CPUCapacity: uint64(v),
+				}
+				SetNodeStat(nc.node.Metadata.Name, ns)
+			}
 		} else {
 			nc.log.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.CPU).Msg("converting capacity.cpu")
 		}
@@ -404,7 +413,7 @@ func (nc *Collector) summaryNode(node *statsSummaryNode, parentStreamTags []stri
 
 	metrics := make(map[string]circonus.MetricSample)
 
-	nc.queueCPU(metrics, &node.CPU, parentStreamTags, parentMeasurementTags)
+	nc.queueCPU(metrics, &node.CPU, true, parentStreamTags, parentMeasurementTags)
 	nc.queueMemory(metrics, &node.Memory, parentStreamTags, parentMeasurementTags, true)
 	nc.queueNetwork(metrics, &node.Network, parentStreamTags, parentMeasurementTags)
 	nc.queueFS(metrics, &node.FS, parentStreamTags, parentMeasurementTags)
@@ -441,7 +450,7 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 		var streamTags []string
 		streamTags = append(streamTags, parentStreamTags...)
 		streamTags = append(streamTags, []string{"sys_container:" + container.Name}...)
-		nc.queueCPU(metrics, &container.CPU, streamTags, parentMeasurementTags)
+		nc.queueCPU(metrics, &container.CPU, false, streamTags, parentMeasurementTags)
 		nc.queueMemory(metrics, &container.Memory, streamTags, parentMeasurementTags, false)
 		nc.queueRootFS(metrics, &container.RootFS, streamTags, parentMeasurementTags)
 		nc.queueLogsFS(metrics, &container.Logs, streamTags, parentMeasurementTags)
@@ -491,7 +500,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 			"__rollup:false", // prevent high cardinality metrics from rolling up
 		}...)
 
-		nc.queueCPU(metrics, &pod.CPU, podStreamTags, parentMeasurementTags)
+		nc.queueCPU(metrics, &pod.CPU, false, podStreamTags, parentMeasurementTags)
 		nc.queueMemory(metrics, &pod.Memory, podStreamTags, parentMeasurementTags, false)
 		nc.queueNetwork(metrics, &pod.Network, podStreamTags, parentMeasurementTags)
 
@@ -512,7 +521,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 				streamTagList = append(streamTagList, podStreamTags...)
 				streamTagList = append(streamTagList, "container_name:"+container.Name)
 
-				nc.queueCPU(metrics, &container.CPU, streamTagList, parentMeasurementTags)
+				nc.queueCPU(metrics, &container.CPU, false, streamTagList, parentMeasurementTags)
 				nc.queueMemory(metrics, &container.Memory, streamTagList, parentMeasurementTags, false)
 				if container.RootFS.CapacityBytes > 0 { // rootfs
 					nc.queueRootFS(metrics, &container.RootFS, streamTagList, parentMeasurementTags)

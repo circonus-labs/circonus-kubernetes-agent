@@ -1,0 +1,56 @@
+##
+## NOTE: Required attributes must be set:
+##       1. circonus-api-key
+##       2. kubernetes-name
+##
+---
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      # versioned, cadence independent of app version
+      name: cka-secrets-v1
+      labels:
+          app.kubernetes.io/name: circonus-kubernetes-agent
+    stringData:
+      ## REQUIRED -- Circonus API Key
+      circonus-api-key: ""
+
+---
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+      # versioned, cadence independent of app version
+      name: cka-config-v1
+      labels:
+          app.kubernetes.io/name: circonus-kubernetes-agent
+  data:
+      ## REQUIRED -- name identifying the cluster, used in the check 
+      ## title and check target when check is created (so agent can find
+      ## the check again when pod is re-deployed) also used in various
+      ## tags on rules, contact group, etc.
+      kubernetes-name: ""
+      ##
+      ## alert configuration
+      ##
+      ## REQUIRED -- contact.email (if not supplied, alerting and some dashboard functionality will be disabled)
+      ##
+      ## Note: Alter rule settings as appropriate, settings below reflect the defaults. 
+      ##       cpu_utilization.`window` is seconds
+      ##       cpu_utilization.`threshold` is percent
+      ##       pod_pending_delays.`window` is seconds
+      ##
+      default_alerts.json: |
+        {
+          "contact": {
+            "email": ""
+          },
+          "rule_settings": { 
+            "cpu_utilization": {
+              "threshold": "75",
+              "window": 900
+            },
+            "pod_pending_delays": {
+              "window": 900
+            }
+          }
+        }
