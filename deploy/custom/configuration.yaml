@@ -154,7 +154,7 @@
       ##
       ## Note: if neither supplied, all alertring and some dashboard functionality will be disabled
       ##
-      default_alerts.json: |
+      default-alerts.json: |
         {
           "contact": {
             "email": "",
@@ -174,7 +174,7 @@
       ## "rules" is an array of custom alert rule set objects (see https://login.circonus.com/resources/api/calls/rule_set 
       ## for more information on object format alternatively, use the UI to view the API Object of an existing rule set)
       ##
-      custom_rules.json: |
+      custom-rules.json: |
         {
           "rules":[
 

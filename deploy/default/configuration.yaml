@@ -39,7 +39,7 @@
       ##       cpu_utilization.`threshold` is percent
       ##       pod_pending_delays.`window` is seconds
       ##
-      default_alerts.json: |
+      default-alerts.json: |
         {
           "contact": {
             "email": ""
