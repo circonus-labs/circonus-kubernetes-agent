@@ -261,7 +261,7 @@ func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da Default
 		ruleTemplate.CID = origRule.CID
 		ruleTemplate.Host = origRule.Host
 		ruleTemplate.Tags = addTag(origRule.Tags, clusterTag)
-		ruleTemplate.Derive = origRule.Derive
+		// ruleTemplate.Derive = origRule.Derive
 		if len(origRule.ContactGroups) > 0 {
 			for sevLevel, cgList := range origRule.ContactGroups {
 				if sevLevel != 1 {
@@ -397,7 +397,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
 	defaultRuleSetsData := []byte(`
 {
     "crashloops_container": {
-        "filter": "and(reason:CrashLoopBackOff)",
+		"filter": "and(reason:CrashLoopBackOff)",
+		"lookup_key": "k8s_health_crashloop_1",
         "metric_name": "kube_pod_container_status_waiting_reason",
         "metric_type": "numeric",
         "name": "Kubernetes CrashLoops ({cluster_name})",
@@ -412,7 +413,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         ]
     },
     "crashloops_init_container": {
-        "filter": "and(reason:CrashLoopBackOff)",
+		"filter": "and(reason:CrashLoopBackOff)",
+		"lookup_key": "k8s_health_crashloop_2",
         "metric_name": "kube_pod_init_container_status_waiting_reason",
         "metric_type": "numeric",
         "name": "Kubernetes CrashLoops (Init) ({cluster_name})",
@@ -427,7 +429,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         ]
     },
     "cpu_utilization": {
-        "filter": "and(resource:cpu)",
+		"filter": "and(resource:cpu)",
+		"lookup_key": "k8s_health_cpu",
         "metric_name": "utilization",
         "metric_type": "numeric",
         "name": "Kubernetes CPU ({cluster_name})",
@@ -443,7 +446,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         ]    
     },
     "disk_pressure": {
-        "filter": "and(condition:DiskPressure,status:true)",
+		"filter": "and(condition:DiskPressure,status:true)",
+		"lookup_key": "k8s_health_disk",
         "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
         "name": "Kubernetes Disk Pressure ({cluster_name})",
@@ -458,7 +462,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         ]
     },
     "memory_pressure": {
-        "filter": "and(condition:MemoryPressure,status:true)",
+		"filter": "and(condition:MemoryPressure,status:true)",
+		"lookup_key": "k8s_health_memory",
         "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
         "name": "Kubernetes Memory Pressure ({cluster_name})",
@@ -473,7 +478,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         ]
     },
     "pid_pressure": {
-        "filter": "and(condition:PIDPressure,status:true)",
+		"filter": "and(condition:PIDPressure,status:true)",
+		"lookup_key": "k8s_health_pid",
         "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
         "name": "Kubernetes PID Pressure ({cluster_name})",
@@ -488,7 +494,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         ]
     },
     "network_unavailable": {
-        "filter": "and(condition:NetworkUnavailable,status:true)",
+		"filter": "and(condition:NetworkUnavailable,status:true)",
+		"lookup_key": "k8s_health_network",
         "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
         "name": "Kubernetes Network Unavailable ({cluster_name})",
@@ -503,7 +510,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         ]
     },
     "job_failures": {
-        "filter": "and(job_name:*)",
+		"filter": "and(job_name:*)",
+		"lookup_key": "k8s_health_jobs",
         "metric_name": "kube_job_status_failed",
         "metric_type": "numeric",
         "name": "Kubernetes Job Failures ({cluster_name})",
@@ -518,7 +526,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         ]        
     },
     "persistent_volume_failures": {
-        "filter": "and(phase:Failed)",
+		"filter": "and(phase:Failed)",
+		"lookup_key": "k8s_health_pvols",
         "metric_name": "kube_persistentvolume_status_phase",
         "metric_type": "numeric",
         "name": "Kubernetes Persistent Volume Failures ({cluster_name})",
@@ -533,7 +542,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         ]        
     },
     "pod_pending_delays": {
-        "filter": "and(phase:Pending)",
+		"filter": "and(phase:Pending)",
+		"lookup_key": "k8s_health_poddelays",
         "metric_name": "kube_pod_status_phase",
         "metric_type": "numeric",
         "name": "Kubernetes Pod Pending Delays ({cluster_name})",
@@ -549,7 +559,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         ]        
     },
     "deployment_glitches": {
-        "filter": "and(deployment:*)",
+		"filter": "and(deployment:*)",
+		"lookup_key": "k8s_health_deploys",
         "metric_name": "deployment_generation_delta",
         "metric_type": "numeric",
         "name": "Kubernetes Deployment Glitches ({cluster_name})",
@@ -571,7 +582,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         ]        
     },
     "daemonsets_not_ready": {
-        "filter": "and(daemonset:*)",
+		"filter": "and(daemonset:*)",
+		"lookup_key": "k8s_health_daemonsets",
         "metric_name": "daemonset_scheduled_delta",
         "metric_type": "numeric",
         "name": "Kubernetes DaemonSets Not Ready ({cluster_name})",
@@ -593,7 +605,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         ]
     },
     "statefulsets_not_ready": {
-        "filter": "and(statefulset:*)",
+		"filter": "and(statefulset:*)",
+		"lookup_key": "k8s_health_statefulsets",
         "metric_name": "statefulset_replica_delta",
         "metric_type": "numeric",
         "name": "Kubernetes StatefulSets Not Ready ({cluster_name})",
