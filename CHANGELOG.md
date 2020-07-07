@@ -1,3 +1,8 @@
+# v0.9.1
+
+* add: `lookup_key` to rule_sets
+* upd: dependencies (apiclient, cgm, toml, yaml, viper, zerolog)
+
 # v0.9.0
 
 * upd: deployment configurations to v0.9.0
