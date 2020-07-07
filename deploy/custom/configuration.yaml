@@ -67,7 +67,7 @@
       ## collect metrics from kube-state-metrics if running - default is enabled for dashboard
       kubernetes-enable-kube-state-metrics: "true"
       ## kube-state-metrics reqeust mode (direct or proxy) proxy goes through api-server, direct uses the service endpoint ip
-      kubernetes-ksm-reqeust-mode: "direct"
+      kubernetes-ksm-request-mode: "direct"
       ## kube-state-metrics metrics port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
       kubernetes-ksm-metrics-port-name: "http-metrics"
       ## kube-state-metrics telemetry port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
