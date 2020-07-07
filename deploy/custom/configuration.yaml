@@ -160,7 +160,7 @@
             "email": "",
             "group_cid": ""
           },
-          "rule_settings": [
+          "rule_settings": {
             "cpu_utilization": {
               "threshold": "75",
               "window": 900
@@ -168,7 +168,7 @@
             "pod_pending_delays": {
               "window": 900
             }
-          ]
+          }
         }
       ##
       ## "rules" is an array of custom alert rule set objects (see https://login.circonus.com/resources/api/calls/rule_set 
