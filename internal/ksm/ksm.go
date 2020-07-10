@@ -117,7 +117,7 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	}()
 
 	collectStart := time.Now()
-	svc, err := ksm.getServiceDefinition(tlsConfig)
+	svc, err := ksm.getServiceDefinition(ctx, tlsConfig)
 	if err != nil {
 		ksm.check.AddText("collect_ksm_state", cgm.Tags{
 			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
@@ -370,7 +370,7 @@ func (ksm *KSM) getEndpointIP(metricPortName, telemetryPortName string) (map[str
 	return urls, nil
 }
 
-func (ksm *KSM) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error) {
+func (ksm *KSM) getServiceDefinition(ctx context.Context, tlsConfig *tls.Config) (*k8s.Service, error) {
 	u, err := url.Parse(ksm.config.URL + "/api/v1/services")
 	if err != nil {
 		return nil, err
@@ -395,7 +395,7 @@ func (ksm *KSM) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error
 
 	reqURL := u.String()
 	ksm.log.Debug().Str("url", reqURL).Msg("service")
-	req, err := k8s.NewAPIRequest(ksm.config.BearerToken, reqURL)
+	req, err := k8s.NewAPIRequest(ctx, ksm.config.BearerToken, reqURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "service definition req")
 	}
@@ -455,7 +455,7 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 		if err != nil {
 			return errors.Wrap(err, "/metrics cli")
 		}
-		r, err := k8s.NewAPIRequest(ksm.config.BearerToken, metricURL)
+		r, err := k8s.NewAPIRequest(ctx, ksm.config.BearerToken, metricURL)
 		if err != nil {
 			return errors.Wrap(err, "/metrics req")
 		}
@@ -540,7 +540,7 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 		if err != nil {
 			return errors.Wrap(err, "/telemetry cli")
 		}
-		r, err := k8s.NewAPIRequest(ksm.config.BearerToken, telemetryURL)
+		r, err := k8s.NewAPIRequest(ctx, ksm.config.BearerToken, telemetryURL)
 		if err != nil {
 			return errors.Wrap(err, "/telemetry req")
 		}
