@@ -130,40 +130,37 @@ func QueueMetrics(
 						}
 					}
 				}
-			default:
-				switch {
-				case m.Gauge != nil:
-					if m.GetGauge().Value != nil {
-						_ = check.QueueMetricSample(
-							metrics, metricName,
-							circonus.MetricTypeFloat64,
-							streamTags, parentMeasurementTags,
-							m.GetGauge().GetValue(), ts)
+			case dto.MetricType_GAUGE:
+				if m.GetGauge().Value != nil {
+					_ = check.QueueMetricSample(
+						metrics, metricName,
+						circonus.MetricTypeFloat64,
+						streamTags, parentMeasurementTags,
+						m.GetGauge().GetValue(), ts)
+				}
+			case dto.MetricType_COUNTER:
+				if m.GetCounter().Value != nil {
+					_ = check.QueueMetricSample(
+						metrics, metricName,
+						circonus.MetricTypeFloat64,
+						streamTags, parentMeasurementTags,
+						m.GetCounter().GetValue(), ts)
+				}
+			case dto.MetricType_UNTYPED:
+				if m.GetUntyped().Value != nil {
+					if *m.GetUntyped().Value == math.Inf(+1) {
+						logger.Warn().
+							Str("metric", metricName).
+							Str("type", mf.GetType().String()).
+							Str("value", (*m).GetUntyped().String()).
+							Msg("cannot coerce +Inf to uint64")
+						continue
 					}
-				case m.Counter != nil:
-					if m.GetCounter().Value != nil {
-						_ = check.QueueMetricSample(
-							metrics, metricName,
-							circonus.MetricTypeFloat64,
-							streamTags, parentMeasurementTags,
-							m.GetCounter().GetValue(), ts)
-					}
-				case m.Untyped != nil:
-					if m.GetUntyped().Value != nil {
-						if *m.GetUntyped().Value == math.Inf(+1) {
-							logger.Warn().
-								Str("metric", metricName).
-								Str("type", mf.GetType().String()).
-								Str("value", (*m).GetUntyped().String()).
-								Msg("cannot coerce +Inf to uint64")
-							continue
-						}
-						_ = check.QueueMetricSample(
-							metrics, metricName,
-							circonus.MetricTypeFloat64,
-							streamTags, parentMeasurementTags,
-							m.GetUntyped().GetValue(), ts)
-					}
+					_ = check.QueueMetricSample(
+						metrics, metricName,
+						circonus.MetricTypeFloat64,
+						streamTags, parentMeasurementTags,
+						m.GetUntyped().GetValue(), ts)
 				}
 			}
 		}
