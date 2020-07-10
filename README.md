@@ -2,11 +2,49 @@
 
 An agent designed to retrieve metrics from a Kubernetes cluster. Runs as a deployment, forwards Kubernetes provided metrics for cluster, nodes, pods, and containers to Circonus.
 
+## Prerequisites
+
+### kube-state-metrics
+
+For full functionality [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) should be installed in the cluster
+
+### DNS
+
+For DNS metrics the agent will look for a service named `kube-dns` in the `kube-system` namespace. It will check for two annotations `prometheus.io/scrape` and `prometheus.io/port`. If `scrape` is `true`, the agent will collect metrics from the endpoints listed for the target port. For example:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/port: "9153"
+    prometheus.io/scrape: "true"
+  labels:
+    k8s-app: kube-dns
+    kubernetes.io/cluster-service: "true"
+    kubernetes.io/name: KubeDNS
+  name: kube-dns
+  namespace: kube-system
+spec:
+  selector:
+    k8s-app: kube-dns
+  type: ClusterIP
+  ports:
+  - name: dns
+    port: 53
+    protocol: UDP
+    targetPort: 53
+  - name: dns-tcp
+    port: 53
+    protocol: TCP
+    targetPort: 53
+  - name: metrics
+    port: 9153
+    protocol: TCP
+    targetPort: 9153
+```
+
 ## Installation
-
-### Prerequisites
-
-1. For full functionality [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) should be installed in the cluster
 
 ### `kubectl`
 
