@@ -154,6 +154,8 @@ func (c *Cluster) Start(ctx context.Context) error {
 		go eventWatcher.Start(ctx, c.tlsConfig)
 	}
 
+	c.collect(ctx)
+
 	c.logger.Info().Str("collection_interval", c.interval.String()).Time("next_collection", time.Now().Add(c.interval)).Msg("client started")
 
 	ticker := time.NewTicker(c.interval)
@@ -185,140 +187,146 @@ func (c *Cluster) Start(ctx context.Context) error {
 					Msg("collection in progress, not starting another")
 				continue
 			}
-
-			start := time.Now()
-			c.lastStart = &start
-			c.running = true
 			c.Unlock()
 
-			// reset submit retries metric
-			c.check.SetCounter("collect_submit_retries", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, 0)
-
 			go func() {
-				var wg sync.WaitGroup
-				for _, collectorID := range c.collectors {
-					switch collectorID {
-					case "node":
-						collector, err := nodes.New(&c.cfg, c.logger, c.check, c.circCfg.NodeCC)
-						if err != nil {
-							c.logger.Error().Err(err).Msg("initializing node collector")
-						} else {
-							collector.Collect(ctx, c.tlsConfig, &start)
-						}
-					case "health":
-						wg.Add(1)
-						go func() {
-							collector, err := health.New(&c.cfg, c.logger, c.check)
-							if err != nil {
-								c.logger.Error().Err(err).Msg("initializing health collector")
-							} else {
-								collector.Collect(ctx, c.tlsConfig, &start)
-							}
-							wg.Done()
-						}()
-					case "ksm":
-						wg.Add(1)
-						go func() {
-							collector, err := ksm.New(&c.cfg, c.logger, c.check)
-							if err != nil {
-								c.logger.Error().Err(err).Msg("initializing kube-state-metrics collector")
-							} else {
-								collector.Collect(ctx, c.tlsConfig, &start)
-							}
-							wg.Done()
-						}()
-					case "api":
-						wg.Add(1)
-						go func() {
-							collector, err := as.New(&c.cfg, c.logger, c.check)
-							if err != nil {
-								c.logger.Error().Err(err).Msg("initializing api-server collector")
-							} else {
-								collector.Collect(ctx, c.tlsConfig, &start)
-							}
-							wg.Done()
-						}()
-					case "dns":
-						wg.Add(1)
-						go func() {
-							collector, err := dns.New(&c.cfg, c.logger, c.check)
-							if err != nil {
-								c.logger.Error().Err(err).Msg("initializing kube-dns collector")
-							} else {
-								collector.Collect(ctx, c.tlsConfig, &start)
-							}
-							wg.Done()
-						}()
-					default:
-						c.logger.Warn().Str("collector_id", collectorID).Msg("ignoring unknown collector")
-					}
-				}
-
-				wg.Wait()
-
-				cstats := c.check.SubmitStats()
-				c.check.ResetSubmitStats()
-				dur := time.Since(start)
-
-				baseStreamTags := cgm.Tags{
-					cgm.Tag{Category: "cluster", Value: c.cfg.Name},
-					cgm.Tag{Category: "source", Value: release.NAME},
-				}
-				c.check.AddText("collect_agent", baseStreamTags, release.NAME+"_"+release.VERSION)
-				c.check.AddGauge("collect_metrics", baseStreamTags, cstats.Metrics)
-				c.check.AddGauge("collect_filtered", baseStreamTags, cstats.Filtered)
-				c.check.AddGauge("collect_ngr", baseStreamTags, uint64(runtime.NumGoroutine()))
-
-				{
-					debug.FreeOSMemory()
-
-					var ms runtime.MemStats
-					runtime.ReadMemStats(&ms)
-
-					var streamTags cgm.Tags
-					streamTags = append(streamTags, baseStreamTags...)
-
-					c.check.AddGauge("collect_mem_frag", streamTags, float64(ms.Sys-ms.HeapReleased)/float64(ms.HeapInuse))
-					c.check.AddGauge("collect_numgc", streamTags, ms.NumGC)
-					c.check.AddGauge("collect_heap_objs", streamTags, ms.HeapObjects)
-					c.check.AddGauge("collect_live_obj", streamTags, ms.Mallocs-ms.Frees)
-
-					streamTags = append(streamTags, cgm.Tag{Category: "units", Value: "bytes"})
-
-					c.check.AddGauge("collect_sent", streamTags, cstats.SentBytes)
-					c.check.AddGauge("collect_heap_alloc", streamTags, ms.HeapAlloc)
-					c.check.AddGauge("collect_heap_inuse", streamTags, ms.HeapInuse)
-					c.check.AddGauge("collect_heap_idle", streamTags, ms.HeapIdle)
-					c.check.AddGauge("collect_heap_released", streamTags, ms.HeapReleased)
-					c.check.AddGauge("collect_stack_sys", streamTags, ms.StackSys)
-					c.check.AddGauge("collect_other_sys", streamTags, ms.OtherSys)
-
-					var mem syscall.Rusage
-					if err := syscall.Getrusage(syscall.RUSAGE_SELF, &mem); err == nil {
-						c.check.AddGauge("collect_max_rss", streamTags, uint64(mem.Maxrss*1024))
-					} else {
-						c.logger.Warn().Err(err).Msg("collecting rss from system")
-					}
-				}
-
-				{
-					var streamTags cgm.Tags
-					streamTags = append(streamTags, baseStreamTags...)
-					streamTags = append(streamTags, cgm.Tag{Category: "units", Value: "milliseconds"})
-					c.check.AddGauge("collect_duration", streamTags, uint64(dur.Milliseconds()))
-					c.check.AddGauge("collect_interval", streamTags, uint64(c.interval.Milliseconds()))
-				}
-
-				c.check.FlushCGM(ctx, &start)
-
-				c.logger.Info().
-					Interface("metrics_sent", cstats).
-					Str("duration", dur.String()).
-					Msg("collection complete")
-				c.Lock()
-				c.running = false
-				c.Unlock()
+				c.collect(ctx)
 			}()
 		}
 	}
+}
+
+func (c *Cluster) collect(ctx context.Context) {
+	c.Lock()
+	start := time.Now()
+	c.lastStart = &start
+	c.running = true
+	c.Unlock()
+
+	// reset submit retries metric
+	c.check.SetCounter("collect_submit_retries", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, 0)
+
+	var wg sync.WaitGroup
+	for _, collectorID := range c.collectors {
+		switch collectorID {
+		case "node":
+			collector, err := nodes.New(&c.cfg, c.logger, c.check, c.circCfg.NodeCC)
+			if err != nil {
+				c.logger.Error().Err(err).Msg("initializing node collector")
+			} else {
+				collector.Collect(ctx, c.tlsConfig, &start)
+			}
+		case "health":
+			wg.Add(1)
+			go func() {
+				collector, err := health.New(&c.cfg, c.logger, c.check)
+				if err != nil {
+					c.logger.Error().Err(err).Msg("initializing health collector")
+				} else {
+					collector.Collect(ctx, c.tlsConfig, &start)
+				}
+				wg.Done()
+			}()
+		case "ksm":
+			wg.Add(1)
+			go func() {
+				collector, err := ksm.New(&c.cfg, c.logger, c.check)
+				if err != nil {
+					c.logger.Error().Err(err).Msg("initializing kube-state-metrics collector")
+				} else {
+					collector.Collect(ctx, c.tlsConfig, &start)
+				}
+				wg.Done()
+			}()
+		case "api":
+			wg.Add(1)
+			go func() {
+				collector, err := as.New(&c.cfg, c.logger, c.check)
+				if err != nil {
+					c.logger.Error().Err(err).Msg("initializing api-server collector")
+				} else {
+					collector.Collect(ctx, c.tlsConfig, &start)
+				}
+				wg.Done()
+			}()
+		case "dns":
+			wg.Add(1)
+			go func() {
+				collector, err := dns.New(&c.cfg, c.logger, c.check)
+				if err != nil {
+					c.logger.Error().Err(err).Msg("initializing kube-dns collector")
+				} else {
+					collector.Collect(ctx, c.tlsConfig, &start)
+				}
+				wg.Done()
+			}()
+		default:
+			c.logger.Warn().Str("collector_id", collectorID).Msg("ignoring unknown collector")
+		}
+	}
+
+	wg.Wait()
+
+	cstats := c.check.SubmitStats()
+	c.check.ResetSubmitStats()
+	dur := time.Since(start)
+
+	baseStreamTags := cgm.Tags{
+		cgm.Tag{Category: "cluster", Value: c.cfg.Name},
+		cgm.Tag{Category: "source", Value: release.NAME},
+	}
+	c.check.AddText("collect_agent", baseStreamTags, release.NAME+"_"+release.VERSION)
+	c.check.AddGauge("collect_metrics", baseStreamTags, cstats.Metrics)
+	c.check.AddGauge("collect_filtered", baseStreamTags, cstats.Filtered)
+	c.check.AddGauge("collect_ngr", baseStreamTags, uint64(runtime.NumGoroutine()))
+
+	{
+		debug.FreeOSMemory()
+
+		var ms runtime.MemStats
+		runtime.ReadMemStats(&ms)
+
+		var streamTags cgm.Tags
+		streamTags = append(streamTags, baseStreamTags...)
+
+		c.check.AddGauge("collect_mem_frag", streamTags, float64(ms.Sys-ms.HeapReleased)/float64(ms.HeapInuse))
+		c.check.AddGauge("collect_numgc", streamTags, ms.NumGC)
+		c.check.AddGauge("collect_heap_objs", streamTags, ms.HeapObjects)
+		c.check.AddGauge("collect_live_obj", streamTags, ms.Mallocs-ms.Frees)
+
+		streamTags = append(streamTags, cgm.Tag{Category: "units", Value: "bytes"})
+
+		c.check.AddGauge("collect_sent", streamTags, cstats.SentBytes)
+		c.check.AddGauge("collect_heap_alloc", streamTags, ms.HeapAlloc)
+		c.check.AddGauge("collect_heap_inuse", streamTags, ms.HeapInuse)
+		c.check.AddGauge("collect_heap_idle", streamTags, ms.HeapIdle)
+		c.check.AddGauge("collect_heap_released", streamTags, ms.HeapReleased)
+		c.check.AddGauge("collect_stack_sys", streamTags, ms.StackSys)
+		c.check.AddGauge("collect_other_sys", streamTags, ms.OtherSys)
+
+		var mem syscall.Rusage
+		if err := syscall.Getrusage(syscall.RUSAGE_SELF, &mem); err == nil {
+			c.check.AddGauge("collect_max_rss", streamTags, uint64(mem.Maxrss*1024))
+		} else {
+			c.logger.Warn().Err(err).Msg("collecting rss from system")
+		}
+	}
+
+	{
+		var streamTags cgm.Tags
+		streamTags = append(streamTags, baseStreamTags...)
+		streamTags = append(streamTags, cgm.Tag{Category: "units", Value: "milliseconds"})
+		c.check.AddGauge("collect_duration", streamTags, uint64(dur.Milliseconds()))
+		c.check.AddGauge("collect_interval", streamTags, uint64(c.interval.Milliseconds()))
+	}
+
+	c.check.FlushCGM(ctx, &start)
+
+	c.logger.Info().
+		Interface("metrics_sent", cstats).
+		Str("duration", dur.String()).
+		Msg("collection complete")
+	c.Lock()
+	c.running = false
+	c.Unlock()
 }

@@ -85,21 +85,21 @@ func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.C
 		if nc.cfg.EnableNodeStats {
 			wg.Add(1)
 			go func() {
-				nc.summary(baseStreamTags, baseMeasurementTags) // from /stats/summary
+				nc.summary(ctx, baseStreamTags, baseMeasurementTags) // from /stats/summary
 				wg.Done()
 			}()
 		}
 		if nc.cfg.EnableNodeMetrics {
 			wg.Add(1)
 			go func() {
-				nc.nmetrics(baseStreamTags, baseMeasurementTags) // from /metrics
+				nc.nmetrics(ctx, baseStreamTags, baseMeasurementTags) // from /metrics
 				wg.Done()
 			}()
 		}
 		if nc.cfg.EnableCadvisorMetrics {
 			wg.Add(1)
 			go func() {
-				nc.cadvisor(baseStreamTags, baseMeasurementTags) // from /metrics/cadvisor
+				nc.cadvisor(ctx, baseStreamTags, baseMeasurementTags) // from /metrics/cadvisor
 				wg.Done()
 			}()
 		}
@@ -108,13 +108,13 @@ func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.C
 	} else {
 		nc.meta(baseStreamTags, baseMeasurementTags) // from node list
 		if nc.cfg.EnableNodeStats {
-			nc.summary(baseStreamTags, baseMeasurementTags) // from /stats/summary
+			nc.summary(ctx, baseStreamTags, baseMeasurementTags) // from /stats/summary
 		}
 		if nc.cfg.EnableNodeMetrics {
-			nc.nmetrics(baseStreamTags, baseMeasurementTags) // from /metrics
+			nc.nmetrics(ctx, baseStreamTags, baseMeasurementTags) // from /metrics
 		}
 		if nc.cfg.EnableCadvisorMetrics {
-			nc.cadvisor(baseStreamTags, baseMeasurementTags) // from /metrics/cadvisor
+			nc.cadvisor(ctx, baseStreamTags, baseMeasurementTags) // from /metrics/cadvisor
 		}
 	}
 
@@ -329,7 +329,7 @@ type volume struct {
 }
 
 // summary emits node summary stats
-func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []string) {
+func (nc *Collector) summary(ctx context.Context, parentStreamTags []string, parentMeasurementTags []string) {
 	if nc.done() {
 		return
 	}
@@ -342,7 +342,7 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 	defer client.CloseIdleConnections()
 
 	reqURL := nc.cfg.URL + nc.node.Metadata.SelfLink + "/proxy/stats/summary"
-	req, err := k8s.NewAPIRequest(nc.cfg.BearerToken, reqURL)
+	req, err := k8s.NewAPIRequest(ctx, nc.cfg.BearerToken, reqURL)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("abandoning collection")
 		return
@@ -403,7 +403,7 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 
 	nc.summaryNode(&stats.Node, parentStreamTags, parentMeasurementTags)
 	nc.summarySystemContainers(&stats.Node, parentStreamTags, parentMeasurementTags)
-	nc.summaryPods(&stats, parentStreamTags, parentMeasurementTags)
+	nc.summaryPods(ctx, &stats, parentStreamTags, parentMeasurementTags)
 }
 
 func (nc *Collector) summaryNode(node *statsSummaryNode, parentStreamTags []string, parentMeasurementTags []string) {
@@ -466,7 +466,7 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 
 }
 
-func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string, parentMeasurementTags []string) {
+func (nc *Collector) summaryPods(ctx context.Context, stats *statsSummary, parentStreamTags []string, parentMeasurementTags []string) {
 	if nc.done() {
 		return
 	}
@@ -484,7 +484,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 		if nc.done() {
 			break
 		}
-		collect, podLabels, err := nc.getPodLabels(pod.PodRef.Namespace, pod.PodRef.Name)
+		collect, podLabels, err := nc.getPodLabels(ctx, pod.PodRef.Namespace, pod.PodRef.Name)
 		if err != nil {
 			nc.log.Warn().Err(err).Str("pod", pod.PodRef.Name).Str("ns", pod.PodRef.Namespace).Msg("fetching pod labels")
 		}
@@ -544,7 +544,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 }
 
 // nmetrics emits metrics from the node /metrics endpoint
-func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags []string) {
+func (nc *Collector) nmetrics(ctx context.Context, parentStreamTags []string, parentMeasurementTags []string) {
 	if nc.done() {
 		return
 	}
@@ -557,7 +557,7 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 	defer client.CloseIdleConnections()
 
 	reqURL := nc.cfg.URL + nc.node.Metadata.SelfLink + "/proxy/metrics"
-	req, err := k8s.NewAPIRequest(nc.cfg.BearerToken, reqURL)
+	req, err := k8s.NewAPIRequest(ctx, nc.cfg.BearerToken, reqURL)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("abandoning /metrics collection")
 		return
@@ -617,7 +617,7 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 }
 
 // cadvisor emits metrics from the node /metrics/cadvisor endpoint
-func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags []string) {
+func (nc *Collector) cadvisor(ctx context.Context, parentStreamTags []string, parentMeasurementTags []string) {
 	if nc.done() {
 		return
 	}
@@ -630,7 +630,7 @@ func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags [
 	defer client.CloseIdleConnections()
 
 	reqURL := nc.cfg.URL + nc.node.Metadata.SelfLink + "/proxy/metrics/cadvisor"
-	req, err := k8s.NewAPIRequest(nc.cfg.BearerToken, reqURL)
+	req, err := k8s.NewAPIRequest(ctx, nc.cfg.BearerToken, reqURL)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("abandoning /metrics/cadvisor collection")
 		return
@@ -699,7 +699,7 @@ type podMeta struct {
 	Labels map[string]string `json:"labels"`
 }
 
-func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error) {
+func (nc *Collector) getPodLabels(ctx context.Context, ns string, name string) (bool, []string, error) {
 	collect := false
 	tags := []string{}
 
@@ -710,7 +710,7 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 	defer client.CloseIdleConnections()
 
 	reqURL := nc.cfg.URL + "/api/v1/namespaces/" + ns + "/pods/" + name
-	req, err := k8s.NewAPIRequest(nc.cfg.BearerToken, reqURL)
+	req, err := k8s.NewAPIRequest(ctx, nc.cfg.BearerToken, reqURL)
 	if err != nil {
 		return collect, tags, err
 	}

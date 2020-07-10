@@ -98,7 +98,7 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 
 	collectStart := time.Now()
 
-	nodes, err := n.nodeList(tlsConfig)
+	nodes, err := n.nodeList(ctx, tlsConfig)
 	if err != nil {
 		n.log.Error().Err(err).Msg("fetching list of nodes")
 		n.Lock()
@@ -174,7 +174,7 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	n.Unlock()
 }
 
-func (n *Nodes) nodeList(tlsConfig *tls.Config) (*k8s.NodeList, error) {
+func (n *Nodes) nodeList(ctx context.Context, tlsConfig *tls.Config) (*k8s.NodeList, error) {
 	u, err := url.Parse(n.config.URL + "/api/v1/nodes")
 	if err != nil {
 		return nil, err
@@ -193,7 +193,7 @@ func (n *Nodes) nodeList(tlsConfig *tls.Config) (*k8s.NodeList, error) {
 	// defer client.CloseIdleConnections()
 
 	reqURL := u.String()
-	req, err := k8s.NewAPIRequest(n.config.BearerToken, reqURL)
+	req, err := k8s.NewAPIRequest(ctx, n.config.BearerToken, reqURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "node list req")
 	}

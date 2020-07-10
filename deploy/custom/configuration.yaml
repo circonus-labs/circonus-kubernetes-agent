@@ -141,6 +141,7 @@
             ["allow", "^statefulset_replica_delta$", "health"],
             ["allow", "^coredns_(dns|forward)_request_(count_total|duration_seconds_avg)$", "dns health"],
             ["allow", "^coredns_(dns|forward)_response_rcode_count_total$", "dns health"],
+            ["allow", "^kubedns*","dns health"],
             ["allow", "^events$", "events"],
             ["allow", "^collect_.*$", "agent collection stats"],
             ["allow", "^authentication_attempts$", "api auth health"],

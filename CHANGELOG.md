@@ -1,3 +1,17 @@
+# v0.9.2
+
+* upd: explicit cases for prometheus metric types
+* add: golangci-lint action
+* add: ksm collection state metric
+* upd: collect immediately then start intervals
+* add: dns collection state metric
+* fix: correct dns config option name
+* doc: update wiht dns configuration information
+* add: support `kubedns*` metrics if backing kube-dns service
+* add: initial event if event watching is enabled
+* add: support for broker's "filtered" back into  per submission stat
+* add: logging of result if broker returned an err msg
+
 # v0.9.1
 
 * add: `lookup_key` to rule_sets

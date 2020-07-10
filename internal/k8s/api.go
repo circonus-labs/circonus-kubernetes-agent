@@ -6,6 +6,7 @@
 package k8s
 
 import (
+	"context"
 	"crypto/tls"
 	"net"
 	"net/http"
@@ -61,8 +62,8 @@ func NewAPIClient(tlscfg *tls.Config, reqTimeout time.Duration) (*http.Client, e
 	return client, nil
 }
 
-func NewAPIRequest(token string, reqURL string) (*http.Request, error) {
-	req, err := http.NewRequest("GET", reqURL, nil)
+func NewAPIRequest(ctx context.Context, token string, reqURL string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating k8s api request")
 	}

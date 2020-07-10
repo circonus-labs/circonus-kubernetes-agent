@@ -117,8 +117,12 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	}()
 
 	collectStart := time.Now()
-	svc, err := ksm.getServiceDefinition(tlsConfig)
+	svc, err := ksm.getServiceDefinition(ctx, tlsConfig)
 	if err != nil {
+		ksm.check.AddText("collect_ksm_state", cgm.Tags{
+			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
+			cgm.Tag{Category: "source", Value: release.NAME},
+		}, err.Error())
 		ksm.log.Error().Err(err).Msg("service definition")
 		ksm.Lock()
 		ksm.running = false
@@ -126,6 +130,10 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 		return
 	}
 	if svc == nil {
+		ksm.check.AddText("collect_ksm_state", cgm.Tags{
+			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
+			cgm.Tag{Category: "source", Value: release.NAME},
+		}, "invalid service definition")
 		ksm.log.Error().Msg("invalid service definition (nil)")
 		ksm.Lock()
 		ksm.running = false
@@ -145,6 +153,10 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	}
 
 	if metricPortName == "" && telemetryPortName == "" {
+		ksm.check.AddText("collect_ksm_state", cgm.Tags{
+			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
+			cgm.Tag{Category: "source", Value: release.NAME},
+		}, "invalid service definition, named ports not found")
 		ksm.log.Error().
 			Str("metrics_port", ksm.config.KSMMetricsPortName).
 			Str("telemetry_port", ksm.config.KSMTelemetryPortName).
@@ -164,6 +176,9 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 
 	var wg sync.WaitGroup
 
+	collected := 0
+	collectErr := 0
+
 	switch ksm.config.KSMRequestMode {
 	case modeProxy:
 		metricPath := "/proxy/metrics"
@@ -182,7 +197,9 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 				metricURL := ksm.config.URL + svcPath + ":" + metricPortName + metricPath
 				if err := ksm.metrics(ctx, tlsConfig, metricURL); err != nil {
 					ksm.log.Error().Err(err).Str("url", metricURL).Msg("http-metrics")
+					collectErr++
 				}
+				collected++
 				wg.Done()
 			}()
 		}
@@ -198,7 +215,9 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 				telemetryURL := ksm.config.URL + svcPath + ":" + telemetryPortName + metricPath
 				if err := ksm.telemetry(ctx, tlsConfig, telemetryURL); err != nil {
 					ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("telemetry")
+					collectErr++
 				}
+				collected++
 				wg.Done()
 			}()
 		}
@@ -206,6 +225,10 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	case modeDirect:
 		addresses, err := ksm.getEndpointIP(metricPortName, telemetryPortName)
 		if err != nil {
+			ksm.check.AddText("collect_ksm_state", cgm.Tags{
+				cgm.Tag{Category: "cluster", Value: ksm.config.Name},
+				cgm.Tag{Category: "source", Value: release.NAME},
+			}, err.Error())
 			ksm.log.Error().Err(err).Msg("getting ksm addresses")
 			return
 		}
@@ -220,7 +243,9 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 					metricURL := fmt.Sprintf("%s://%s/metrics", proto, addr)
 					if err := ksm.metrics(ctx, nil, metricURL); err != nil {
 						ksm.log.Error().Err(err).Str("url", metricURL).Msg("http-metrics")
+						collectErr++
 					}
+					collected++
 					wg.Done()
 				}()
 			}
@@ -236,17 +261,28 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 					telemetryURL := fmt.Sprintf("%s://%s/metrics", proto, addr)
 					if err := ksm.telemetry(ctx, nil, telemetryURL); err != nil {
 						ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("telemetry")
+						collectErr++
 					}
+					collected++
 					wg.Done()
 				}()
 			}
 		}
 	default:
+		ksm.check.AddText("collect_ksm_state", cgm.Tags{
+			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
+			cgm.Tag{Category: "source", Value: release.NAME},
+		}, "invalid request mode "+ksm.config.KSMRequestMode)
 		ksm.log.Warn().Str("mode", ksm.config.KSMRequestMode).Msg("unknown request mode, skipping ksm collection")
 		return
 	}
 
 	wg.Wait()
+
+	ksm.check.AddText("collect_ksm_state", cgm.Tags{
+		cgm.Tag{Category: "cluster", Value: ksm.config.Name},
+		cgm.Tag{Category: "source", Value: release.NAME},
+	}, fmt.Sprintf("OK:%d,ERR:%d", collected, collectErr))
 
 	ksm.check.AddHistSample("collect_latency", cgm.Tags{
 		cgm.Tag{Category: "source", Value: release.NAME},
@@ -334,7 +370,7 @@ func (ksm *KSM) getEndpointIP(metricPortName, telemetryPortName string) (map[str
 	return urls, nil
 }
 
-func (ksm *KSM) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error) {
+func (ksm *KSM) getServiceDefinition(ctx context.Context, tlsConfig *tls.Config) (*k8s.Service, error) {
 	u, err := url.Parse(ksm.config.URL + "/api/v1/services")
 	if err != nil {
 		return nil, err
@@ -359,7 +395,7 @@ func (ksm *KSM) getServiceDefinition(tlsConfig *tls.Config) (*k8s.Service, error
 
 	reqURL := u.String()
 	ksm.log.Debug().Str("url", reqURL).Msg("service")
-	req, err := k8s.NewAPIRequest(ksm.config.BearerToken, reqURL)
+	req, err := k8s.NewAPIRequest(ctx, ksm.config.BearerToken, reqURL)
 	if err != nil {
 		return nil, errors.Wrap(err, "service definition req")
 	}
@@ -419,7 +455,7 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 		if err != nil {
 			return errors.Wrap(err, "/metrics cli")
 		}
-		r, err := k8s.NewAPIRequest(ksm.config.BearerToken, metricURL)
+		r, err := k8s.NewAPIRequest(ctx, ksm.config.BearerToken, metricURL)
 		if err != nil {
 			return errors.Wrap(err, "/metrics req")
 		}
@@ -504,7 +540,7 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 		if err != nil {
 			return errors.Wrap(err, "/telemetry cli")
 		}
-		r, err := k8s.NewAPIRequest(ksm.config.BearerToken, telemetryURL)
+		r, err := k8s.NewAPIRequest(ctx, ksm.config.BearerToken, telemetryURL)
 		if err != nil {
 			return errors.Wrap(err, "/telemetry req")
 		}

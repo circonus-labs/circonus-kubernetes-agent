@@ -107,7 +107,7 @@ func (as *AS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 	}
 	defer client.CloseIdleConnections()
 
-	req, err := k8s.NewAPIRequest(as.config.BearerToken, metricsURL)
+	req, err := k8s.NewAPIRequest(ctx, as.config.BearerToken, metricsURL)
 	if err != nil {
 		as.log.Error().Err(err).Str("url", metricsURL).Msg("metrics req")
 		as.Lock()
