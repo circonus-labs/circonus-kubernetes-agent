@@ -11,6 +11,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
@@ -100,6 +101,35 @@ func (e *Events) Start(ctx context.Context, tlsConfig *tls.Config) {
 		e.log.Warn().Msg("timed out waiting for cache to sync")
 		return
 	}
+
+	go func() {
+		var streamTags []string
+		var measurementTags []string
+		ets := time.Now()
+		ae := abridgedEvent{
+			CreationTimestamp: ets.UTC().Unix(),
+			Reason:            "enabled",
+			Message:           "enabled",
+		}
+
+		data, err := json.Marshal(ae)
+		if err != nil {
+			e.log.Error().Err(err).Str("data", string(data)).Msg("parsing 'initial' event")
+			return
+		}
+
+		metrics := make(map[string]circonus.MetricSample)
+		_ = e.check.QueueMetricSample(
+			metrics,
+			"events",
+			circonus.MetricTypeString,
+			streamTags, measurementTags,
+			string(data),
+			&ets)
+		if err := e.check.SubmitMetrics(ctx, metrics, e.log.With().Str("type", "event").Logger(), true); err != nil {
+			e.log.Warn().Err(err).Msg("submitting initial event")
+		}
+	}()
 
 	<-ctx.Done()
 	e.log.Debug().Msg("closing event watcher")
