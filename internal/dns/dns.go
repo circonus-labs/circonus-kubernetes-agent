@@ -103,6 +103,10 @@ func (dns *DNS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 
 	urls, err := dns.getMetricURLs()
 	if err != nil {
+		dns.check.AddText("collect_dns_state", cgm.Tags{
+			cgm.Tag{Category: "cluster", Value: dns.config.Name},
+			cgm.Tag{Category: "source", Value: release.NAME},
+		}, err.Error())
 		dns.log.Error().Err(err).Msg("invalid service definition")
 		dns.Lock()
 		dns.running = false
@@ -110,11 +114,20 @@ func (dns *DNS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 		return
 	}
 
+	pods := 0
+	podsErr := 0
 	for podName, metricURL := range urls {
+		pods++
 		if err := dns.getMetrics(ctx, podName, metricURL); err != nil {
-			dns.log.Error().Err(err).Str("url", metricURL).Msg("http-metrics")
+			dns.log.Error().Err(err).Str("url", metricURL).Msg("kube-dns metrics")
+			podsErr++
 		}
 	}
+
+	dns.check.AddText("collect_dns_state", cgm.Tags{
+		cgm.Tag{Category: "cluster", Value: dns.config.Name},
+		cgm.Tag{Category: "source", Value: release.NAME},
+	}, fmt.Sprintf("OK:%d,ERR:%d", pods, podsErr))
 
 	dns.check.AddHistSample("collect_latency", cgm.Tags{
 		cgm.Tag{Category: "source", Value: release.NAME},
@@ -158,14 +171,17 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 		return nil, err
 	}
 
+	foundAnnotations := 0
 	scrape := false
 	port := ""
 
 	for name, value := range svc.Annotations {
 		switch name {
 		case "prometheus.io/port":
+			foundAnnotations++
 			port = value
 		case "prometheus.io/scrape":
+			foundAnnotations++
 			s, err := strconv.ParseBool(value)
 			if err != nil {
 				return nil, errors.Wrap(err, "parsing service confing annotation")
@@ -173,13 +189,15 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 			scrape = s
 		}
 	}
+	if foundAnnotations != 2 {
+		return nil, errors.New("service annotations not found")
+	}
 	if !scrape {
-		return nil, errors.New("kube-dns not configured for scraping")
+		return nil, errors.New("service not configured for scraping")
 	}
 
 	if len(svc.Spec.Selector) == 0 {
 		return nil, errors.New("no selectors found in kube-dns service")
-
 	}
 
 	selectors := make([]string, len(svc.Spec.Selector))
@@ -210,7 +228,12 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 func (dns *DNS) getMetrics(ctx context.Context, podName, metricURL string) error {
 
 	start := time.Now()
-	resp, err := http.Get(metricURL) //nolint:gosec
+	req, err := http.NewRequestWithContext(ctx, "GET", metricURL, nil)
+	if err != nil {
+		dns.log.Warn().Err(err).Str("url", metricURL).Msg("building request")
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		dns.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
