@@ -33,6 +33,7 @@ import (
 type TrapResult struct {
 	CheckUUID  string
 	SubmitUUID uuid.UUID
+	Filtered   uint64 `json:"filtered,omitempty"`
 	Stats      uint64 `json:"stats"`
 	Error      string `json:"error,omitempty"`
 }
@@ -277,6 +278,10 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 
 	result.CheckUUID = c.checkUUID
 	result.SubmitUUID = submitUUID
+
+	if result.Error != "" {
+		resultLogger.Warn().Interface("result", result).Msg("error message in result from broker")
+	}
 
 	resultLogger.Debug().
 		Str("duration", time.Since(start).String()).
