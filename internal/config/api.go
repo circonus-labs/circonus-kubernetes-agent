@@ -48,7 +48,7 @@ func validateAPIOptions(apiKey, apiKeyFile, apiApp, apiURL, apiCAFile string) er
 		if err != nil {
 			return errors.Wrap(err, "invalid API URL")
 		}
-		if parsedURL.Scheme == "" || parsedURL.Host == "" || parsedURL.Path == "" {
+		if parsedURL.Scheme == "" || parsedURL.Host == "" {
 			return errors.Errorf("invalid API URL (%s)", apiURL)
 		}
 	}
