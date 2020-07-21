@@ -159,6 +159,7 @@ func (c *Check) createAPIClient() (*apiclient.API, error) {
 		Log:      apiLogshim{logh: c.log.With().Str("pkg", "apicli").Logger()},
 	}
 	if c.config.API.CAFile != "" {
+		c.log.Debug().Str("file", c.config.API.CAFile).Msg("adding CA cert to api client")
 		cert, err := ioutil.ReadFile(c.config.API.CAFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "configuring API client")
