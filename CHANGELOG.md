@@ -1,3 +1,11 @@
+# v0.9.3
+
+* fix: broker cn check both ip and external_host
+* upd: add debug line when using custom api ca  cert
+* upd: use `latest` for default (simple) deployment
+* upd: remove path validation from api url
+* upd: add `/v2` path to default api url
+
 # v0.9.2
 
 * upd: explicit cases for prometheus metric types
