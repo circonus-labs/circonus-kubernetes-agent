@@ -108,7 +108,11 @@ func brokerCN(broker *apiclient.Broker, submissionURL string) (string, error) {
 	cn := ""
 
 	for _, detail := range broker.Details {
-		if *detail.IP == host {
+		if detail.IP != nil && *detail.IP == host {
+			cn = detail.CN
+			break
+		}
+		if detail.ExternalHost != nil && *detail.ExternalHost == host {
 			cn = detail.CN
 			break
 		}

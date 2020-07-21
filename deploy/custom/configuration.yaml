@@ -34,7 +34,7 @@
   data:
       #circonus-api-key-file: ""
       #circonus-api-app: "circonus-kubernetes-agent"
-      #circonus-api-url: "https://api.circonus.com"
+      #circonus-api-url: "https://api.circonus.com/v2"
       #circonus-api-ca-file: ""
       #circonus-api-debug: "false"
       ## broker to use when creating a new httptrap check
