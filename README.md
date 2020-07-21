@@ -44,6 +44,8 @@ spec:
     targetPort: 9153
 ```
 
+> NOTE: if the annotations are _not_ defined on the service, and the service cannot be modfied for any reason. If the pods backing the kube-dns service _do_ expose metrics use `kube-dns-metrics-port` to define the port from which to request `/metrics`.
+
 ## Installation
 
 ### `kubectl`

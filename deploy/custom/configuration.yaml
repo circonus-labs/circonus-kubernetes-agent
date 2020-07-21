@@ -88,6 +88,8 @@
       kubernetes-enable-cadvisor-metrics: "false"
       ## enable kube-dns metrics - default is enabled for dashboard
       kubernetes-enable-kube-dns-metrics: "true"
+      ## port to request `/metrics` from if scrape/port annotations not defined on kube-dns service (e.g. GKE)
+      kubernetes-kube-dns-metrics-port: "10054"
       ## include pod metrics, requires nodes to be enabled - - default is enabled for dashboard
       kubernetes-include-pod-metrics: "true"
       ## include only pods with this label key, blank = all pods

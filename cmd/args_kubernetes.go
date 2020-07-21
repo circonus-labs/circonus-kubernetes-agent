@@ -397,6 +397,24 @@ func init() {
 		}
 		viper.SetDefault(key, defaultValue)
 	}
+	{
+		const (
+			key          = keys.K8SKubeDNSMetricsPort
+			longOpt      = "k8s-kube-dns-metrics-port"
+			envVar       = release.ENVPREFIX + "_K8S_KUBE_DNS_METRICS_PORT"
+			description  = "Kube dns metrics port if annotations not on service definition"
+			defaultValue = defaults.K8SKubeDNSMetricsPort
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
 
 	{
 		const (

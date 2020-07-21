@@ -152,6 +152,8 @@ const (
 
 	// K8SEnableKubeDNSMetrics - collect kube-dns metrics
 	K8SEnableKubeDNSMetrics = "kubernetes.enable_kube_dns_metrics"
+	// K8SKubeDNSMetricsPort - define when scrape/port annotations are not applied on the service
+	K8SKubeDNSMetricsPort = "kubernetes.kube_dns_metrics_port"
 
 	// K8SEnableEvents enable events
 	K8SEnableEvents = "kubernetes.enable_events"

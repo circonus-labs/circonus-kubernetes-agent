@@ -85,6 +85,7 @@ const (
 	K8SEnableNodeMetrics      = true                                                  // dashboard
 	K8SEnableCadvisorMetrics  = false                                                 // not needed by dashboard and is deprecated by k8s
 	K8SEnableKubeDNSMetrics   = true                                                  // dashboard
+	K8SKubeDNSMetricsPort     = "10054"                                               // ONLY used if the kube-dns service does not have scrape and port annotations (e.g. GKE)
 	K8SNodeSelector           = ""                                                    // blank=all
 	K8SIncludePods            = true                                                  // dashboard
 	K8SPodLabelKey            = ""                                                    // blank=all

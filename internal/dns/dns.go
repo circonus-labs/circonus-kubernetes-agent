@@ -21,11 +21,13 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/expfmt"
 	"github.com/rs/zerolog"
+	"github.com/spf13/viper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -189,9 +191,17 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 			scrape = s
 		}
 	}
+
 	if foundAnnotations != 2 {
-		return nil, errors.New("service annotations not found")
+		port = viper.GetString(keys.K8SKubeDNSMetricsPort)
+		if port == "" {
+			return nil, errors.New("service annotations not found, kube-dns-metrics-port not set")
+		} else {
+			dns.log.Warn().Str("port", port).Msg("service annotations not found, checking kube-dns-metrics-port")
+			scrape = true
+		}
 	}
+
 	if !scrape {
 		return nil, errors.New("service not configured for scraping")
 	}
