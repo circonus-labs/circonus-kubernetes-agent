@@ -1,3 +1,7 @@
+# v0.9.4
+
+* add: kube-dns-metrics-port - used when scrape/port annotations are NOT defined on the kube-dns service (e.g. GKE)
+
 # v0.9.3
 
 * fix: broker cn check both ip and external_host
