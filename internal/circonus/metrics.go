@@ -109,6 +109,14 @@ func (c *Check) IncrementCounter(metricName string, tags cgm.Tags) {
 	}
 }
 
+// IncrementCounterByValue to queue for submission
+func (c *Check) IncrementCounterByValue(metricName string, tags cgm.Tags, val uint64) {
+	if c.metrics != nil {
+		tags = append(tags, c.defaultTags...)
+		c.metrics.IncrementByValueWithTags(metricName, tags, val)
+	}
+}
+
 // SetCounter to queue for submission
 func (c *Check) SetCounter(metricName string, tags cgm.Tags, value uint64) {
 	if c.metrics != nil {
