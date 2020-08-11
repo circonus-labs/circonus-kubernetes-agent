@@ -23,7 +23,6 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
-	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/expfmt"
@@ -521,7 +520,7 @@ func (ksm *KSM) metrics(ctx context.Context, tlsConfig *tls.Config, metricURL st
 	measurementTags := []string{}
 
 	var parser expfmt.TextParser
-	if err := promtext.QueueMetrics(ctx, parser, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
+	if err := queueMetrics(ctx, parser, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
 		return err
 	}
 
@@ -607,7 +606,7 @@ func (ksm *KSM) telemetry(ctx context.Context, tlsConfig *tls.Config, telemetryU
 	measurementTags := []string{}
 
 	var parser expfmt.TextParser
-	if err := promtext.QueueMetrics(ctx, parser, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
+	if err := queueMetrics(ctx, parser, ksm.check, ksm.log, resp.Body, streamTags, measurementTags, ksm.ts); err != nil {
 		return err
 	}
 
