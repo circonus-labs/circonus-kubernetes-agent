@@ -196,10 +196,9 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 		port = viper.GetString(keys.K8SKubeDNSMetricsPort)
 		if port == "" {
 			return nil, errors.New("service annotations not found, kube-dns-metrics-port not set")
-		} else {
-			dns.log.Warn().Str("port", port).Msg("service annotations not found, checking kube-dns-metrics-port")
-			scrape = true
 		}
+		dns.log.Warn().Str("port", port).Msg("service annotations not found, checking kube-dns-metrics-port")
+		scrape = true
 	}
 
 	if !scrape {

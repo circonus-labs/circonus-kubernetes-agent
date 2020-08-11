@@ -1,3 +1,13 @@
+# v0.9.5
+
+* add: derived metrics to enhance dashboard performance
+* add: IncrementCounterByVvalue method
+* upd: force lowercase tag categories
+* upd: dependencies
+* upd: stub hpa endpoints
+* fix: binary name for updated goreleaser
+* upd: refactor dns annotation and explicit port use
+
 # v0.9.4
 
 * add: kube-dns-metrics-port - used when scrape/port annotations are NOT defined on the kube-dns service (e.g. GKE)
