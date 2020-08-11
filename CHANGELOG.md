@@ -1,3 +1,8 @@
+# v0.9.6
+
+* add: `pod_status_phase` metric filter
+* add: `pod_container_status` text metrics and metric filter
+
 # v0.9.5
 
 * add: derived metrics to enhance dashboard performance
