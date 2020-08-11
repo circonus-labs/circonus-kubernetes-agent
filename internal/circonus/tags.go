@@ -113,7 +113,7 @@ func encodeTags(tags []string, useBase64 bool) string {
 		encodeFmt := `b"%s"`
 		encodedSig := `b"` // has cat or val been previously (or manually) base64 encoded and formatted
 		if !strings.HasPrefix(tc, encodedSig) {
-			tc = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, tc))))
+			tc = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, strings.ToLower(tc)))))
 		}
 		if !strings.HasPrefix(tv, encodedSig) {
 			tv = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, tv))))
