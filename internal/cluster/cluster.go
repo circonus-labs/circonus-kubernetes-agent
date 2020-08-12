@@ -84,7 +84,8 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 			return nil, errors.New("unable to add k8s api CA Certificate to x509 cert pool")
 		}
 		c.tlsConfig = &tls.Config{
-			RootCAs: cp,
+			RootCAs:    cp,
+			MinVersion: tls.VersionTLS12,
 			// InsecureSkipVerify: true,
 		}
 		c.logger.Debug().Str("cert", c.cfg.CAFile).Msg("adding CA cert to TLS config")
