@@ -153,16 +153,10 @@ func queueMetrics(
 						}
 						// continue -- when original ksm metric no longer needed
 					case "kube_pod_status_ready", "kube_pod_status_scheduled":
-						_, fullTags, countTags := keyTags(check, streamTags, "condition")
+						condition, fullTags, countTags := keyTags(check, streamTags, "condition")
 						check.IncrementCounterByValue(customMetricName+"_count", countTags, uint64(val))
 						if val > 0 {
-							shortName := "pod_status"
-							switch metricName {
-							case "kube_pod_status_ready":
-								check.AddText(shortName, fullTags, "ready")
-							case "kube_pod_status_scheduled":
-								check.AddText(shortName, fullTags, "scheduled")
-							}
+							check.AddText(customMetricName, fullTags, condition)
 						}
 						// continue -- when original ksm metric no longer needed
 					case "kube_pod_container_status_running", "kube_pod_container_status_terminated", "kube_pod_container_status_waiting", "kube_pod_container_status_ready":

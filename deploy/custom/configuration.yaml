@@ -129,7 +129,7 @@
             ["allow", "^(kube_)?pod_status_phase(_count)?$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"],
            	["allow", "^pod_status_phase$", "pods"],
             ["allow", "^(kube_)?pod_status_(ready|scheduled)(_count)?$", "tags", "and(condition:true)", "pods"],
-            ["allow", "^pod_status$", "pods"],
+            ["allow", "^pod_status_(ready|scheduled)$", "pods"],
             ["allow", "^kube_(service_labels|deployment_labels|pod_container_info|pod_deleted)$", "ksm inventory"],
             ["allow", "^(node|kubelet_running_pod_count|Ready)$", "nodes"],
             ["allow", "^NetworkUnavailable$", "node status"],
