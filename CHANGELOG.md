@@ -1,3 +1,7 @@
+# v0.9.8
+
+* fix: revert back to `pod_status_ready` and `pod_status_scheduled`
+
 # v0.9.7
 
 * add: `pod_status` text metric filter
