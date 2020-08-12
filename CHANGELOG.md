@@ -1,3 +1,10 @@
+# v0.9.7
+
+* add: `pod_status` text metric filter
+* upd: `pod_container_status` and `pod_status_phase` filters
+* fix: lint min tls ver
+* upd: go1.15
+
 # v0.9.6
 
 * add: `pod_status_phase` metric filter
