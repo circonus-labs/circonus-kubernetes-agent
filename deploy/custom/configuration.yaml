@@ -59,7 +59,7 @@
       ## set a name identifying the cluster, to be used in the check 
       ## title when it is created
       kubernetes-name: ""
-      #kubernetes-api-url: "https://kubernetes"
+      #kubernetes-api-url: "https://kubernetes.default.svc"
       #kubernetes-api-ca-file: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
       #kubernetes-bearer-token-file: "/var/run/secrets/kubernetes.io/serviceaccount/token"
       ## collect event metrics - default is enabled for dashboard

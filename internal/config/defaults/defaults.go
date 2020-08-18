@@ -68,10 +68,10 @@ const (
 
 	K8SName                   = ""
 	K8SInterval               = "1m"
-	K8SAPIURL                 = "https://kubernetes"
-	K8SAPICAFile              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	K8SAPIURL                 = "https://kubernetes.default.svc"                       // https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod
+	K8SAPICAFile              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt" // https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod
 	K8SBearerToken            = ""
-	K8SBearerTokenFile        = "/var/run/secrets/kubernetes.io/serviceaccount/token" //nolint:gosec
+	K8SBearerTokenFile        = "/var/run/secrets/kubernetes.io/serviceaccount/token" //nolint:gosec // https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod
 	K8SEnableEvents           = true                                                  // dashboard
 	K8SEnableKubeStateMetrics = true                                                  // dashobard
 	K8SKSMRequestMode         = "direct"                                              // 'direct' or 'proxy' modes supported
