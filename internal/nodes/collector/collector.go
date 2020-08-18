@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
@@ -28,6 +27,7 @@ import (
 	"github.com/prometheus/common/expfmt"
 	"github.com/rs/zerolog"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -36,14 +36,14 @@ type Collector struct {
 	tlsConfig    *tls.Config
 	ctx          context.Context
 	check        *circonus.Check
-	node         *k8s.Node
+	node         *v1.Node
 	baseLogger   zerolog.Logger
 	log          zerolog.Logger
 	ts           *time.Time
 	apiTimelimit time.Duration
 }
 
-func New(cfg *config.Cluster, node *k8s.Node, logger zerolog.Logger, check *circonus.Check, apiTimeout time.Duration) (*Collector, error) {
+func New(cfg *config.Cluster, node *v1.Node, logger zerolog.Logger, check *circonus.Check, apiTimeout time.Duration) (*Collector, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid cluster config (nil)")
 	}
@@ -59,7 +59,7 @@ func New(cfg *config.Cluster, node *k8s.Node, logger zerolog.Logger, check *circ
 		check:        check,
 		node:         node,
 		apiTimelimit: apiTimeout,
-		baseLogger:   logger.With().Str("node", node.Metadata.Name).Logger(),
+		baseLogger:   logger.With().Str("node", node.Name).Logger(),
 	}, nil
 }
 
@@ -72,7 +72,7 @@ func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.C
 	collectStart := time.Now()
 
 	baseMeasurementTags := []string{}
-	baseStreamTags := []string{"source:kubelet", "node:" + nc.node.Metadata.Name}
+	baseStreamTags := []string{"source:kubelet", "node:" + nc.node.Name}
 
 	if concurrent {
 		var wg sync.WaitGroup
@@ -145,7 +145,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 			"os_image:" + nc.node.Status.NodeInfo.OSImage,
 			"kublet_version:" + nc.node.Status.NodeInfo.KubeletVersion,
 		}...)
-		for k, v := range nc.node.Metadata.Labels {
+		for k, v := range nc.node.Labels {
 			streamTags = append(streamTags, k+":"+v)
 		}
 		_ = nc.check.QueueMetricSample(
@@ -153,7 +153,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 			"node",
 			circonus.MetricTypeString,
 			streamTags, parentMeasurementTags,
-			nc.node.Metadata.Name,
+			nc.node.Name,
 			nc.ts)
 	}
 
@@ -167,7 +167,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 			}
 			_ = nc.check.QueueMetricSample(
 				metrics,
-				cond.Type,
+				string(cond.Type),
 				circonus.MetricTypeString,
 				streamTags, parentMeasurementTags,
 				cond.Message,
@@ -178,38 +178,54 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 	{ // capacity and allocatable
 		var streamTags []string
 		streamTags = append(streamTags, parentStreamTags...)
-		if v, err := strconv.Atoi(nc.node.Status.Capacity.CPU); err == nil {
-			_ = nc.check.QueueMetricSample(
-				metrics,
-				"capacity_cpu",
-				circonus.MetricTypeUint64,
-				streamTags, parentMeasurementTags,
-				uint64(v),
-				nc.ts)
-			if ns, ok := GetNodeStat(nc.node.Metadata.Name); ok {
-				ns.CPUCapacity = uint64(v)
-				SetNodeStat(nc.node.Metadata.Name, ns)
-			} else {
-				ns := NodeStat{
-					CPUCapacity: uint64(v),
+		cpu := int64(0)
+		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Cpu().String()); err == nil {
+			if cpu, ok := qty.AsInt64(); ok {
+				_ = nc.check.QueueMetricSample(
+					metrics,
+					"capacity_cpu",
+					circonus.MetricTypeUint64,
+					streamTags, parentMeasurementTags,
+					uint64(cpu),
+					nc.ts)
+				if ns, ok := GetNodeStat(nc.node.Name); ok {
+					ns.CPUCapacity = uint64(cpu)
+					SetNodeStat(nc.node.Name, ns)
+				} else {
+					ns := NodeStat{
+						CPUCapacity: uint64(cpu),
+					}
+					SetNodeStat(nc.node.Name, ns)
 				}
-				SetNodeStat(nc.node.Metadata.Name, ns)
 			}
 		} else {
-			nc.log.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.CPU).Msg("converting capacity.cpu")
+			nc.log.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.Cpu().String()).Msg("converting capacity.cpu")
 		}
-		if v, err := strconv.Atoi(nc.node.Status.Capacity.Pods); err == nil {
-			_ = nc.check.QueueMetricSample(
-				metrics,
-				"capacity_pods",
-				circonus.MetricTypeUint64,
-				streamTags, parentMeasurementTags,
-				uint64(v),
-				nc.ts)
+		if ns, ok := GetNodeStat(nc.node.Name); ok {
+			ns.CPUCapacity = uint64(cpu)
+			SetNodeStat(nc.node.Name, ns)
 		} else {
-			nc.log.Warn().Err(err).Str("pods", nc.node.Status.Capacity.Pods).Msg("converting capacity.pods")
+			ns := NodeStat{
+				CPUCapacity: uint64(cpu),
+			}
+			SetNodeStat(nc.node.Name, ns)
 		}
-		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Memory); err == nil {
+
+		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Pods().String()); err == nil {
+			if pods, ok := qty.AsInt64(); ok {
+				_ = nc.check.QueueMetricSample(
+					metrics,
+					"capacity_pods",
+					circonus.MetricTypeUint64,
+					streamTags, parentMeasurementTags,
+					uint64(pods),
+					nc.ts)
+			}
+		} else {
+			nc.log.Warn().Err(err).Str("pods", nc.node.Status.Capacity.Pods().String()).Msg("converting capacity.pods")
+		}
+
+		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Memory().String()); err == nil {
 			if mem, ok := qty.AsInt64(); ok {
 				streamTags = append(streamTags, "units:bytes")
 				_ = nc.check.QueueMetricSample(
@@ -221,9 +237,10 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 					nc.ts)
 			}
 		} else {
-			nc.log.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory).Msg("parsing quantity capacity.memory")
+			nc.log.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory().String()).Msg("parsing quantity capacity.memory")
 		}
-		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.EphemeralStorage); err == nil {
+
+		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.StorageEphemeral().String()); err == nil {
 			if storage, ok := qty.AsInt64(); ok {
 				streamTags = append(streamTags, "units:bytes")
 				_ = nc.check.QueueMetricSample(
@@ -235,7 +252,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 					nc.ts)
 			}
 		} else {
-			nc.log.Warn().Err(err).Str("ephemeral_storage", nc.node.Status.Capacity.EphemeralStorage).Msg("parsing quantity capacity.ephemeral-storage")
+			nc.log.Warn().Err(err).Str("ephemeral_storage", nc.node.Status.Capacity.StorageEphemeral().String()).Msg("parsing quantity capacity.ephemeral-storage")
 		}
 	}
 
@@ -341,7 +358,7 @@ func (nc *Collector) summary(ctx context.Context, parentStreamTags []string, par
 	}
 	defer client.CloseIdleConnections()
 
-	reqURL := nc.cfg.URL + nc.node.Metadata.SelfLink + "/proxy/stats/summary"
+	reqURL := nc.cfg.URL + nc.node.SelfLink + "/proxy/stats/summary"
 	req, err := k8s.NewAPIRequest(ctx, nc.cfg.BearerToken, reqURL)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("abandoning collection")
@@ -556,7 +573,7 @@ func (nc *Collector) nmetrics(ctx context.Context, parentStreamTags []string, pa
 	}
 	defer client.CloseIdleConnections()
 
-	reqURL := nc.cfg.URL + nc.node.Metadata.SelfLink + "/proxy/metrics"
+	reqURL := nc.cfg.URL + nc.node.SelfLink + "/proxy/metrics"
 	req, err := k8s.NewAPIRequest(ctx, nc.cfg.BearerToken, reqURL)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("abandoning /metrics collection")
@@ -629,7 +646,7 @@ func (nc *Collector) cadvisor(ctx context.Context, parentStreamTags []string, pa
 	}
 	defer client.CloseIdleConnections()
 
-	reqURL := nc.cfg.URL + nc.node.Metadata.SelfLink + "/proxy/metrics/cadvisor"
+	reqURL := nc.cfg.URL + nc.node.SelfLink + "/proxy/metrics/cadvisor"
 	req, err := k8s.NewAPIRequest(ctx, nc.cfg.BearerToken, reqURL)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("abandoning /metrics/cadvisor collection")
