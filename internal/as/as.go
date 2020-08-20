@@ -19,13 +19,12 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/expfmt"
 	"github.com/rs/zerolog"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 type AS struct {
@@ -96,28 +95,7 @@ func (as *AS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 
 	collectStart := time.Now()
 
-	var cfg *rest.Config
-	if c, err := rest.InClusterConfig(); err != nil {
-		if err != rest.ErrNotInCluster {
-			as.log.Error().Err(err).Msg("unable to start api server monitor")
-			return
-		}
-		// not in cluster, use supplied customer config for cluster
-		cfg = &rest.Config{}
-		if as.config.BearerToken != "" {
-			cfg.BearerToken = as.config.BearerToken
-		}
-		if as.config.URL != "" {
-			cfg.Host = as.config.URL
-		}
-		if as.config.CAFile != "" {
-			cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: as.config.CAFile}
-		}
-	} else {
-		cfg = c // use in-cluster config
-	}
-
-	clientset, err := kubernetes.NewForConfig(cfg)
+	clientset, err := k8s.GetClient(as.config)
 	if err != nil {
 		as.log.Error().Err(err).Msg("initializing client set")
 		return

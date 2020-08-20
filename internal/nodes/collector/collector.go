@@ -17,6 +17,7 @@ import (
 	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
@@ -26,8 +27,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 type Collector struct {
@@ -351,27 +350,8 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 	}
 
 	start := time.Now()
-	var cfg *rest.Config
-	if c, err := rest.InClusterConfig(); err != nil {
-		if err != rest.ErrNotInCluster {
-			nc.log.Error().Err(err).Msg("unable to get summary, abandoning collection")
-		}
-		// not in cluster, use supplied customer config for cluster
-		cfg = &rest.Config{}
-		if nc.cfg.BearerToken != "" {
-			cfg.BearerToken = nc.cfg.BearerToken
-		}
-		if nc.cfg.URL != "" {
-			cfg.Host = nc.cfg.URL
-		}
-		if nc.cfg.CAFile != "" {
-			cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: nc.cfg.CAFile}
-		}
-	} else {
-		cfg = c // use in-cluster config
-	}
 
-	clientset, err := kubernetes.NewForConfig(cfg)
+	clientset, err := k8s.GetClient(nc.cfg)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("initializing client set for stats/summary, abandoning collection")
 		return
@@ -554,27 +534,7 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 	}
 
 	start := time.Now()
-	var cfg *rest.Config
-	if c, err := rest.InClusterConfig(); err != nil {
-		if err != rest.ErrNotInCluster {
-			nc.log.Error().Err(err).Msg("unable to get node metrics, abandoning collection")
-		}
-		// not in cluster, use supplied customer config for cluster
-		cfg = &rest.Config{}
-		if nc.cfg.BearerToken != "" {
-			cfg.BearerToken = nc.cfg.BearerToken
-		}
-		if nc.cfg.URL != "" {
-			cfg.Host = nc.cfg.URL
-		}
-		if nc.cfg.CAFile != "" {
-			cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: nc.cfg.CAFile}
-		}
-	} else {
-		cfg = c // use in-cluster config
-	}
-
-	clientset, err := kubernetes.NewForConfig(cfg)
+	clientset, err := k8s.GetClient(nc.cfg)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("initializing client set for node metrics, abandoning collection")
 		return
@@ -615,27 +575,8 @@ func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags [
 	}
 
 	start := time.Now()
-	var cfg *rest.Config
-	if c, err := rest.InClusterConfig(); err != nil {
-		if err != rest.ErrNotInCluster {
-			nc.log.Error().Err(err).Msg("unable to get node metrics, abandoning collection")
-		}
-		// not in cluster, use supplied customer config for cluster
-		cfg = &rest.Config{}
-		if nc.cfg.BearerToken != "" {
-			cfg.BearerToken = nc.cfg.BearerToken
-		}
-		if nc.cfg.URL != "" {
-			cfg.Host = nc.cfg.URL
-		}
-		if nc.cfg.CAFile != "" {
-			cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: nc.cfg.CAFile}
-		}
-	} else {
-		cfg = c // use in-cluster config
-	}
 
-	clientset, err := kubernetes.NewForConfig(cfg)
+	clientset, err := k8s.GetClient(nc.cfg)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("initializing client set for cadvisor metrics, abandoning collection")
 		return
@@ -678,29 +619,9 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 
 	start := time.Now()
 
-	var cfg *rest.Config
-	if c, err := rest.InClusterConfig(); err != nil {
-		if err != rest.ErrNotInCluster {
-			nc.log.Error().Err(err).Msg("fetching pod labels, clientconfig")
-		}
-		// not in cluster, use supplied customer config for cluster
-		cfg = &rest.Config{}
-		if nc.cfg.BearerToken != "" {
-			cfg.BearerToken = nc.cfg.BearerToken
-		}
-		if nc.cfg.URL != "" {
-			cfg.Host = nc.cfg.URL
-		}
-		if nc.cfg.CAFile != "" {
-			cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: nc.cfg.CAFile}
-		}
-	} else {
-		cfg = c // use in-cluster config
-	}
-
-	clientset, err := kubernetes.NewForConfig(cfg)
+	clientset, err := k8s.GetClient(nc.cfg)
 	if err != nil {
-		nc.log.Error().Err(err).Str("ns", ns).Str("name", name).Msg("fetching pod labels, clientset")
+		nc.log.Error().Err(err).Msg("initializing client set for pod labels, abandoning collection")
 		return collect, tags, err
 	}
 

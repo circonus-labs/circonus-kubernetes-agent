@@ -22,6 +22,7 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
@@ -29,8 +30,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 type DNS struct {
@@ -143,29 +142,9 @@ func (dns *DNS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 }
 
 func (dns *DNS) getMetricURLs() (map[string]string, error) {
-	var cfg *rest.Config
-	if c, err := rest.InClusterConfig(); err != nil {
-		if err != rest.ErrNotInCluster {
-			return nil, errors.Wrap(err, "unable to get DNS metrics, must be in cluster")
-		}
-		// not in cluster, use supplied customer config for cluster
-		cfg = &rest.Config{}
-		if dns.config.BearerToken != "" {
-			cfg.BearerToken = dns.config.BearerToken
-		}
-		if dns.config.URL != "" {
-			cfg.Host = dns.config.URL
-		}
-		if dns.config.CAFile != "" {
-			cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: dns.config.CAFile}
-		}
-	} else {
-		cfg = c // use in-cluster config
-	}
-
-	clientset, err := kubernetes.NewForConfig(cfg)
+	clientset, err := k8s.GetClient(dns.config)
 	if err != nil {
-		return nil, errors.Wrap(err, "initializing cleint set")
+		return nil, err
 	}
 
 	svc, err := clientset.CoreV1().Services("kube-system").Get("kube-dns", metav1.GetOptions{})

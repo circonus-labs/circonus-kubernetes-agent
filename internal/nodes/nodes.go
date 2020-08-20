@@ -16,14 +16,13 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/nodes/collector"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 type Nodes struct {
@@ -173,32 +172,12 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 }
 
 func (n *Nodes) nodeList() (*v1.NodeList, error) {
-	var cfg *rest.Config
-	if c, err := rest.InClusterConfig(); err != nil {
-		if err != rest.ErrNotInCluster {
-			n.log.Error().Err(err).Msg("unable to retrieve node list")
-			return nil, err
-		}
-		// not in cluster, use supplied customer config for cluster
-		cfg = &rest.Config{}
-		if n.config.BearerToken != "" {
-			cfg.BearerToken = n.config.BearerToken
-		}
-		if n.config.URL != "" {
-			cfg.Host = n.config.URL
-		}
-		if n.config.CAFile != "" {
-			cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: n.config.CAFile}
-		}
-	} else {
-		cfg = c // use in-cluster config
-	}
-
-	clientset, err := kubernetes.NewForConfig(cfg)
+	clientset, err := k8s.GetClient(n.config)
 	if err != nil {
 		n.log.Error().Err(err).Msg("initializing client set")
 		return nil, err
 	}
+
 	listOptions := metav1.ListOptions{}
 
 	if labelSelector := n.config.NodeSelector; labelSelector != "" {

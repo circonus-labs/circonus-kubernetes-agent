@@ -15,12 +15,11 @@ import (
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/rs/zerolog"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -53,28 +52,7 @@ func (e *Events) ID() string {
 func (e *Events) Start(ctx context.Context, tlsConfig *tls.Config) {
 	e.log.Info().Msg("starting watcher")
 
-	var cfg *rest.Config
-	if c, err := rest.InClusterConfig(); err != nil {
-		if err != rest.ErrNotInCluster {
-			e.log.Error().Err(err).Msg("unable to start event monitor")
-			return
-		}
-		// not in cluster, use supplied customer config for cluster
-		cfg = &rest.Config{}
-		if e.config.BearerToken != "" {
-			cfg.BearerToken = e.config.BearerToken
-		}
-		if e.config.URL != "" {
-			cfg.Host = e.config.URL
-		}
-		if e.config.CAFile != "" {
-			cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: e.config.CAFile}
-		}
-	} else {
-		cfg = c // use in-cluster config
-	}
-
-	clientset, err := kubernetes.NewForConfig(cfg)
+	clientset, err := k8s.GetClient(e.config)
 	if err != nil {
 		e.log.Error().Err(err).Msg("initializing client set")
 		return

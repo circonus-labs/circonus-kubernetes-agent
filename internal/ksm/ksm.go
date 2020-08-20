@@ -21,14 +21,13 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/expfmt"
 	"github.com/rs/zerolog"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 type KSM struct {
@@ -302,29 +301,9 @@ func (ksm *KSM) getEndpointIP(metricPortName, telemetryPortName string) (map[str
 		return nil, errors.New("invalid service definition, missing KSM field selector query")
 	}
 
-	var cfg *rest.Config
-	if c, err := rest.InClusterConfig(); err != nil {
-		if err != rest.ErrNotInCluster {
-			return nil, errors.Wrap(err, "unable to get endpoints, must be in cluster")
-		}
-		// not in cluster, use supplied customer config for cluster
-		cfg = &rest.Config{}
-		if ksm.config.BearerToken != "" {
-			cfg.BearerToken = ksm.config.BearerToken
-		}
-		if ksm.config.URL != "" {
-			cfg.Host = ksm.config.URL
-		}
-		if ksm.config.CAFile != "" {
-			cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: ksm.config.CAFile}
-		}
-	} else {
-		cfg = c // use in-cluster config
-	}
-
-	clientset, err := kubernetes.NewForConfig(cfg)
+	clientset, err := k8s.GetClient(ksm.config)
 	if err != nil {
-		return nil, errors.Wrap(err, "initializing client set")
+		return nil, err
 	}
 
 	endpoints, err := clientset.CoreV1().Endpoints("").List(metav1.ListOptions{FieldSelector: ksm.config.KSMFieldSelectorQuery})
@@ -377,29 +356,9 @@ func (ksm *KSM) getServiceDefinition() (*v1.Service, error) {
 		return nil, errors.New("invalid service definition, missing KSM field selector query")
 	}
 
-	var cfg *rest.Config
-	if c, err := rest.InClusterConfig(); err != nil {
-		if err != rest.ErrNotInCluster {
-			return nil, errors.Wrap(err, "unable to get service, must be in cluster")
-		}
-		// not in cluster, use supplied customer config for cluster
-		cfg = &rest.Config{}
-		if ksm.config.BearerToken != "" {
-			cfg.BearerToken = ksm.config.BearerToken
-		}
-		if ksm.config.URL != "" {
-			cfg.Host = ksm.config.URL
-		}
-		if ksm.config.CAFile != "" {
-			cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: ksm.config.CAFile}
-		}
-	} else {
-		cfg = c // use in-cluster config
-	}
-
-	clientset, err := kubernetes.NewForConfig(cfg)
+	clientset, err := k8s.GetClient(ksm.config)
 	if err != nil {
-		return nil, errors.Wrap(err, "initializing client set")
+		return nil, err
 	}
 
 	services, err := clientset.CoreV1().Services("").List(metav1.ListOptions{FieldSelector: ksm.config.KSMFieldSelectorQuery})
@@ -434,29 +393,9 @@ func (ksm *KSM) metrics(ctx context.Context, metricURL string) error {
 
 	switch ksm.config.KSMRequestMode {
 	case modeProxy:
-		var cfg *rest.Config
-		if c, err := rest.InClusterConfig(); err != nil {
-			if err != rest.ErrNotInCluster {
-				return errors.Wrap(err, "unable to get metrics, must be in cluster")
-			}
-			// not in cluster, use supplied customer config for cluster
-			cfg = &rest.Config{}
-			if ksm.config.BearerToken != "" {
-				cfg.BearerToken = ksm.config.BearerToken
-			}
-			if ksm.config.URL != "" {
-				cfg.Host = ksm.config.URL
-			}
-			if ksm.config.CAFile != "" {
-				cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: ksm.config.CAFile}
-			}
-		} else {
-			cfg = c // use in-cluster config
-		}
-
-		clientset, err := kubernetes.NewForConfig(cfg)
+		clientset, err := k8s.GetClient(ksm.config)
 		if err != nil {
-			return errors.Wrap(err, "initializing client set for metrics")
+			return err
 		}
 
 		req := clientset.CoreV1().RESTClient().Get().RequestURI(metricURL)
@@ -542,38 +481,15 @@ func (ksm *KSM) metrics(ctx context.Context, metricURL string) error {
 func (ksm *KSM) telemetry(ctx context.Context, telemetryURL string) error {
 	ksm.log.Debug().Str("mode", ksm.config.KSMRequestMode).Str("url", telemetryURL).Msg("telemetry")
 
-	// var client *http.Client
-	// var req *http.Request
-
 	var data *bytes.Reader
 
 	start := time.Now()
 
 	switch ksm.config.KSMRequestMode {
 	case modeProxy:
-		var cfg *rest.Config
-		if c, err := rest.InClusterConfig(); err != nil {
-			if err != rest.ErrNotInCluster {
-				return errors.Wrap(err, "unable to get metrics, must be in cluster")
-			}
-			// not in cluster, use supplied customer config for cluster
-			cfg = &rest.Config{}
-			if ksm.config.BearerToken != "" {
-				cfg.BearerToken = ksm.config.BearerToken
-			}
-			if ksm.config.URL != "" {
-				cfg.Host = ksm.config.URL
-			}
-			if ksm.config.CAFile != "" {
-				cfg.TLSClientConfig = rest.TLSClientConfig{CAFile: ksm.config.CAFile}
-			}
-		} else {
-			cfg = c // use in-cluster config
-		}
-
-		clientset, err := kubernetes.NewForConfig(cfg)
+		clientset, err := k8s.GetClient(ksm.config)
 		if err != nil {
-			return errors.Wrap(err, "initializing client set for metrics")
+			return err
 		}
 
 		req := clientset.CoreV1().RESTClient().Get().RequestURI(telemetryURL)
