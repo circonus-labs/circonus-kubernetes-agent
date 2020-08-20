@@ -9,11 +9,6 @@ package nodes
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
 	"sync"
 	"time"
 
@@ -26,6 +21,8 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Nodes struct {
@@ -98,7 +95,7 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 
 	collectStart := time.Now()
 
-	nodes, err := n.nodeList(ctx, tlsConfig)
+	nodes, err := n.nodeList()
 	if err != nil {
 		n.log.Error().Err(err).Msg("fetching list of nodes")
 		n.Lock()
@@ -137,19 +134,19 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	for _, node := range nodes.Items {
 		node := node
 		for _, cond := range node.Status.Conditions {
-			if cond.Type != "Ready" {
+			if cond.Type != v1.NodeReady {
 				continue
 			}
-			if cond.Status == "True" {
+			if cond.Status == v1.ConditionTrue {
 				nc, err := collector.New(n.config, &node, n.log, n.check, n.apiTimelimit)
 				if err != nil {
-					n.log.Error().Err(err).Str("node", node.Metadata.Name).Msg("skipping...")
+					n.log.Error().Err(err).Str("node", node.Name).Msg("skipping...")
 					break
 				}
 				nodeQueue <- nc
 				nodesQueued++
 			} else {
-				n.log.Warn().Str(cond.Type, cond.Status).Str("node", node.Metadata.Name).Msg("skipping...")
+				n.log.Warn().Str(string(cond.Type), string(cond.Status)).Str("node", node.Name).Msg("skipping...")
 			}
 			break
 		}
@@ -174,41 +171,26 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	n.Unlock()
 }
 
-func (n *Nodes) nodeList(ctx context.Context, tlsConfig *tls.Config) (*k8s.NodeList, error) {
-	u, err := url.Parse(n.config.URL + "/api/v1/nodes")
+func (n *Nodes) nodeList() (*v1.NodeList, error) {
+	clientset, err := k8s.GetClient(n.config)
 	if err != nil {
+		n.log.Error().Err(err).Msg("initializing client set")
 		return nil, err
 	}
 
+	listOptions := metav1.ListOptions{}
+
 	if labelSelector := n.config.NodeSelector; labelSelector != "" {
-		q := u.Query()
-		q.Set("labelSelector", labelSelector)
-		u.RawQuery = q.Encode()
-	}
-
-	client, err := k8s.NewAPIClient(tlsConfig, n.apiTimelimit)
-	if err != nil {
-		return nil, errors.Wrap(err, "node list cli")
-	}
-	// defer client.CloseIdleConnections()
-
-	reqURL := u.String()
-	req, err := k8s.NewAPIRequest(ctx, n.config.BearerToken, reqURL)
-	if err != nil {
-		return nil, errors.Wrap(err, "node list req")
+		listOptions.LabelSelector = labelSelector
 	}
 
 	start := time.Now()
-	resp, err := client.Do(req)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
+	nodes, err := clientset.CoreV1().Nodes().List(listOptions)
 	if err != nil {
 		n.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "node-list"},
 			cgm.Tag{Category: "target", Value: "api-server"},
-			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
 		})
 		return nil, err
 	}
@@ -218,25 +200,9 @@ func (n *Nodes) nodeList(ctx context.Context, tlsConfig *tls.Config) (*k8s.NodeL
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		n.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		n.log.Warn().Str("url", reqURL).Str("status", resp.Status).RawJSON("response", data).Msg("error from API server")
-		return nil, errors.Errorf("error from api %s (%s)", resp.Status, string(data))
-	}
-
-	var nodes k8s.NodeList
-	if err := json.Unmarshal(data, &nodes); err != nil {
-		return nil, errors.Wrap(err, "parsing json")
-	}
-
 	if len(nodes.Items) == 0 {
 		return nil, errors.New("zero nodes found, nothing to collect")
 	}
 
-	return &nodes, nil
+	return nodes, nil
 }

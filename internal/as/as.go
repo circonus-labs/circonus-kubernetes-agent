@@ -7,10 +7,10 @@
 package as
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"sync"
 	"time"
@@ -95,42 +95,30 @@ func (as *AS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 
 	collectStart := time.Now()
 
-	metricsURL := as.config.URL + "/metrics"
-
-	client, err := k8s.NewAPIClient(tlsConfig, as.apiTimelimit)
+	clientset, err := k8s.GetClient(as.config)
 	if err != nil {
-		as.log.Error().Err(err).Str("url", metricsURL).Msg("metrics cli")
-		as.Lock()
-		as.running = false
-		as.Unlock()
-		return
-	}
-	defer client.CloseIdleConnections()
-
-	req, err := k8s.NewAPIRequest(ctx, as.config.BearerToken, metricsURL)
-	if err != nil {
-		as.log.Error().Err(err).Str("url", metricsURL).Msg("metrics req")
-		as.Lock()
-		as.running = false
-		as.Unlock()
+		as.log.Error().Err(err).Msg("initializing client set")
 		return
 	}
 
 	start := time.Now()
-	resp, err := client.Do(req)
+	req := clientset.CoreV1().RESTClient().Get().RequestURI("/metrics")
+	res := req.Do()
+
+	data, err := res.Raw()
 	if err != nil {
 		as.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "metrics"},
 			cgm.Tag{Category: "target", Value: "api-server"},
 		})
-		as.log.Error().Err(err).Str("url", metricsURL).Msg("metrics")
+		as.log.Error().Err(err).Str("url", req.URL().String()).Msg("metrics")
 		as.Lock()
 		as.running = false
 		as.Unlock()
 		return
 	}
-	defer resp.Body.Close()
+
 	as.check.AddHistSample("collect_latency", cgm.Tags{
 		cgm.Tag{Category: "source", Value: release.NAME},
 		cgm.Tag{Category: "request", Value: "metrics"},
@@ -138,19 +126,16 @@ func (as *AS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
-	if resp.StatusCode != http.StatusOK {
+	var sc int
+	res.StatusCode(&sc)
+	if sc != http.StatusOK {
 		as.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "metrics"},
 			cgm.Tag{Category: "target", Value: "api-server"},
-			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", sc)},
 		})
-		data, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			as.log.Error().Err(err).Str("url", metricsURL).Msg("reading response")
-			return
-		}
-		as.log.Warn().Str("url", metricsURL).Str("status", resp.Status).RawJSON("response", data).Msg("error from AS server")
+		as.log.Warn().Str("url", req.URL().String()).Int("status", sc).Str("response", string(data)).Msg("error from AS server")
 		return
 	}
 
@@ -161,7 +146,7 @@ func (as *AS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 	measurementTags := []string{}
 
 	var parser expfmt.TextParser
-	if err := promtext.QueueMetrics(ctx, parser, as.check, as.log, resp.Body, streamTags, measurementTags, ts); err != nil {
+	if err := promtext.QueueMetrics(ctx, parser, as.check, as.log, bytes.NewReader(data), streamTags, measurementTags, ts); err != nil {
 		as.log.Error().Err(err).Msg("formatting metrics")
 	}
 

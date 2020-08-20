@@ -26,6 +26,7 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/dns"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/events"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/health"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/ksm"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/nodes"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
@@ -203,6 +204,15 @@ func (c *Cluster) collect(ctx context.Context) {
 	c.lastStart = &start
 	c.running = true
 	c.Unlock()
+
+	{ // get api/cluster version/platform
+		ver, err := k8s.GetVersion(&c.cfg)
+		if err != nil {
+			c.logger.Warn().Err(err).Msg("getting version api/cluster information")
+		} else {
+			c.check.AddText("collect_k8s_ver", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, ver)
+		}
+	}
 
 	// reset submit retries metric
 	c.check.SetCounter("collect_submit_retries", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, 0)

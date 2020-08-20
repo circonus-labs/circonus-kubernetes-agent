@@ -11,10 +11,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
@@ -28,7 +24,9 @@ import (
 	"github.com/prometheus/common/expfmt"
 	"github.com/rs/zerolog"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Collector struct {
@@ -36,14 +34,14 @@ type Collector struct {
 	tlsConfig    *tls.Config
 	ctx          context.Context
 	check        *circonus.Check
-	node         *k8s.Node
+	node         *v1.Node
 	baseLogger   zerolog.Logger
 	log          zerolog.Logger
 	ts           *time.Time
 	apiTimelimit time.Duration
 }
 
-func New(cfg *config.Cluster, node *k8s.Node, logger zerolog.Logger, check *circonus.Check, apiTimeout time.Duration) (*Collector, error) {
+func New(cfg *config.Cluster, node *v1.Node, logger zerolog.Logger, check *circonus.Check, apiTimeout time.Duration) (*Collector, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid cluster config (nil)")
 	}
@@ -59,7 +57,7 @@ func New(cfg *config.Cluster, node *k8s.Node, logger zerolog.Logger, check *circ
 		check:        check,
 		node:         node,
 		apiTimelimit: apiTimeout,
-		baseLogger:   logger.With().Str("node", node.Metadata.Name).Logger(),
+		baseLogger:   logger.With().Str("node", node.Name).Logger(),
 	}, nil
 }
 
@@ -72,7 +70,7 @@ func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.C
 	collectStart := time.Now()
 
 	baseMeasurementTags := []string{}
-	baseStreamTags := []string{"source:kubelet", "node:" + nc.node.Metadata.Name}
+	baseStreamTags := []string{"source:kubelet", "node:" + nc.node.Name}
 
 	if concurrent {
 		var wg sync.WaitGroup
@@ -85,21 +83,21 @@ func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.C
 		if nc.cfg.EnableNodeStats {
 			wg.Add(1)
 			go func() {
-				nc.summary(ctx, baseStreamTags, baseMeasurementTags) // from /stats/summary
+				nc.summary(baseStreamTags, baseMeasurementTags) // from /stats/summary
 				wg.Done()
 			}()
 		}
 		if nc.cfg.EnableNodeMetrics {
 			wg.Add(1)
 			go func() {
-				nc.nmetrics(ctx, baseStreamTags, baseMeasurementTags) // from /metrics
+				nc.nmetrics(baseStreamTags, baseMeasurementTags) // from /metrics
 				wg.Done()
 			}()
 		}
 		if nc.cfg.EnableCadvisorMetrics {
 			wg.Add(1)
 			go func() {
-				nc.cadvisor(ctx, baseStreamTags, baseMeasurementTags) // from /metrics/cadvisor
+				nc.cadvisor(baseStreamTags, baseMeasurementTags) // from /metrics/cadvisor
 				wg.Done()
 			}()
 		}
@@ -108,13 +106,13 @@ func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.C
 	} else {
 		nc.meta(baseStreamTags, baseMeasurementTags) // from node list
 		if nc.cfg.EnableNodeStats {
-			nc.summary(ctx, baseStreamTags, baseMeasurementTags) // from /stats/summary
+			nc.summary(baseStreamTags, baseMeasurementTags) // from /stats/summary
 		}
 		if nc.cfg.EnableNodeMetrics {
-			nc.nmetrics(ctx, baseStreamTags, baseMeasurementTags) // from /metrics
+			nc.nmetrics(baseStreamTags, baseMeasurementTags) // from /metrics
 		}
 		if nc.cfg.EnableCadvisorMetrics {
-			nc.cadvisor(ctx, baseStreamTags, baseMeasurementTags) // from /metrics/cadvisor
+			nc.cadvisor(baseStreamTags, baseMeasurementTags) // from /metrics/cadvisor
 		}
 	}
 
@@ -145,7 +143,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 			"os_image:" + nc.node.Status.NodeInfo.OSImage,
 			"kublet_version:" + nc.node.Status.NodeInfo.KubeletVersion,
 		}...)
-		for k, v := range nc.node.Metadata.Labels {
+		for k, v := range nc.node.Labels {
 			streamTags = append(streamTags, k+":"+v)
 		}
 		_ = nc.check.QueueMetricSample(
@@ -153,7 +151,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 			"node",
 			circonus.MetricTypeString,
 			streamTags, parentMeasurementTags,
-			nc.node.Metadata.Name,
+			nc.node.Name,
 			nc.ts)
 	}
 
@@ -167,7 +165,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 			}
 			_ = nc.check.QueueMetricSample(
 				metrics,
-				cond.Type,
+				string(cond.Type),
 				circonus.MetricTypeString,
 				streamTags, parentMeasurementTags,
 				cond.Message,
@@ -178,38 +176,54 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 	{ // capacity and allocatable
 		var streamTags []string
 		streamTags = append(streamTags, parentStreamTags...)
-		if v, err := strconv.Atoi(nc.node.Status.Capacity.CPU); err == nil {
-			_ = nc.check.QueueMetricSample(
-				metrics,
-				"capacity_cpu",
-				circonus.MetricTypeUint64,
-				streamTags, parentMeasurementTags,
-				uint64(v),
-				nc.ts)
-			if ns, ok := GetNodeStat(nc.node.Metadata.Name); ok {
-				ns.CPUCapacity = uint64(v)
-				SetNodeStat(nc.node.Metadata.Name, ns)
-			} else {
-				ns := NodeStat{
-					CPUCapacity: uint64(v),
+		cpu := int64(0)
+		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Cpu().String()); err == nil {
+			if cpu, ok := qty.AsInt64(); ok {
+				_ = nc.check.QueueMetricSample(
+					metrics,
+					"capacity_cpu",
+					circonus.MetricTypeUint64,
+					streamTags, parentMeasurementTags,
+					uint64(cpu),
+					nc.ts)
+				if ns, ok := GetNodeStat(nc.node.Name); ok {
+					ns.CPUCapacity = uint64(cpu)
+					SetNodeStat(nc.node.Name, ns)
+				} else {
+					ns := NodeStat{
+						CPUCapacity: uint64(cpu),
+					}
+					SetNodeStat(nc.node.Name, ns)
 				}
-				SetNodeStat(nc.node.Metadata.Name, ns)
 			}
 		} else {
-			nc.log.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.CPU).Msg("converting capacity.cpu")
+			nc.log.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.Cpu().String()).Msg("converting capacity.cpu")
 		}
-		if v, err := strconv.Atoi(nc.node.Status.Capacity.Pods); err == nil {
-			_ = nc.check.QueueMetricSample(
-				metrics,
-				"capacity_pods",
-				circonus.MetricTypeUint64,
-				streamTags, parentMeasurementTags,
-				uint64(v),
-				nc.ts)
+		if ns, ok := GetNodeStat(nc.node.Name); ok {
+			ns.CPUCapacity = uint64(cpu)
+			SetNodeStat(nc.node.Name, ns)
 		} else {
-			nc.log.Warn().Err(err).Str("pods", nc.node.Status.Capacity.Pods).Msg("converting capacity.pods")
+			ns := NodeStat{
+				CPUCapacity: uint64(cpu),
+			}
+			SetNodeStat(nc.node.Name, ns)
 		}
-		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Memory); err == nil {
+
+		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Pods().String()); err == nil {
+			if pods, ok := qty.AsInt64(); ok {
+				_ = nc.check.QueueMetricSample(
+					metrics,
+					"capacity_pods",
+					circonus.MetricTypeUint64,
+					streamTags, parentMeasurementTags,
+					uint64(pods),
+					nc.ts)
+			}
+		} else {
+			nc.log.Warn().Err(err).Str("pods", nc.node.Status.Capacity.Pods().String()).Msg("converting capacity.pods")
+		}
+
+		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Memory().String()); err == nil {
 			if mem, ok := qty.AsInt64(); ok {
 				streamTags = append(streamTags, "units:bytes")
 				_ = nc.check.QueueMetricSample(
@@ -221,9 +235,10 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 					nc.ts)
 			}
 		} else {
-			nc.log.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory).Msg("parsing quantity capacity.memory")
+			nc.log.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory().String()).Msg("parsing quantity capacity.memory")
 		}
-		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.EphemeralStorage); err == nil {
+
+		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.StorageEphemeral().String()); err == nil {
 			if storage, ok := qty.AsInt64(); ok {
 				streamTags = append(streamTags, "units:bytes")
 				_ = nc.check.QueueMetricSample(
@@ -235,7 +250,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 					nc.ts)
 			}
 		} else {
-			nc.log.Warn().Err(err).Str("ephemeral_storage", nc.node.Status.Capacity.EphemeralStorage).Msg("parsing quantity capacity.ephemeral-storage")
+			nc.log.Warn().Err(err).Str("ephemeral_storage", nc.node.Status.Capacity.StorageEphemeral().String()).Msg("parsing quantity capacity.ephemeral-storage")
 		}
 	}
 
@@ -329,27 +344,22 @@ type volume struct {
 }
 
 // summary emits node summary stats
-func (nc *Collector) summary(ctx context.Context, parentStreamTags []string, parentMeasurementTags []string) {
+func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []string) {
 	if nc.done() {
 		return
 	}
 
-	client, err := k8s.NewAPIClient(nc.tlsConfig, nc.apiTimelimit)
-	if err != nil {
-		nc.log.Error().Err(err).Msg("abandoning collection")
-		return
-	}
-	defer client.CloseIdleConnections()
-
-	reqURL := nc.cfg.URL + nc.node.Metadata.SelfLink + "/proxy/stats/summary"
-	req, err := k8s.NewAPIRequest(ctx, nc.cfg.BearerToken, reqURL)
-	if err != nil {
-		nc.log.Error().Err(err).Msg("abandoning collection")
-		return
-	}
-
 	start := time.Now()
-	resp, err := client.Do(req)
+
+	clientset, err := k8s.GetClient(nc.cfg)
+	if err != nil {
+		nc.log.Error().Err(err).Msg("initializing client set for stats/summary, abandoning collection")
+		return
+	}
+
+	req := clientset.CoreV1().RESTClient().Get().RequestURI(nc.node.SelfLink + "/proxy/stats/summary")
+	res := req.Do()
+	data, err := res.Raw()
 	if err != nil {
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
@@ -357,9 +367,10 @@ func (nc *Collector) summary(ctx context.Context, parentStreamTags []string, par
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kubelet"},
 		})
-		nc.log.Error().Err(err).Str("req_url", reqURL).Msg("fetching summary stats")
+		nc.log.Error().Err(err).Str("url", req.URL().String()).Msg("fetching stats/summary stats")
 		return
 	}
+
 	nc.check.AddHistSample("collect_latency", cgm.Tags{
 		cgm.Tag{Category: "source", Value: release.NAME},
 		cgm.Tag{Category: "request", Value: "stats/summary"},
@@ -368,42 +379,15 @@ func (nc *Collector) summary(ctx context.Context, parentStreamTags []string, par
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
-	defer resp.Body.Close()
-	if nc.done() {
-		return
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "source", Value: release.NAME},
-			cgm.Tag{Category: "request", Value: "stats/summary"},
-			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "kubelet"},
-			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
-		})
-		data, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			nc.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
-			return
-		}
-		nc.log.Warn().Str("url", reqURL).Str("status", resp.Status).RawJSON("response", data).Msg("error from API server")
-		return
-	}
-
 	var stats statsSummary
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		nc.log.Error().Err(err).Msg("reading summary stats")
-		return
-	}
 	if err := json.Unmarshal(data, &stats); err != nil {
-		nc.log.Error().Err(err).Msg("parsing summary stats")
+		nc.log.Error().Err(err).Msg("parsing stats/summary metrics")
 		return
 	}
 
 	nc.summaryNode(&stats.Node, parentStreamTags, parentMeasurementTags)
 	nc.summarySystemContainers(&stats.Node, parentStreamTags, parentMeasurementTags)
-	nc.summaryPods(ctx, &stats, parentStreamTags, parentMeasurementTags)
+	nc.summaryPods(&stats, parentStreamTags, parentMeasurementTags)
 }
 
 func (nc *Collector) summaryNode(node *statsSummaryNode, parentStreamTags []string, parentMeasurementTags []string) {
@@ -466,7 +450,7 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 
 }
 
-func (nc *Collector) summaryPods(ctx context.Context, stats *statsSummary, parentStreamTags []string, parentMeasurementTags []string) {
+func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string, parentMeasurementTags []string) {
 	if nc.done() {
 		return
 	}
@@ -484,7 +468,7 @@ func (nc *Collector) summaryPods(ctx context.Context, stats *statsSummary, paren
 		if nc.done() {
 			break
 		}
-		collect, podLabels, err := nc.getPodLabels(ctx, pod.PodRef.Namespace, pod.PodRef.Name)
+		collect, podLabels, err := nc.getPodLabels(pod.PodRef.Namespace, pod.PodRef.Name)
 		if err != nil {
 			nc.log.Warn().Err(err).Str("pod", pod.PodRef.Name).Str("ns", pod.PodRef.Namespace).Msg("fetching pod labels")
 		}
@@ -544,27 +528,21 @@ func (nc *Collector) summaryPods(ctx context.Context, stats *statsSummary, paren
 }
 
 // nmetrics emits metrics from the node /metrics endpoint
-func (nc *Collector) nmetrics(ctx context.Context, parentStreamTags []string, parentMeasurementTags []string) {
+func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags []string) {
 	if nc.done() {
 		return
 	}
 
-	client, err := k8s.NewAPIClient(nc.tlsConfig, nc.apiTimelimit)
-	if err != nil {
-		nc.log.Error().Err(err).Msg("abandoning /metrics collection")
-		return
-	}
-	defer client.CloseIdleConnections()
-
-	reqURL := nc.cfg.URL + nc.node.Metadata.SelfLink + "/proxy/metrics"
-	req, err := k8s.NewAPIRequest(ctx, nc.cfg.BearerToken, reqURL)
-	if err != nil {
-		nc.log.Error().Err(err).Msg("abandoning /metrics collection")
-		return
-	}
-
 	start := time.Now()
-	resp, err := client.Do(req)
+	clientset, err := k8s.GetClient(nc.cfg)
+	if err != nil {
+		nc.log.Error().Err(err).Msg("initializing client set for node metrics, abandoning collection")
+		return
+	}
+
+	req := clientset.CoreV1().RESTClient().Get().RequestURI(nc.node.SelfLink + "/proxy/metrics")
+	res := req.Do()
+	data, err := res.Raw()
 	if err != nil {
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
@@ -572,43 +550,17 @@ func (nc *Collector) nmetrics(ctx context.Context, parentStreamTags []string, pa
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kubelet"},
 		})
-		nc.log.Error().Err(err).Str("url", reqURL).Msg("node metrics")
+		nc.log.Error().Err(err).Str("url", req.URL().String()).Msg("fetching /metrics stats")
 		return
 	}
+
 	nc.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "source", Value: release.NAME},
 		cgm.Tag{Category: "request", Value: "metrics"},
 		cgm.Tag{Category: "proxy", Value: "api-server"},
 		cgm.Tag{Category: "target", Value: "kubelet"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
-
-	defer resp.Body.Close()
-	if nc.done() {
-		return
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "source", Value: release.NAME},
-			cgm.Tag{Category: "request", Value: "metrics"},
-			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "kubelet"},
-			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
-		})
-		data, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			nc.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
-			return
-		}
-		nc.log.Warn().Str("url", reqURL).Str("status", resp.Status).RawJSON("response", data).Msg("error from API server")
-		return
-	}
-
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		nc.log.Error().Err(err).Msg("reading metrics")
-		return
-	}
 
 	var parser expfmt.TextParser
 	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, nc.log, bytes.NewReader(data), parentStreamTags, parentMeasurementTags, nil); err != nil {
@@ -617,27 +569,22 @@ func (nc *Collector) nmetrics(ctx context.Context, parentStreamTags []string, pa
 }
 
 // cadvisor emits metrics from the node /metrics/cadvisor endpoint
-func (nc *Collector) cadvisor(ctx context.Context, parentStreamTags []string, parentMeasurementTags []string) {
+func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags []string) {
 	if nc.done() {
 		return
 	}
 
-	client, err := k8s.NewAPIClient(nc.tlsConfig, nc.apiTimelimit)
-	if err != nil {
-		nc.log.Error().Err(err).Msg("abandoning /metrics/cadvisor collection")
-		return
-	}
-	defer client.CloseIdleConnections()
-
-	reqURL := nc.cfg.URL + nc.node.Metadata.SelfLink + "/proxy/metrics/cadvisor"
-	req, err := k8s.NewAPIRequest(ctx, nc.cfg.BearerToken, reqURL)
-	if err != nil {
-		nc.log.Error().Err(err).Msg("abandoning /metrics/cadvisor collection")
-		return
-	}
-
 	start := time.Now()
-	resp, err := client.Do(req)
+
+	clientset, err := k8s.GetClient(nc.cfg)
+	if err != nil {
+		nc.log.Error().Err(err).Msg("initializing client set for cadvisor metrics, abandoning collection")
+		return
+	}
+
+	req := clientset.CoreV1().RESTClient().Get().RequestURI(nc.node.SelfLink + "/proxy/metrics/cadvisor")
+	res := req.Do()
+	data, err := res.Raw()
 	if err != nil {
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
@@ -645,46 +592,20 @@ func (nc *Collector) cadvisor(ctx context.Context, parentStreamTags []string, pa
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kubelet"},
 		})
-		nc.log.Error().Err(err).Str("url", reqURL).Msg("node metrics/cadvisor")
+		nc.log.Error().Err(err).Str("url", req.URL().String()).Msg("fetching /metrics/cadvisor stats")
 		return
 	}
+
 	nc.check.AddHistSample("collect_latency", cgm.Tags{
-		cgm.Tag{Category: "request", Value: "metrics/cadvsior"},
+		cgm.Tag{Category: "source", Value: release.NAME},
+		cgm.Tag{Category: "request", Value: "metrics/cadvisor"},
 		cgm.Tag{Category: "proxy", Value: "api-server"},
 		cgm.Tag{Category: "target", Value: "kubelet"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
-	defer resp.Body.Close()
-	if nc.done() {
-		return
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "source", Value: release.NAME},
-			cgm.Tag{Category: "request", Value: "metrics/cadvisor"},
-			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "kubelet"},
-			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
-		})
-		data, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			nc.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
-			return
-		}
-		nc.log.Warn().Str("url", reqURL).Str("status", resp.Status).RawJSON("response", data).Msg("error from API server")
-		return
-	}
-
 	streamTags := []string{"__rollup:false"} // prevent high cardinality metrics from rolling up
 	streamTags = append(streamTags, parentStreamTags...)
-
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		nc.log.Error().Err(err).Msg("reading metrics")
-		return
-	}
 
 	var parser expfmt.TextParser
 	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, nc.log, bytes.NewReader(data), streamTags, parentMeasurementTags, nil); err != nil {
@@ -692,40 +613,29 @@ func (nc *Collector) cadvisor(ctx context.Context, parentStreamTags []string, pa
 	}
 }
 
-type podSpec struct {
-	Metadata podMeta `json:"metadata"`
-}
-type podMeta struct {
-	Labels map[string]string `json:"labels"`
-}
-
-func (nc *Collector) getPodLabels(ctx context.Context, ns string, name string) (bool, []string, error) {
+func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error) {
 	collect := false
 	tags := []string{}
 
-	client, err := k8s.NewAPIClient(nc.tlsConfig, nc.apiTimelimit)
-	if err != nil {
-		return collect, tags, err
-	}
-	defer client.CloseIdleConnections()
-
-	reqURL := nc.cfg.URL + "/api/v1/namespaces/" + ns + "/pods/" + name
-	req, err := k8s.NewAPIRequest(ctx, nc.cfg.BearerToken, reqURL)
-	if err != nil {
-		return collect, tags, err
-	}
-
 	start := time.Now()
-	resp, err := client.Do(req)
+
+	clientset, err := k8s.GetClient(nc.cfg)
+	if err != nil {
+		nc.log.Error().Err(err).Msg("initializing client set for pod labels, abandoning collection")
+		return collect, tags, err
+	}
+
+	pod, err := clientset.CoreV1().Pods(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
-			cgm.Tag{Category: "request", Value: "pod-labels"},
+			cgm.Tag{Category: "request", Value: "pod"},
 			cgm.Tag{Category: "target", Value: "api-server"},
 		})
+		nc.log.Error().Err(err).Str("pod", name).Str("ns", ns).Msg("fetching pod labels")
 		return collect, tags, err
 	}
-	defer resp.Body.Close()
+
 	nc.check.AddHistSample("collect_latency", cgm.Tags{
 		cgm.Tag{Category: "request", Value: "pod-labels"},
 		cgm.Tag{Category: "target", Value: "api-server"},
@@ -733,35 +643,10 @@ func (nc *Collector) getPodLabels(ctx context.Context, ns string, name string) (
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
-	if resp.StatusCode != http.StatusOK {
-		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "source", Value: release.NAME},
-			cgm.Tag{Category: "request", Value: "pod-labels"},
-			cgm.Tag{Category: "target", Value: "api-server"},
-			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
-		})
-		data, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			nc.log.Error().Err(err).Str("url", reqURL).Msg("reading response")
-			return collect, nil, err
-		}
-		nc.log.Warn().Str("url", reqURL).Str("status", resp.Status).RawJSON("response", data).Msg("error from API server")
-		return collect, nil, errors.Errorf("error from api %s (%s)", resp.Status, string(data))
-	}
-
-	var ps podSpec
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return collect, tags, errors.Wrap(err, "reading pod spec body")
-	}
-	if err := json.Unmarshal(data, &ps); err != nil {
-		return collect, tags, errors.Wrap(err, "parsing pod spec json")
-	}
-
 	collect = true
 	if nc.cfg.PodLabelKey != "" {
 		collect = false
-		if v, ok := ps.Metadata.Labels[nc.cfg.PodLabelKey]; ok {
+		if v, ok := pod.Labels[nc.cfg.PodLabelKey]; ok {
 			if nc.cfg.PodLabelVal == "" {
 				collect = true
 			} else if v == nc.cfg.PodLabelVal {
@@ -770,7 +655,7 @@ func (nc *Collector) getPodLabels(ctx context.Context, ns string, name string) (
 		}
 	}
 
-	for k, v := range ps.Metadata.Labels {
+	for k, v := range pod.Labels {
 		tags = append(tags, k+":"+v)
 	}
 

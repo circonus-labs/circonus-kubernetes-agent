@@ -27,7 +27,7 @@ func (nc *Collector) queueCPU(dest map[string]circonus.MetricSample, stats *cpu,
 
 	// if node, add % utilized
 	if isNode {
-		if ns, ok := GetNodeStat(nc.node.Metadata.Name); ok {
+		if ns, ok := GetNodeStat(nc.node.Name); ok {
 			if ns.LastCPUNanoSeconds > 0 {
 				var st []string
 				st = append(st, streamTags...)
@@ -45,7 +45,7 @@ func (nc *Collector) queueCPU(dest map[string]circonus.MetricSample, stats *cpu,
 			}
 
 			ns.LastCPUNanoSeconds = stats.UsageCoreNanoSeconds
-			SetNodeStat(nc.node.Metadata.Name, ns)
+			SetNodeStat(nc.node.Name, ns)
 		}
 	}
 }
