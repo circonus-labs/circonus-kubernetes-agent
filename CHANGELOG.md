@@ -1,7 +1,7 @@
 # v0.9.9
 
 * upd: refactor, common clientset func
-* add: k8s version metric
+* add: k8s version metric `collect_k8s_ver`
 * upd: switch to go-client for in-cluster api interactions
 * upd: default k8s url host `kubernetes.default.svc`
 * fix: downgrade to go1.14
