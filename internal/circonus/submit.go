@@ -43,7 +43,7 @@ const (
 	traceTSFormat        = "20060102_150405.000000000"
 )
 
-func (c *Check) FlushCGM(ctx context.Context, ts *time.Time) {
+func (c *Check) FlushCGM(ctx context.Context, ts *time.Time, lg zerolog.Logger, agentStats bool) {
 	if c.metrics != nil {
 		// TODO: add timestamp support to CGM (e.g. FlushMetricsWithTimestamp(ts))
 		metrics := make(map[string]MetricSample)
@@ -58,28 +58,18 @@ func (c *Check) FlushCGM(ctx context.Context, ts *time.Time) {
 			metrics[mn] = ms
 		}
 
-		if err := c.SubmitMetrics(ctx, metrics, c.log, false); err != nil {
+		if agentStats && c.LogAgentMetrics() {
+			data, err := json.Marshal(metrics)
+			if err != nil {
+				c.log.Warn().Err(err).Msg("marshling agent metrics")
+			} else {
+				c.log.Info().RawJSON("agent_metrics", data).Msg("before submitting")
+			}
+		}
+
+		if err := c.SubmitMetrics(ctx, metrics, lg, !agentStats); err != nil {
 			c.log.Error().Err(err).Msg("submitting cgm metrics")
 		}
-	}
-}
-
-func (c *Check) ResetSubmitStats() {
-	c.statsmu.Lock()
-	defer c.statsmu.Unlock()
-	c.stats.Metrics = 0
-	c.stats.SentBytes = 0
-	c.stats.Filtered = 0
-}
-
-func (c *Check) SubmitStats() Stats {
-	c.statsmu.Lock()
-	defer c.statsmu.Unlock()
-	return Stats{
-		Filtered:  c.stats.Filtered,
-		Metrics:   c.stats.Metrics,
-		SentBytes: c.stats.SentBytes,
-		SentSize:  bytefmt.ByteSize(c.stats.SentBytes),
 	}
 }
 
@@ -285,6 +275,7 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 
 	resultLogger.Debug().
 		Str("duration", time.Since(start).String()).
+		Int("sent_metrics", len(metrics)).
 		Interface("result", result).
 		Str("bytes_sent", bytefmt.ByteSize(uint64(dataLen))).
 		Msg("submitted")
@@ -292,7 +283,9 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 	if includeStats {
 		c.statsmu.Lock()
 		c.stats.Metrics += result.Stats
+		c.stats.TMetrics += uint64(len(metrics))
 		c.stats.SentBytes += uint64(dataLen)
+		c.stats.BFiltered += result.Filtered
 		c.statsmu.Unlock()
 	}
 
