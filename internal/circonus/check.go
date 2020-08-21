@@ -38,13 +38,6 @@ const (
 	checkType         = "httptrap:kubernetes"
 )
 
-type Stats struct {
-	Filtered  uint64
-	Metrics   uint64
-	SentBytes uint64
-	SentSize  string
-}
-
 type MetricFilter struct {
 	Allow  bool
 	Filter *regexp.Regexp
@@ -89,8 +82,8 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterName str
 	if cfg.DryRun != defaults.DryRun {
 		c.log.Info().Bool("enabled", cfg.DryRun).Msg("dry run")
 	}
-	if cfg.DebugSubmissions != defaults.DebugSubmissions {
-		c.log.Info().Bool("enabled", cfg.DebugSubmissions).Msg("debug submissions")
+	if cfg.LogAgentMetrics != defaults.LogAgentMetrics {
+		c.log.Info().Bool("enabled", cfg.LogAgentMetrics).Msg("log agent metrics")
 	}
 
 	if cfg.DefaultStreamtags != "" {
@@ -143,9 +136,14 @@ func (c *Check) UseCompression() bool {
 	return c.config.UseGZIP
 }
 
-// DebugSubmissions will dump the submission request to stdout
-func (c *Check) DebugSubmissions() bool {
-	return c.config.DebugSubmissions
+// LogAgentMetrics will dump the submission request to stdout
+func (c *Check) LogAgentMetrics() bool {
+	return c.config.LogAgentMetrics
+}
+
+// DefaultCGMTags returns the list of default tags in CGM format
+func (c *Check) DefaultCGMTags() cgm.Tags {
+	return c.defaultTags
 }
 
 // createAPIClient initializes and configures a Circonus API client

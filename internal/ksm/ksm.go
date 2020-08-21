@@ -36,6 +36,7 @@ type KSM struct {
 	log          zerolog.Logger
 	apiTimelimit time.Duration
 	running      bool
+	cgmMetrics   *cgm.CirconusMetrics
 	sync.Mutex
 	ts *time.Time
 }
@@ -83,6 +84,25 @@ func New(cfg *config.Cluster, parentLogger zerolog.Logger, check *circonus.Check
 			ksm.log.Fatal().Err(err).Msg("parsing DEFAULT api timelimit")
 		}
 		ksm.apiTimelimit = v
+	}
+
+	{
+		// create a cgm container
+		cmc := &cgm.Config{
+			Debug: false,
+			Log:   nil,
+		}
+		// put cgm into manual mode (no interval, no api key, invalid submission url)
+		cmc.Interval = "0"                            // disable automatic flush
+		cmc.CheckManager.Check.SubmissionURL = "none" // disable check management (create/update)
+
+		hm, err := cgm.NewCirconusMetrics(cmc)
+		if err != nil {
+			return nil, errors.Wrap(err, "receiver cgm")
+		}
+
+		ksm.cgmMetrics = hm
+
 	}
 
 	return ksm, nil
@@ -287,6 +307,7 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 		cgm.Tag{Category: "op", Value: "collect_kube-state-metrics"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(collectStart).Milliseconds()))
+
 	ksm.log.Debug().Str("duration", time.Since(collectStart).String()).Msg("kube-state-metrics collect end")
 	ksm.Lock()
 	ksm.running = false
@@ -471,7 +492,7 @@ func (ksm *KSM) metrics(ctx context.Context, metricURL string) error {
 	measurementTags := []string{}
 
 	var parser expfmt.TextParser
-	if err := queueMetrics(ctx, parser, ksm.check, ksm.log, data, streamTags, measurementTags, ksm.ts); err != nil {
+	if err := ksm.queueMetrics(ctx, parser, ksm.check, ksm.log, data, streamTags, measurementTags, ksm.ts); err != nil {
 		return err
 	}
 
@@ -569,7 +590,7 @@ func (ksm *KSM) telemetry(ctx context.Context, telemetryURL string) error {
 	measurementTags := []string{}
 
 	var parser expfmt.TextParser
-	if err := queueMetrics(ctx, parser, ksm.check, ksm.log, data, streamTags, measurementTags, ksm.ts); err != nil {
+	if err := ksm.queueMetrics(ctx, parser, ksm.check, ksm.log, data, streamTags, measurementTags, ksm.ts); err != nil {
 		return err
 	}
 

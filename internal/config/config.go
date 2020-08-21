@@ -73,11 +73,11 @@ type Circonus struct {
 	DefaultAlertsFile string `mapstructure:"default_alerts_file" json:"default_alerts_file" toml:"default_alerts_file" yaml:"default_alerts_file"`
 	CustomRulesFile   string `mapstructure:"custom_rules_file" json:"custom_rules_file" toml:"custom_rules_file" yaml:"custom_rules_file"`
 	// hidden circonus settings for development and debugging
-	Base64Tags       bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"base64_tags" json:"base64_tags" toml:"base64_tags" yaml:"base64_tags"`
-	DryRun           bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"dry_run" json:"dry_run" toml:"dry_run" yaml:"dry_run"`                             // simulate sending metrics, print them to stdout
-	UseGZIP          bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"use_gzip" json:"use_gzip" toml:"use_gzip" yaml:"use_gzip"`                         // compress metrics using gzip when submitting (broker may not support)
-	DebugSubmissions bool `json:"-" toml:"-" yaml:"-"`
-	NodeCC           bool `json:"-" toml:"-" yaml:"-"`
+	Base64Tags      bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"base64_tags" json:"base64_tags" toml:"base64_tags" yaml:"base64_tags"`
+	DryRun          bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"dry_run" json:"dry_run" toml:"dry_run" yaml:"dry_run"`                             // simulate sending metrics, print them to stdout
+	UseGZIP         bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"use_gzip" json:"use_gzip" toml:"use_gzip" yaml:"use_gzip"`                         // compress metrics using gzip when submitting (broker may not support)
+	LogAgentMetrics bool `json:"-" toml:"-" yaml:"-"`
+	NodeCC          bool `json:"-" toml:"-" yaml:"-"`
 }
 
 // API defines the circonus api configuration options

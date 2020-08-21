@@ -42,12 +42,12 @@ const (
 	// StreamMetrics = false
 	// these hidden settings are mainly for debugging
 	// the features default to ON and can be toggled OFF
-	NoBase64         = false
-	Base64Tags       = true
-	NoGZIP           = false
-	UseGZIP          = true
-	DebugSubmissions = false
-	NodeCC           = false
+	NoBase64        = false
+	Base64Tags      = true
+	NoGZIP          = false
+	UseGZIP         = true
+	LogAgentMetrics = false
+	NodeCC          = false
 
 	// General defaults
 
