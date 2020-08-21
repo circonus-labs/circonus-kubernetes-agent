@@ -31,7 +31,7 @@ const (
 // queueMetrics is a generic function to digest prometheus text format metrics and
 // emit circonus formatted metrics.
 // Formats supported: https://prometheus.io/docs/instrumenting/exposition_formats/
-func queueMetrics(
+func (ksm *KSM) queueMetrics(
 	ctx context.Context,
 	parser expfmt.TextParser,
 	check *circonus.Check,
@@ -138,41 +138,52 @@ func queueMetrics(
 					case "kube_pod_container_status_waiting_reason", "kube_pod_init_container_status_waiting_reason":
 						fallthrough
 					case "kube_pod_container_status_terminated_reason", "kube_pod_init_container_status_terminated_reason":
-						reason, fullTags, countTags := keyTags(check, streamTags, "reason")
-						check.IncrementCounterByValue(customMetricName+"_count", countTags, uint64(val))
+						reason, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "reason")
+						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
+						// check.IncrementCounterByValue(customMetricName+"_count", countTags, uint64(val))
 						if val > 0 {
-							check.AddText(customMetricName, fullTags, reason)
+							ksm.cgmMetrics.SetTextValueWithTags(customMetricName, fullTags, reason)
+							// check.AddText(customMetricName, fullTags, reason)
 						}
 						// continue -- when original ksm metric no longer needed
 					case "kube_pod_status_phase":
-						phase, fullTags, countTags := keyTags(check, streamTags, "phase")
+						phase, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "phase")
 						// logger.Warn().Str("metric", customMetricName).Interface("tags", countTags).Float64("val", val).Msg("pod status phase")
-						check.IncrementCounterByValue(customMetricName+"_count", countTags, uint64(val))
+						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
+						// check.IncrementCounterByValue(customMetricName+"_count", countTags, uint64(val))
 						if val > 0 {
-							check.AddText(customMetricName, fullTags, phase)
+							ksm.cgmMetrics.SetTextValueWithTags(customMetricName, fullTags, phase)
+							// check.AddText(customMetricName, fullTags, phase)
 						}
 						// continue -- when original ksm metric no longer needed
 					case "kube_pod_status_ready", "kube_pod_status_scheduled":
-						condition, fullTags, countTags := keyTags(check, streamTags, "condition")
-						check.IncrementCounterByValue(customMetricName+"_count", countTags, uint64(val))
+						condition, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "condition")
+						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
+						// check.IncrementCounterByValue(customMetricName+"_count", countTags, uint64(val))
 						if val > 0 {
-							check.AddText(customMetricName, fullTags, condition)
+							ksm.cgmMetrics.SetTextValueWithTags(customMetricName, fullTags, condition)
+							// check.AddText(customMetricName, fullTags, condition)
 						}
 						// continue -- when original ksm metric no longer needed
 					case "kube_pod_container_status_running", "kube_pod_container_status_terminated", "kube_pod_container_status_waiting", "kube_pod_container_status_ready":
-						_, fullTags, countTags := keyTags(check, streamTags, "")
-						check.IncrementCounterByValue(customMetricName+"_count", countTags, uint64(val))
+						_, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "")
+						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
+						// check.IncrementCounterByValue(customMetricName+"_count", countTags, uint64(val))
 						if val > 0 {
 							shortName := "pod_container_status"
 							switch metricName {
 							case "kube_pod_container_status_running":
-								check.AddText(shortName, fullTags, "running")
+								ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "running")
+								// check.AddText(shortName, fullTags, "running")
 							case "kube_pod_container_status_terminated":
-								check.AddText(shortName, fullTags, "terminated")
+								ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "terminated")
+								// check.AddText(shortName, fullTags, "terminated")
 							case "kube_pod_container_status_waiting":
-								check.AddText(shortName, fullTags, "waiting")
+								ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "waiting")
+								// check.AddText(shortName, fullTags, "waiting")
 							case "kube_pod_container_status_ready":
-								check.AddText(shortName, fullTags, "ready")
+								ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "ready")
+								// check.AddText(shortName, fullTags, "ready")
 							}
 						}
 						// continue -- when original ksm metric no longer needed
@@ -208,6 +219,15 @@ func queueMetrics(
 						m.GetUntyped().GetValue(), ts)
 				}
 			}
+		}
+	}
+
+	// add derived metrics
+	m := ksm.cgmMetrics.FlushMetrics()
+	for mn, mv := range *m {
+		metrics[mn] = circonus.MetricSample{
+			Value: mv.Value,
+			Type:  mv.Type,
 		}
 	}
 
@@ -294,11 +314,13 @@ func done(ctx context.Context) bool {
 	}
 }
 
-func keyTags(check *circonus.Check, originalTags []string, keyCat string) (string, cgm.Tags, cgm.Tags) {
+func keyTags(check *circonus.Check, originalTags []string, baseTags cgm.Tags, keyCat string) (string, cgm.Tags, cgm.Tags) {
 	keyVal := ""
 	tags := check.TagListToCGM(originalTags)
 	fullTags := make(cgm.Tags, 0)
+	fullTags = append(fullTags, baseTags...)
 	countTags := make(cgm.Tags, 0)
+	countTags = append(countTags, baseTags...)
 	for _, tag := range tags {
 		if keyCat != "" && tag.Category == keyCat {
 			countTags = append(countTags, tag)

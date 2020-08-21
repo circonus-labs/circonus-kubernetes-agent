@@ -205,15 +205,6 @@ func (c *Cluster) collect(ctx context.Context) {
 	c.running = true
 	c.Unlock()
 
-	{ // get api/cluster version/platform
-		ver, err := k8s.GetVersion(&c.cfg)
-		if err != nil {
-			c.logger.Warn().Err(err).Msg("getting version api/cluster information")
-		} else {
-			c.check.AddText("collect_k8s_ver", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, ver)
-		}
-	}
-
 	// reset submit retries metric
 	c.check.SetCounter("collect_submit_retries", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, 0)
 
@@ -278,6 +269,15 @@ func (c *Cluster) collect(ctx context.Context) {
 
 	wg.Wait()
 
+	{ // get api/cluster version/platform
+		ver, err := k8s.GetVersion(&c.cfg)
+		if err != nil {
+			c.logger.Warn().Err(err).Msg("getting version api/cluster information")
+		} else {
+			c.check.AddText("collect_k8s_ver", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, ver)
+		}
+	}
+
 	cstats := c.check.SubmitStats()
 	c.check.ResetSubmitStats()
 	dur := time.Since(start)
@@ -331,7 +331,7 @@ func (c *Cluster) collect(ctx context.Context) {
 		c.check.AddGauge("collect_interval", streamTags, uint64(c.interval.Milliseconds()))
 	}
 
-	c.check.FlushCGM(ctx, &start)
+	c.check.FlushCGM(ctx, &start, c.logger, true)
 
 	c.logger.Info().
 		Interface("metrics_sent", cstats).
