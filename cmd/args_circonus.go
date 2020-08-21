@@ -425,4 +425,25 @@ func init() {
 		}
 		viper.SetDefault(key, defaultValue)
 	}
+
+	{
+		const (
+			key          = keys.LogAgentMetrics
+			longOpt      = "log-agent-metrics"
+			envVar       = release.ENVPREFIX + "_DEBUG_AGENT_METRICS"
+			description  = "Log agent metrics (json when submitted)"
+			defaultValue = defaults.LogAgentMetrics
+		)
+
+		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
+		flag := rootCmd.PersistentFlags().Lookup(longOpt)
+		flag.Hidden = true
+		if err := viper.BindPFlag(key, flag); err != nil {
+			bindFlagError(longOpt, err)
+		}
+		if err := viper.BindEnv(key, envVar); err != nil {
+			bindEnvError(envVar, err)
+		}
+		viper.SetDefault(key, defaultValue)
+	}
 }
