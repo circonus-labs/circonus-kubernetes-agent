@@ -115,7 +115,8 @@ const (
 	NoGZIP = "circonus.no_gzip"
 
 	// DebugSubmissions dumps requests w/payload to stdout
-	DebugSubmissions = "circonus.debug_submissions"
+	// DebugSubmissions = "circonus.debug_submissions"
+	LogAgentMetrics = "circonus.log_agent_metrics"
 
 	//
 	// Kubernetes cluster (single, use either kubernetes or clusters, not both)
