@@ -1,3 +1,9 @@
+# v0.9.10
+
+* fix: separate ksm and agent metrics
+* upd: refactor submission stats
+* add: --log-agent-metrics for debugging
+
 # v0.9.9
 
 * upd: refactor, common clientset func
