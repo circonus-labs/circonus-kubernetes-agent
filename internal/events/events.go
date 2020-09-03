@@ -13,9 +13,11 @@ import (
 	"errors"
 	"time"
 
+	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/rs/zerolog"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -71,6 +73,9 @@ func (e *Events) Start(ctx context.Context, tlsConfig *tls.Config) {
 		// UpdateFunc: func(oldObj interface{}, newObj interface{}) {
 		// 	e.submitEvent(newObj.(*corev1.Event))
 		// },
+		DeleteFunc: func(obj interface{}) {
+			e.submitEvent(ctx, obj.(*corev1.Event))
+		},
 	})
 
 	go informer.Run(stopper)
@@ -122,6 +127,13 @@ type abridgedEvent struct {
 }
 
 func (e *Events) submitEvent(ctx context.Context, event *corev1.Event) {
+	e.check.IncrementCounter("collect_k8s_event_count", cgm.Tags{
+		cgm.Tag{Category: "namespace", Value: event.InvolvedObject.Namespace},
+		cgm.Tag{Category: "kind", Value: event.InvolvedObject.Kind},
+		cgm.Tag{Category: "reason", Value: event.Reason},
+		cgm.Tag{Category: "source", Value: release.NAME},
+	})
+
 	ets := event.GetCreationTimestamp().UTC()
 	ae := abridgedEvent{
 		Namespace:         event.GetNamespace(),
