@@ -56,6 +56,7 @@ type Check struct {
 	stats           Stats
 	statsmu         sync.Mutex
 	metrics         *cgm.CirconusMetrics
+	metricsmu       sync.Mutex
 	defaultTags     cgm.Tags
 	metricFilters   []MetricFilter
 	client          *http.Client
