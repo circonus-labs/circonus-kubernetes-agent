@@ -7,6 +7,8 @@ package circonus
 
 import (
 	"bytes"
+	"strings"
+
 	// "compress/gzip"
 	"context"
 	"encoding/json"
@@ -47,6 +49,10 @@ func (c *Check) FlushCGM(ctx context.Context, ts *time.Time, lg zerolog.Logger, 
 	if c.metrics != nil {
 		// TODO: add timestamp support to CGM (e.g. FlushMetricsWithTimestamp(ts))
 		metrics := make(map[string]MetricSample)
+		emetrics := []string{}
+
+		c.metricsmu.Lock()
+
 		for mn, mv := range *(c.metrics.FlushMetrics()) {
 			ms := MetricSample{
 				Value: mv.Value,
@@ -56,7 +62,15 @@ func (c *Check) FlushCGM(ctx context.Context, ts *time.Time, lg zerolog.Logger, 
 				ms.Timestamp = makeTimestamp(ts)
 			}
 			metrics[mn] = ms
+			if strings.HasPrefix(mn, "collect_k8s_event_count") {
+				emetrics = append(emetrics, mn)
+			}
 		}
+		// reset event counters
+		for _, mn := range emetrics {
+			c.metrics.Set(mn, 0)
+		}
+		c.metricsmu.Unlock()
 
 		if agentStats && c.LogAgentMetrics() {
 			data, err := json.Marshal(metrics)
