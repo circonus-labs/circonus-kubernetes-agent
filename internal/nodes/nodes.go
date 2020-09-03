@@ -130,6 +130,7 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 		}(nodeQueue, id)
 	}
 
+	n.check.AddGauge("collect_k8s_node_count", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, len(nodes.Items))
 	nodesQueued := 0
 	for _, node := range nodes.Items {
 		node := node
@@ -156,7 +157,7 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 
 	n.check.AddHistSample("collect_latency", cgm.Tags{
 		cgm.Tag{Category: "type", Value: "collect_nodes"},
-		cgm.Tag{Category: "source", Value: "agent"},
+		cgm.Tag{Category: "source", Value: release.NAME},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(collectStart).Milliseconds()))
 
@@ -195,6 +196,7 @@ func (n *Nodes) nodeList() (*v1.NodeList, error) {
 		return nil, err
 	}
 	n.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "source", Value: release.NAME},
 		cgm.Tag{Category: "request", Value: "node-list"},
 		cgm.Tag{Category: "target", Value: "api-server"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
