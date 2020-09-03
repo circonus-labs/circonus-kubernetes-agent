@@ -224,11 +224,19 @@ func (ksm *KSM) queueMetrics(
 
 	// add derived metrics
 	m := ksm.cgmMetrics.FlushMetrics()
+	mts := uint64(0)
+	if ts != nil {
+		mts = makeTimestamp(ts)
+	}
 	for mn, mv := range *m {
-		metrics[mn] = circonus.MetricSample{
+		sample := circonus.MetricSample{
 			Value: mv.Value,
 			Type:  mv.Type,
 		}
+		if mts > 0 {
+			sample.Timestamp = mts
+		}
+		metrics[mn] = sample
 	}
 
 	if len(metrics) == 0 {
@@ -335,4 +343,9 @@ func keyTags(check *circonus.Check, originalTags []string, baseTags cgm.Tags, ke
 		countTags = append(countTags, tag)
 	}
 	return keyVal, fullTags, countTags
+}
+
+// makeTimestamp returns timestamp in ms units for _ts metric value
+func makeTimestamp(ts *time.Time) uint64 {
+	return uint64(ts.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)))
 }
