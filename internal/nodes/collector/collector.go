@@ -385,6 +385,11 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 		return
 	}
 
+	nc.check.AddGauge("collect_k8s_pod_count", cgm.Tags{
+		cgm.Tag{Category: "node", Value: nc.node.Name},
+		cgm.Tag{Category: "source", Value: release.NAME},
+	}, len(stats.Pods))
+
 	nc.summaryNode(&stats.Node, parentStreamTags, parentMeasurementTags)
 	nc.summarySystemContainers(&stats.Node, parentStreamTags, parentMeasurementTags)
 	nc.summaryPods(&stats, parentStreamTags, parentMeasurementTags)
