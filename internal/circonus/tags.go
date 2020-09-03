@@ -98,28 +98,45 @@ func encodeTags(tags []string, useBase64 bool) string {
 			break
 		}
 
-		if !strings.Contains(tag, ":") {
+		tc := ""
+		tv := ""
+
+		if strings.Contains(tag, ":") {
+			tagParts := strings.SplitN(tag, ":", 2)
+			if len(tagParts) != 2 {
+				log.Warn().Str("tag", tag).Msg("stream tags must have a category and value, ignoring tag")
+				continue // invalid tag, skip it
+			}
+			tc = tagParts[0]
+			tv = tagParts[1]
+		} else {
+			tc = tag
+		}
+
+		if len(tc) > MaxTagCat {
+			log.Warn().Str("tag", tag).Msgf("tag category longer than %d", MaxTagCat)
+			continue
+		} else if len(tc)+len(tv) > MaxTagLen {
+			log.Warn().Str("tag", tag).Msgf("tag length longer than %d", MaxTagLen)
 			continue
 		}
 
-		tagParts := strings.SplitN(tag, ":", 2)
-		if len(tagParts) != 2 {
-			log.Warn().Str("tag", tag).Msg("stream tags must have a category and value, ignoring tag")
-			continue // invalid tag, skip it
-		}
-		tc := tagParts[0]
-		tv := tagParts[1]
-
 		encodeFmt := `b"%s"`
 		encodedSig := `b"` // has cat or val been previously (or manually) base64 encoded and formatted
+
+		tg := ""
 		if !strings.HasPrefix(tc, encodedSig) {
 			tc = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, strings.ToLower(tc)))))
+			tg += tc
 		}
-		if !strings.HasPrefix(tv, encodedSig) {
-			tv = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, tv))))
+		if tv != "" {
+			if !strings.HasPrefix(tv, encodedSig) {
+				tv = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, tv))))
+			}
+			tg += ":" + tv
 		}
 
-		tagList = append(tagList, tc+":"+tv)
+		tagList = append(tagList, tg) //tc+":"+tv)
 	}
 
 	return strings.Join(tagList, ",")
