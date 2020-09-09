@@ -33,6 +33,7 @@ type AlertContact struct {
 }
 
 type RuleSettings struct {
+	Disabled     bool   `json:"disabled"`
 	Threshold    string `json:"threshold"`
 	Window       uint   `json:"window"`
 	MinThreshold string `json:"min_threshold"`
@@ -183,6 +184,11 @@ func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da Default
 	}
 
 	for rid, ruleTemplate := range rules {
+		ruleSettings, haveSettings := da.RuleSettings[rid]
+		if haveSettings && ruleSettings.Disabled {
+			logger.Warn().Str("rule_id", rid).Msg("disabled, skipping")
+			continue
+		}
 
 		if ruleTemplate.Name == "" {
 			ruleTemplate.Name = rid + " (" + clusterName + ")"
@@ -204,51 +210,48 @@ func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da Default
 		note := release.NAME + " default rule for " + rid + ". NOTE: any changes (except contact groups) to default rules will be overwritten at next deployment."
 		ruleTemplate.Notes = &note
 
-		switch rid {
-		case "cpu_utilization":
-			if settings, found := da.RuleSettings[rid]; found {
-				v, err := strconv.Atoi(settings.Threshold)
+		if haveSettings {
+			logger.Debug().Str("rule_id", rid).Interface("settings", ruleSettings).Msg("applying settings")
+			switch rid {
+			case "cpu_utilization":
+				v, err := strconv.Atoi(ruleSettings.Threshold)
 				switch {
 				case err != nil:
 					logger.Warn().
 						Err(err).
 						Str("rule_id", rid).
-						Str("threshold", settings.Threshold).
+						Str("threshold", ruleSettings.Threshold).
 						Msg("invalid threshold, unable to parse, using default")
 				case v < 1 || v > 99:
 					logger.Warn().
 						Str("rule_id", rid).
-						Str("threshold", settings.Threshold).
+						Str("threshold", ruleSettings.Threshold).
 						Msg("invalid threshold, acceptable 1-99, using default")
 				default:
-					ruleTemplate.Rules[0].Value = settings.Threshold
+					ruleTemplate.Rules[0].Value = ruleSettings.Threshold
 				}
-				if settings.Window > 59 {
-					ruleTemplate.Rules[0].WindowingDuration = settings.Window
+				if ruleSettings.Window > 59 {
+					ruleTemplate.Rules[0].WindowingDuration = ruleSettings.Window
 				}
-			}
-		case "deployment_glitches", "daemonsets_not_ready", "statefulsets_not_ready":
-			if settings, found := da.RuleSettings[rid]; found {
-				if settings.MaxThreshold != "" {
-					ruleTemplate.Rules[0].Value = settings.MaxThreshold
+			case "deployment_glitches", "daemonsets_not_ready", "statefulsets_not_ready":
+				if ruleSettings.MaxThreshold != "" {
+					ruleTemplate.Rules[0].Value = ruleSettings.MaxThreshold
 				}
-				if settings.MaxWindow > 59 {
-					ruleTemplate.Rules[0].WindowingDuration = settings.MaxWindow
+				if ruleSettings.MaxWindow > 59 {
+					ruleTemplate.Rules[0].WindowingDuration = ruleSettings.MaxWindow
 				}
-				if settings.MinThreshold != "" {
-					ruleTemplate.Rules[1].Value = settings.MinThreshold
+				if ruleSettings.MinThreshold != "" {
+					ruleTemplate.Rules[1].Value = ruleSettings.MinThreshold
 				}
-				if settings.MinWindow > 59 {
-					ruleTemplate.Rules[0].WindowingDuration = settings.MinWindow
+				if ruleSettings.MinWindow > 59 {
+					ruleTemplate.Rules[0].WindowingDuration = ruleSettings.MinWindow
 				}
-			}
-		default:
-			if settings, found := da.RuleSettings[rid]; found {
-				if settings.Threshold != "" {
-					ruleTemplate.Rules[0].Value = settings.Threshold
+			default:
+				if ruleSettings.Threshold != "" {
+					ruleTemplate.Rules[0].Value = ruleSettings.Threshold
 				}
-				if settings.Window > 59 {
-					ruleTemplate.Rules[0].WindowingDuration = settings.Window
+				if ruleSettings.Window > 59 {
+					ruleTemplate.Rules[0].WindowingDuration = ruleSettings.Window
 				}
 			}
 		}

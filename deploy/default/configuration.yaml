@@ -41,62 +41,75 @@
           },
           "rule_settings": { 
             "crashloops_container": {
+              "disabled": false,
               "threshold": "0",
               "window": 300
             },
             "crashloops_init_container": {
+              "disabled": false,
               "threshold": "0",
               "window": 300
             },
             "cpu_utilization": {
+              "disabled": false,
               "threshold": "75",
               "window": 900
             },
             "disk_pressure": {
+              "disabled": false,
               "threshold": "0",
               "window": 300
             },
             "memory_pressure": {
+              "disabled": false,
               "threshold": "0",
               "window": 300
             },
             "pid_pressure": {
+              "disabled": false,
               "threshold": "0",
               "window": 300
             },
             "network_unavailable": {
+              "disabled": false,
               "threshold": "0",
               "window": 300
             },
             "job_failures": {
+              "disabled": false,
               "threshold": "0",
               "window": 300
             },
             "persistent_volume_failures": {
+              "disabled": false,
               "threshold": "0",
               "window": 300
             },
             "pod_pending_delays": {
+              "disabled": false,
               "threshold": "0.99",
               "window": 900
             },
             "deployment_glitches": {
+              "disabled": false,
               "min_threshold": "0",
               "min_window": 300,
               "max_threshold": "0",
               "max_window": 300
             },
             "daemonsets_not_ready": {
+              "disabled": false,
               "min_threshold": "0",
               "min_window": 300,
               "max_threshold": "0",
               "max_window": 300
             },
             "statefulsets_not_ready": {
+              "disabled": false,
               "min_threshold": "0",
               "min_window": 300,
               "max_threshold": "0",
               "max_window": 300
-            },
+            }
           }
         }
