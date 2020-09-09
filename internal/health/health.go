@@ -116,12 +116,10 @@ func (h *Health) deployments(ctx context.Context, cs *kubernetes.Clientset, ts *
 	}
 
 	for _, item := range list.Items {
-		var streamTags []string
-		streamTags = append(streamTags, parentStreamTags...)
-		streamTags = append(streamTags, []string{
+		streamTags := h.check.NewTagList(parentStreamTags, []string{
 			"name:" + item.GetName(),
 			"namespace:" + item.GetNamespace(),
-		}...)
+		})
 		_ = h.check.QueueMetricSample(
 			metrics,
 			"deployment_generation_delta",
@@ -154,12 +152,10 @@ func (h *Health) daemonsets(ctx context.Context, cs *kubernetes.Clientset, ts *t
 	}
 
 	for _, item := range list.Items {
-		var streamTags []string
-		streamTags = append(streamTags, parentStreamTags...)
-		streamTags = append(streamTags, []string{
+		streamTags := h.check.NewTagList(parentStreamTags, []string{
 			"name:" + item.GetName(),
 			"namespace:" + item.GetNamespace(),
-		}...)
+		})
 		_ = h.check.QueueMetricSample(
 			metrics,
 			"daemonset_scheduled_delta",
@@ -192,12 +188,10 @@ func (h *Health) statefulsets(ctx context.Context, cs *kubernetes.Clientset, ts 
 	}
 
 	for _, item := range list.Items {
-		var streamTags []string
-		streamTags = append(streamTags, parentStreamTags...)
-		streamTags = append(streamTags, []string{
+		streamTags := h.check.NewTagList(parentStreamTags, []string{
 			"name:" + item.GetName(),
 			"namespace:" + item.GetNamespace(),
-		}...)
+		})
 		_ = h.check.QueueMetricSample(
 			metrics,
 			"statefulset_replica_delta",

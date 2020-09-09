@@ -297,14 +297,13 @@ func (c *Cluster) collect(ctx context.Context) {
 		var ms runtime.MemStats
 		runtime.ReadMemStats(&ms)
 
+		c.check.AddGauge("collect_mem_frag", baseStreamTags, float64(ms.Sys-ms.HeapReleased)/float64(ms.HeapInuse))
+		c.check.AddGauge("collect_numgc", baseStreamTags, ms.NumGC)
+		c.check.AddGauge("collect_heap_objs", baseStreamTags, ms.HeapObjects)
+		c.check.AddGauge("collect_live_obj", baseStreamTags, ms.Mallocs-ms.Frees)
+
 		var streamTags cgm.Tags
 		streamTags = append(streamTags, baseStreamTags...)
-
-		c.check.AddGauge("collect_mem_frag", streamTags, float64(ms.Sys-ms.HeapReleased)/float64(ms.HeapInuse))
-		c.check.AddGauge("collect_numgc", streamTags, ms.NumGC)
-		c.check.AddGauge("collect_heap_objs", streamTags, ms.HeapObjects)
-		c.check.AddGauge("collect_live_obj", streamTags, ms.Mallocs-ms.Frees)
-
 		streamTags = append(streamTags, cgm.Tag{Category: "units", Value: "bytes"})
 
 		c.check.AddGauge("collect_sent", streamTags, cstats.SentBytes)

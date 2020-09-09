@@ -88,13 +88,18 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterName str
 	}
 
 	if cfg.DefaultStreamtags != "" {
-		ctags := cgm.Tags{}
 		tagList := strings.Split(cfg.DefaultStreamtags, ",")
+		ctags := make(cgm.Tags, len(tagList))
+		idx := 0
 		for _, t := range tagList {
 			td := strings.SplitN(t, ":", 2)
-			if len(td) == 2 {
-				ctags = append(ctags, cgm.Tag{Category: td[0], Value: td[1]})
+			switch len(td) {
+			case 1:
+				ctags[idx] = cgm.Tag{Category: td[0]}
+			case 2:
+				ctags[idx] = cgm.Tag{Category: td[0], Value: td[1]}
 			}
+			idx++
 		}
 		c.defaultTags = ctags
 	}

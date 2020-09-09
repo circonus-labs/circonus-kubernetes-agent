@@ -178,8 +178,7 @@ func (c *Check) QueueMetricSample(
 		}
 	}
 
-	streamTagList := strings.Split(c.config.DefaultStreamtags, ",")
-	streamTagList = append(streamTagList, streamTags...)
+	streamTagList := c.NewTagList(streamTags, strings.Split(c.config.DefaultStreamtags, ","))
 
 	if len(streamTagList)+len(measurementTags) > MaxTags {
 		c.log.Warn().

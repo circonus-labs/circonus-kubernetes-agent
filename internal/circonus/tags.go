@@ -33,6 +33,9 @@ func (c *Check) TagListToCGM(tags []string) cgm.Tags {
 			log.Warn().Int("num", len(tags)).Int("max", MaxTags).Interface("tags", tags).Msg("ignoring tags over max")
 			break
 		}
+		if tag == "" {
+			continue
+		}
 
 		if !strings.Contains(tag, ":") {
 			tagList[i] = cgm.Tag{Category: tag, Value: ""}
@@ -46,6 +49,27 @@ func (c *Check) TagListToCGM(tags []string) cgm.Tags {
 		}
 
 		tagList[i] = cgm.Tag{Category: tagParts[0], Value: tagParts[1]}
+	}
+
+	return tagList
+}
+
+func (c *Check) NewTagList(tagSets ...[]string) []string {
+	totTags := 0
+	if len(tagSets) == 0 {
+		return []string{}
+	}
+	for i := 0; i < len(tagSets); i++ {
+		totTags += len(tagSets[i])
+	}
+
+	tagList := make([]string, totTags)
+	idx := 0
+	for i := 0; i < len(tagSets); i++ {
+		for j := 0; j < len(tagSets[i]); j++ {
+			tagList[idx] = tagSets[i][j]
+			idx++
+		}
 	}
 
 	return tagList
@@ -98,6 +122,10 @@ func encodeTags(tags []string, useBase64 bool) string {
 			break
 		}
 
+		if tag == "" {
+			continue
+		}
+
 		tc := ""
 		tv := ""
 
@@ -127,8 +155,9 @@ func encodeTags(tags []string, useBase64 bool) string {
 		tg := ""
 		if !strings.HasPrefix(tc, encodedSig) {
 			tc = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, strings.ToLower(tc)))))
-			tg += tc
 		}
+		tg += tc
+
 		if tv != "" {
 			if !strings.HasPrefix(tv, encodedSig) {
 				tv = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, tv))))
@@ -136,7 +165,7 @@ func encodeTags(tags []string, useBase64 bool) string {
 			tg += ":" + tv
 		}
 
-		tagList = append(tagList, tg) //tc+":"+tv)
+		tagList = append(tagList, tg)
 	}
 
 	return strings.Join(tagList, ",")

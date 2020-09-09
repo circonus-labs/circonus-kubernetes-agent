@@ -136,16 +136,12 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 	metrics := make(map[string]circonus.MetricSample)
 
 	{ // meta
-		var streamTags []string
-		streamTags = append(streamTags, parentStreamTags...)
-		streamTags = append(streamTags, []string{
+		streamTags := nc.check.NewTagList(parentStreamTags, []string{
 			"kernel_version:" + nc.node.Status.NodeInfo.KernelVersion,
 			"os_image:" + nc.node.Status.NodeInfo.OSImage,
 			"kublet_version:" + nc.node.Status.NodeInfo.KubeletVersion,
-		}...)
-		for k, v := range nc.node.Labels {
-			streamTags = append(streamTags, k+":"+v)
-		}
+		}, labelsToTags(nc.node.Labels))
+
 		_ = nc.check.QueueMetricSample(
 			metrics,
 			"node",
@@ -156,9 +152,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 	}
 
 	{ // conditions
-		var streamTags []string
-		streamTags = append(streamTags, parentStreamTags...)
-		streamTags = append(streamTags, "status:condition")
+		streamTags := nc.check.NewTagList(parentStreamTags, []string{"status:condition"})
 		for _, cond := range nc.node.Status.Conditions {
 			if nc.done() {
 				break
@@ -174,8 +168,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 	}
 
 	{ // capacity and allocatable
-		var streamTags []string
-		streamTags = append(streamTags, parentStreamTags...)
+		streamTags := nc.check.NewTagList(parentStreamTags)
 		cpu := int64(0)
 		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Cpu().String()); err == nil {
 			if cpu, ok := qty.AsInt64(); ok {
@@ -225,12 +218,12 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 
 		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Memory().String()); err == nil {
 			if mem, ok := qty.AsInt64(); ok {
-				streamTags = append(streamTags, "units:bytes")
+				sTags := nc.check.NewTagList(streamTags, []string{"units:bytes"})
 				_ = nc.check.QueueMetricSample(
 					metrics,
 					"capacity_memory",
 					circonus.MetricTypeUint64,
-					streamTags, parentMeasurementTags,
+					sTags, parentMeasurementTags,
 					uint64(mem),
 					nc.ts)
 			}
@@ -240,12 +233,12 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 
 		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.StorageEphemeral().String()); err == nil {
 			if storage, ok := qty.AsInt64(); ok {
-				streamTags = append(streamTags, "units:bytes")
+				sTags := nc.check.NewTagList(streamTags, []string{"units:bytes"})
 				_ = nc.check.QueueMetricSample(
 					metrics,
 					"capacity_ephemeral_storage",
 					circonus.MetricTypeUint64,
-					streamTags, parentMeasurementTags,
+					sTags, parentMeasurementTags,
 					uint64(storage),
 					nc.ts)
 			}
@@ -436,9 +429,7 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 		if nc.done() {
 			break
 		}
-		var streamTags []string
-		streamTags = append(streamTags, parentStreamTags...)
-		streamTags = append(streamTags, []string{"sys_container:" + container.Name}...)
+		streamTags := nc.check.NewTagList(parentStreamTags, []string{"sys_container:" + container.Name})
 		nc.queueCPU(metrics, &container.CPU, false, streamTags, parentMeasurementTags)
 		nc.queueMemory(metrics, &container.Memory, streamTags, parentMeasurementTags, false)
 		nc.queueRootFS(metrics, &container.RootFS, streamTags, parentMeasurementTags)
@@ -480,25 +471,33 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 		if !collect {
 			continue
 		}
-		var podStreamTags []string
-		podStreamTags = append(podStreamTags, parentStreamTags...)
-		podStreamTags = append(podStreamTags, podLabels...)
-		podStreamTags = append(podStreamTags, []string{
+
+		podStreamTags := nc.check.NewTagList(parentStreamTags, []string{
 			"pod:" + pod.PodRef.Name,
 			"namespace:" + pod.PodRef.Namespace,
 			"__rollup:false", // prevent high cardinality metrics from rolling up
-		}...)
+		}, podLabels)
 
 		nc.queueCPU(metrics, &pod.CPU, false, podStreamTags, parentMeasurementTags)
 		nc.queueMemory(metrics, &pod.Memory, podStreamTags, parentMeasurementTags, false)
 		nc.queueNetwork(metrics, &pod.Network, podStreamTags, parentMeasurementTags)
 
+		totUsed := uint64(0)
 		for _, volume := range pod.Volumes {
 			if nc.done() {
 				break
 			}
 			volume := volume
 			nc.queueVolume(metrics, &volume, podStreamTags, parentMeasurementTags)
+			totUsed += volume.UsedBytes
+		}
+
+		nc.queueEphemeralStorage(metrics, &pod.EphemeralStorage, podStreamTags, parentMeasurementTags)
+		totUsed += pod.EphemeralStorage.UsedBytes
+
+		{ // total used volume and ephemeral-storage bytes for pod
+			streamTags := nc.check.NewTagList(podStreamTags, []string{"units:bytes", "resource:fs"})
+			_ = nc.check.QueueMetricSample(metrics, "used", circonus.MetricTypeUint64, streamTags, parentMeasurementTags, totUsed, nc.ts)
 		}
 
 		if nc.cfg.IncludeContainers {
@@ -506,16 +505,12 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 				if nc.done() {
 					break
 				}
-				var streamTagList []string
-				streamTagList = append(streamTagList, podStreamTags...)
-				streamTagList = append(streamTagList, "container_name:"+container.Name)
-
+				streamTagList := nc.check.NewTagList(podStreamTags, []string{"container_name:" + container.Name})
 				nc.queueCPU(metrics, &container.CPU, false, streamTagList, parentMeasurementTags)
 				nc.queueMemory(metrics, &container.Memory, streamTagList, parentMeasurementTags, false)
 				if container.RootFS.CapacityBytes > 0 { // rootfs
 					nc.queueRootFS(metrics, &container.RootFS, streamTagList, parentMeasurementTags)
 				}
-
 				if container.Logs.CapacityBytes > 0 { // logs
 					nc.queueLogsFS(metrics, &container.Logs, streamTagList, parentMeasurementTags)
 				}
@@ -609,9 +604,7 @@ func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags [
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
-	streamTags := []string{"__rollup:false"} // prevent high cardinality metrics from rolling up
-	streamTags = append(streamTags, parentStreamTags...)
-
+	streamTags := nc.check.NewTagList(parentStreamTags, []string{"__rollup:false"})
 	var parser expfmt.TextParser
 	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, nc.log, bytes.NewReader(data), streamTags, parentMeasurementTags, nil); err != nil {
 		nc.log.Error().Err(err).Msg("parsing node metrics/cadvisor")
@@ -660,11 +653,18 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 		}
 	}
 
-	for k, v := range pod.Labels {
-		tags = append(tags, k+":"+v)
-	}
-
+	tags = labelsToTags(pod.Labels)
 	return collect, tags, nil
+}
+
+func labelsToTags(labels map[string]string) []string {
+	tags := make([]string, len(labels))
+	idx := 0
+	for k, v := range labels {
+		tags[idx] = k + ":" + v
+		idx++
+	}
+	return tags
 }
 
 func (nc *Collector) done() bool {
