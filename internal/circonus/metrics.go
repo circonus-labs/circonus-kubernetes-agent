@@ -172,7 +172,7 @@ func (c *Check) QueueMetricSample(
 		}
 		if rejectMetric {
 			c.statsmu.Lock()
-			c.stats.Filtered++
+			c.stats.LocFiltered++
 			c.statsmu.Unlock()
 			return nil
 		}

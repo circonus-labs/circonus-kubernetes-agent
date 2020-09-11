@@ -290,10 +290,10 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 
 	if includeStats {
 		c.statsmu.Lock()
-		c.stats.Metrics += result.Stats
-		c.stats.TMetrics += uint64(len(metrics))
+		c.stats.RecvMetrics += result.Stats
+		c.stats.SentMetrics += uint64(len(metrics))
 		c.stats.SentBytes += uint64(dataLen)
-		c.stats.BFiltered += result.Filtered
+		c.stats.BkrFiltered += result.Filtered
 		c.statsmu.Unlock()
 	}
 

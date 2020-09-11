@@ -287,8 +287,8 @@ func (c *Cluster) collect(ctx context.Context) {
 		cgm.Tag{Category: "source", Value: release.NAME},
 	}
 	c.check.AddText("collect_agent", baseStreamTags, release.NAME+"_"+release.VERSION)
-	c.check.AddGauge("collect_metrics", baseStreamTags, cstats.Metrics)
-	c.check.AddGauge("collect_filtered", baseStreamTags, cstats.Filtered)
+	c.check.AddGauge("collect_metrics", baseStreamTags, cstats.SentMetrics)
+	c.check.AddGauge("collect_filtered", baseStreamTags, cstats.LocFiltered)
 	c.check.AddGauge("collect_ngr", baseStreamTags, uint64(runtime.NumGoroutine()))
 
 	{
