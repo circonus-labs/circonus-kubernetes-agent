@@ -71,6 +71,16 @@ spec:
 1. Change any applicable settings in `deploy/custom/deployment.yaml`
 1. Apply `kubectl apply -f deploy/custom/`
 
+#### Observation
+
+> NOTE: only use this deployment as requested by Circonus
+
+1. Clone repo
+1. In `deploy/observation/configuration.yaml` set the following required attributes:
+   * Circonus API Token - `circonus-api-key`
+   * Kubernetes Cluster Name - `kubernetes-name` - short, unique string w/o spaces
+1. Apply `kubectl apply -f deploy/observation/`
+
 ### `helm` (contrib)
 
 1. Clone repo

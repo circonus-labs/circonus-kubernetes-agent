@@ -7,6 +7,8 @@ package circonus
 
 import (
 	"bytes"
+	"strings"
+
 	// "compress/gzip"
 	"context"
 	"encoding/json"
@@ -47,6 +49,8 @@ func (c *Check) FlushCGM(ctx context.Context, ts *time.Time, lg zerolog.Logger, 
 	if c.metrics != nil {
 		// TODO: add timestamp support to CGM (e.g. FlushMetricsWithTimestamp(ts))
 		metrics := make(map[string]MetricSample)
+
+		c.metricsmu.Lock()
 		for mn, mv := range *(c.metrics.FlushMetrics()) {
 			ms := MetricSample{
 				Value: mv.Value,
@@ -56,7 +60,11 @@ func (c *Check) FlushCGM(ctx context.Context, ts *time.Time, lg zerolog.Logger, 
 				ms.Timestamp = makeTimestamp(ts)
 			}
 			metrics[mn] = ms
+			if strings.HasPrefix(mn, "collect_k8s_event_count") {
+				c.metrics.Set(mn, 0) // reset event counter
+			}
 		}
+		c.metricsmu.Unlock()
 
 		if agentStats && c.LogAgentMetrics() {
 			data, err := json.Marshal(metrics)
@@ -282,10 +290,10 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 
 	if includeStats {
 		c.statsmu.Lock()
-		c.stats.Metrics += result.Stats
-		c.stats.TMetrics += uint64(len(metrics))
+		c.stats.RecvMetrics += result.Stats
+		c.stats.SentMetrics += uint64(len(metrics))
 		c.stats.SentBytes += uint64(dataLen)
-		c.stats.BFiltered += result.Filtered
+		c.stats.BkrFiltered += result.Filtered
 		c.statsmu.Unlock()
 	}
 

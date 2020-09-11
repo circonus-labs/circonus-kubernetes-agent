@@ -14,14 +14,10 @@ func (nc *Collector) queueCPU(dest map[string]circonus.MetricSample, stats *cpu,
 	seconds := "usageCoreNanoSeconds"
 	utilization := "utilization"
 
-	var streamTags []string
-	streamTags = append(streamTags, parentStreamTags...)
-	streamTags = append(streamTags, "resource:cpu")
+	streamTags := nc.check.NewTagList(parentStreamTags, []string{"resource:cpu"})
 	_ = nc.check.QueueMetricSample(dest, cores, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.UsageNanoCores, nc.ts)
 	{
-		var st []string
-		st = append(st, streamTags...)
-		st = append(st, "units:seconds")
+		st := nc.check.NewTagList(streamTags, []string{"units:seconds"})
 		_ = nc.check.QueueMetricSample(dest, seconds, circonus.MetricTypeUint64, st, parentMeasurementTags, stats.UsageCoreNanoSeconds, nc.ts)
 	}
 
@@ -29,9 +25,7 @@ func (nc *Collector) queueCPU(dest map[string]circonus.MetricSample, stats *cpu,
 	if isNode {
 		if ns, ok := GetNodeStat(nc.node.Name); ok {
 			if ns.LastCPUNanoSeconds > 0 {
-				var st []string
-				st = append(st, streamTags...)
-				st = append(st, "units:percent")
+				st := nc.check.NewTagList(streamTags, []string{"units:percent"})
 				pct := float64(0)
 
 				if ns.LastCPUNanoSeconds > 0 && stats.UsageCoreNanoSeconds > 0 && ns.CPUCapacity > 0 {
@@ -59,9 +53,7 @@ func (nc *Collector) queueMemory(dest map[string]circonus.MetricSample, stats *m
 	majorPageFaults := "majorPageFaults"
 
 	{ // units:bytes
-		var streamTags []string
-		streamTags = append(streamTags, parentStreamTags...)
-		streamTags = append(streamTags, []string{"resource:memory", "units:bytes"}...)
+		streamTags := nc.check.NewTagList(parentStreamTags, []string{"resource:memory", "units:bytes"})
 		if isNode {
 			// pods don't have 'available'
 			_ = nc.check.QueueMetricSample(dest, available, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.AvailableBytes, nc.ts)
@@ -71,9 +63,7 @@ func (nc *Collector) queueMemory(dest map[string]circonus.MetricSample, stats *m
 		_ = nc.check.QueueMetricSample(dest, rss, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.RSSBytes, nc.ts)
 	}
 	{ // units:faults
-		var streamTags []string
-		streamTags = append(streamTags, parentStreamTags...)
-		streamTags = append(streamTags, []string{"resource:memory", "units:faults"}...)
+		streamTags := nc.check.NewTagList(parentStreamTags, []string{"resource:memory", "units:faults"})
 		_ = nc.check.QueueMetricSample(dest, pageFaults, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.PageFaults, nc.ts)
 		_ = nc.check.QueueMetricSample(dest, majorPageFaults, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.MajorPageFaults, nc.ts)
 	}
@@ -84,32 +74,26 @@ func (nc *Collector) queueNetwork(dest map[string]circonus.MetricSample, stats *
 	transmit := "tx"
 
 	{ // units:bytes
-		var streamTags []string
-		streamTags = append(streamTags, parentStreamTags...)
-		streamTags = append(streamTags, []string{"resource:network", "units:bytes"}...)
+		streamTags := nc.check.NewTagList(parentStreamTags, []string{"resource:network", "units:bytes"})
 		_ = nc.check.QueueMetricSample(dest, receive, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.RxBytes, nc.ts)
 		_ = nc.check.QueueMetricSample(dest, transmit, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.TxBytes, nc.ts)
 	}
 	{ // units:errors
-		var streamTags []string
-		streamTags = append(streamTags, parentStreamTags...)
-		streamTags = append(streamTags, []string{"resource:network", "units:errors"}...)
+		streamTags := nc.check.NewTagList(parentStreamTags, []string{"resource:network", "units:errors"})
 		_ = nc.check.QueueMetricSample(dest, receive, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.RxErrors, nc.ts)
 		_ = nc.check.QueueMetricSample(dest, transmit, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.TxErrors, nc.ts)
 	}
 
 	for _, iface := range stats.Interfaces {
+		ifaceTags := nc.check.NewTagList(parentStreamTags, []string{"resource:network", "interface:" + iface.Name})
+
 		{ // units:bytes
-			var streamTags []string
-			streamTags = append(streamTags, parentStreamTags...)
-			streamTags = append(streamTags, []string{"resource:network", "units:bytes", "interface:" + iface.Name}...)
+			streamTags := nc.check.NewTagList(ifaceTags, []string{"units:bytes"})
 			_ = nc.check.QueueMetricSample(dest, receive, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, iface.RxBytes, nc.ts)
 			_ = nc.check.QueueMetricSample(dest, transmit, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, iface.TxBytes, nc.ts)
 		}
 		{ // units:errors
-			var streamTags []string
-			streamTags = append(streamTags, parentStreamTags...)
-			streamTags = append(streamTags, []string{"resource:network", "units:errors", "interface:" + iface.Name}...)
+			streamTags := nc.check.NewTagList(ifaceTags, []string{"units:errors"})
 			_ = nc.check.QueueMetricSample(dest, receive, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, iface.RxErrors, nc.ts)
 			_ = nc.check.QueueMetricSample(dest, transmit, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, iface.TxErrors, nc.ts)
 		}
@@ -122,26 +106,20 @@ func (nc *Collector) queueBaseFS(dest map[string]circonus.MetricSample, stats *f
 	used := "used"
 
 	{ // units:bytes
-		var streamTags []string
-		streamTags = append(streamTags, parentStreamTags...)
-		streamTags = append(streamTags, "units:bytes")
+		streamTags := nc.check.NewTagList(parentStreamTags, []string{"units:bytes"})
 		_ = nc.check.QueueMetricSample(dest, capacity, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.CapacityBytes, nc.ts)
 		_ = nc.check.QueueMetricSample(dest, free, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.AvailableBytes, nc.ts)
 		_ = nc.check.QueueMetricSample(dest, used, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.UsedBytes, nc.ts)
 	}
 	{ // units:inodes
-		var streamTags []string
-		streamTags = append(streamTags, parentStreamTags...)
-		streamTags = append(streamTags, "units:inodes")
+		streamTags := nc.check.NewTagList(parentStreamTags, []string{"units:inodes"})
 		_ = nc.check.QueueMetricSample(dest, capacity, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.Inodes, nc.ts)
 		_ = nc.check.QueueMetricSample(dest, free, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.InodesFree, nc.ts)
 		_ = nc.check.QueueMetricSample(dest, used, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.InodesUsed, nc.ts)
 	}
 	{ // units:percent
 		if stats.UsedBytes > 0 && stats.CapacityBytes > 0 {
-			var streamTags []string
-			streamTags = append(streamTags, parentStreamTags...)
-			streamTags = append(streamTags, "units:percent")
+			streamTags := nc.check.NewTagList(parentStreamTags, []string{"units:percent"})
 			usedPct := ((float64(stats.UsedBytes) / float64(stats.CapacityBytes)) * 100)
 			_ = nc.check.QueueMetricSample(dest, used, circonus.MetricTypeFloat64, streamTags, parentMeasurementTags, usedPct, nc.ts)
 		}
@@ -149,52 +127,32 @@ func (nc *Collector) queueBaseFS(dest map[string]circonus.MetricSample, stats *f
 }
 
 func (nc *Collector) queueFS(dest map[string]circonus.MetricSample, stats *fs, parentStreamTags []string, parentMeasurementTags []string) {
-	var baseStreamTags []string
-	if len(parentStreamTags) > 0 {
-		baseStreamTags = make([]string, len(parentStreamTags))
-		copy(baseStreamTags, parentStreamTags)
-	}
-	baseStreamTags = append(baseStreamTags, "resource:fs")
+	baseStreamTags := nc.check.NewTagList(parentStreamTags, []string{"resource:fs"})
 	nc.queueBaseFS(dest, stats, baseStreamTags, parentMeasurementTags)
 }
 
 func (nc *Collector) queueRuntimeImageFS(dest map[string]circonus.MetricSample, stats *fs, parentStreamTags []string, parentMeasurementTags []string) {
-	var baseStreamTags []string
-	if len(parentStreamTags) > 0 {
-		baseStreamTags = make([]string, len(parentStreamTags))
-		copy(baseStreamTags, parentStreamTags)
-	}
-	baseStreamTags = append(baseStreamTags, "resource:runtime_image_fs")
+	baseStreamTags := nc.check.NewTagList(parentStreamTags, []string{"resource:runtime_image_fs"})
 	nc.queueBaseFS(dest, stats, baseStreamTags, parentMeasurementTags)
 }
 
 func (nc *Collector) queueRootFS(dest map[string]circonus.MetricSample, stats *fs, parentStreamTags []string, parentMeasurementTags []string) {
-	var baseStreamTags []string
-	if len(parentStreamTags) > 0 {
-		baseStreamTags = make([]string, len(parentStreamTags))
-		copy(baseStreamTags, parentStreamTags)
-	}
-	baseStreamTags = append(baseStreamTags, "resource:root_fs")
+	baseStreamTags := nc.check.NewTagList(parentStreamTags, []string{"resource:root_fs"})
 	nc.queueBaseFS(dest, stats, baseStreamTags, parentMeasurementTags)
 }
 
 func (nc *Collector) queueLogsFS(dest map[string]circonus.MetricSample, stats *fs, parentStreamTags []string, parentMeasurementTags []string) {
-	var baseStreamTags []string
-	if len(parentStreamTags) > 0 {
-		baseStreamTags = make([]string, len(parentStreamTags))
-		copy(baseStreamTags, parentStreamTags)
-	}
-	baseStreamTags = append(baseStreamTags, "resource:logs_fs")
+	baseStreamTags := nc.check.NewTagList(parentStreamTags, []string{"resource:log_fs"})
+	nc.queueBaseFS(dest, stats, baseStreamTags, parentMeasurementTags)
+}
+
+func (nc *Collector) queueEphemeralStorage(dest map[string]circonus.MetricSample, stats *fs, parentStreamTags []string, parentMeasurementTags []string) {
+	baseStreamTags := nc.check.NewTagList(parentStreamTags, []string{"resource:ephemeral_storage"})
 	nc.queueBaseFS(dest, stats, baseStreamTags, parentMeasurementTags)
 }
 
 func (nc *Collector) queueVolume(dest map[string]circonus.MetricSample, stats *volume, parentStreamTags []string, parentMeasurementTags []string) {
-	var baseStreamTags []string
-	if len(parentStreamTags) > 0 {
-		baseStreamTags = make([]string, len(parentStreamTags))
-		copy(baseStreamTags, parentStreamTags)
-	}
-	baseStreamTags = append(baseStreamTags, "volume_name:"+stats.Name)
+	baseStreamTags := nc.check.NewTagList(parentStreamTags, []string{"volume_name:" + stats.Name})
 	nc.queueBaseFS(dest, &stats.fs, baseStreamTags, parentMeasurementTags)
 }
 
@@ -203,9 +161,7 @@ func (nc *Collector) queueRlimit(dest map[string]circonus.MetricSample, stats *r
 	curProc := "curProc"
 
 	// units:procs
-	var streamTags []string
-	streamTags = append(streamTags, parentStreamTags...)
-	streamTags = append(streamTags, []string{"resource:rlimit", "units:procs"}...)
+	streamTags := nc.check.NewTagList(parentStreamTags, []string{"resource:rlimit", "units:procs"})
 	_ = nc.check.QueueMetricSample(dest, maxPID, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.MaxPID, nc.ts)
 	_ = nc.check.QueueMetricSample(dest, curProc, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.CurProc, nc.ts)
 }

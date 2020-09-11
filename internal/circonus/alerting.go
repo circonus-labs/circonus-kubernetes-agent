@@ -33,8 +33,13 @@ type AlertContact struct {
 }
 
 type RuleSettings struct {
-	Threshold string `json:"threshold"`
-	Window    uint   `json:"window"`
+	Disabled     bool   `json:"disabled"`
+	Threshold    string `json:"threshold"`
+	Window       uint   `json:"window"`
+	MinThreshold string `json:"min_threshold"`
+	MinWindow    uint   `json:"min_window"`
+	MaxThreshold string `json:"max_threshold"`
+	MaxWindow    uint   `json:"max_window"`
 }
 
 type CustomRules struct {
@@ -179,6 +184,11 @@ func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da Default
 	}
 
 	for rid, ruleTemplate := range rules {
+		ruleSettings, haveSettings := da.RuleSettings[rid]
+		if haveSettings && ruleSettings.Disabled {
+			logger.Warn().Str("rule_id", rid).Msg("disabled, skipping")
+			continue
+		}
 
 		if ruleTemplate.Name == "" {
 			ruleTemplate.Name = rid + " (" + clusterName + ")"
@@ -200,33 +210,48 @@ func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da Default
 		note := release.NAME + " default rule for " + rid + ". NOTE: any changes (except contact groups) to default rules will be overwritten at next deployment."
 		ruleTemplate.Notes = &note
 
-		switch rid {
-		case "cpu_utilization":
-			if settings, found := da.RuleSettings["cpu_utilization"]; found {
-				v, err := strconv.Atoi(settings.Threshold)
+		if haveSettings {
+			logger.Debug().Str("rule_id", rid).Interface("settings", ruleSettings).Msg("applying settings")
+			switch rid {
+			case "cpu_utilization":
+				v, err := strconv.Atoi(ruleSettings.Threshold)
 				switch {
 				case err != nil:
 					logger.Warn().
 						Err(err).
 						Str("rule_id", rid).
-						Str("threshold", settings.Threshold).
+						Str("threshold", ruleSettings.Threshold).
 						Msg("invalid threshold, unable to parse, using default")
 				case v < 1 || v > 99:
 					logger.Warn().
 						Str("rule_id", rid).
-						Str("threshold", settings.Threshold).
+						Str("threshold", ruleSettings.Threshold).
 						Msg("invalid threshold, acceptable 1-99, using default")
 				default:
-					ruleTemplate.Rules[0].Value = settings.Threshold
+					ruleTemplate.Rules[0].Value = ruleSettings.Threshold
 				}
-				if settings.Window > 59 {
-					ruleTemplate.Rules[0].WindowingDuration = settings.Window
+				if ruleSettings.Window > 59 {
+					ruleTemplate.Rules[0].WindowingDuration = ruleSettings.Window
 				}
-			}
-		case "pod_pending_delays":
-			if settings, found := da.RuleSettings["pod_pending_delays"]; found {
-				if settings.Window > 59 {
-					ruleTemplate.Rules[0].WindowingDuration = settings.Window
+			case "deployment_glitches", "daemonsets_not_ready", "statefulsets_not_ready":
+				if ruleSettings.MaxThreshold != "" {
+					ruleTemplate.Rules[0].Value = ruleSettings.MaxThreshold
+				}
+				if ruleSettings.MaxWindow > 59 {
+					ruleTemplate.Rules[0].WindowingDuration = ruleSettings.MaxWindow
+				}
+				if ruleSettings.MinThreshold != "" {
+					ruleTemplate.Rules[1].Value = ruleSettings.MinThreshold
+				}
+				if ruleSettings.MinWindow > 59 {
+					ruleTemplate.Rules[0].WindowingDuration = ruleSettings.MinWindow
+				}
+			default:
+				if ruleSettings.Threshold != "" {
+					ruleTemplate.Rules[0].Value = ruleSettings.Threshold
+				}
+				if ruleSettings.Window > 59 {
+					ruleTemplate.Rules[0].WindowingDuration = ruleSettings.Window
 				}
 			}
 		}
@@ -397,193 +422,193 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
 	defaultRuleSetsData := []byte(`
 {
     "crashloops_container": {
-		"filter": "and(reason:CrashLoopBackOff)",
-		"lookup_key": "k8s_health_crashloop_1",
+        "filter": "and(reason:CrashLoopBackOff)",
+        "lookup_key": "k8s_health_crashloop_1",
         "metric_name": "kube_pod_container_status_waiting_reason",
         "metric_type": "numeric",
         "name": "Kubernetes CrashLoops ({cluster_name})",
         "rules": [
             {
-                "wait": 0,
+                "criteria": "max value",
                 "severity": 1,
-                "value": "0",
+                "wait": 0,
                 "windowing_duration": 300,
-                "criteria": "max value"
+                "value": "0"
             }
         ]
     },
     "crashloops_init_container": {
-		"filter": "and(reason:CrashLoopBackOff)",
-		"lookup_key": "k8s_health_crashloop_2",
+        "filter": "and(reason:CrashLoopBackOff)",
+        "lookup_key": "k8s_health_crashloop_2",
         "metric_name": "kube_pod_init_container_status_waiting_reason",
         "metric_type": "numeric",
         "name": "Kubernetes CrashLoops (Init) ({cluster_name})",
         "rules": [
             {
-                "wait": 0,
+                "criteria": "max value",
                 "severity": 1,
-                "value": "0",
+                "wait": 0,
                 "windowing_duration": 300,
-                "criteria": "max value"
+                "value": "0"
             }
         ]
     },
     "cpu_utilization": {
-		"filter": "and(resource:cpu)",
-		"lookup_key": "k8s_health_cpu",
+        "filter": "and(resource:cpu)",
+        "lookup_key": "k8s_health_cpu",
         "metric_name": "utilization",
         "metric_type": "numeric",
         "name": "Kubernetes CPU ({cluster_name})",
         "rules": [
             {
-                "windowing_function": "average",
+                "criteria": "max value",
                 "severity": 1,
                 "wait": 0,
                 "windowing_duration": 900,
-                "value": "75",
-                "criteria": "max value"
+                "windowing_function": "average",
+                "value": "75"
             }
         ]    
     },
     "disk_pressure": {
-		"filter": "and(condition:DiskPressure,status:true)",
-		"lookup_key": "k8s_health_disk",
+        "filter": "and(condition:DiskPressure,status:true)",
+        "lookup_key": "k8s_health_disk",
         "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
         "name": "Kubernetes Disk Pressure ({cluster_name})",
         "rules": [
             {
-                "wait": 0,
-                "severity": 1,
                 "criteria": "max value",
+                "severity": 1,
+                "wait": 0,
                 "windowing_duration": 300,
                 "value": "0"
             }
         ]
     },
     "memory_pressure": {
-		"filter": "and(condition:MemoryPressure,status:true)",
-		"lookup_key": "k8s_health_memory",
+        "filter": "and(condition:MemoryPressure,status:true)",
+        "lookup_key": "k8s_health_memory",
         "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
         "name": "Kubernetes Memory Pressure ({cluster_name})",
         "rules": [
             {
+                "criteria": "max value",
                 "severity": 1,
                 "wait": 0,
-                "criteria": "max value",
                 "windowing_duration": 300,
                 "value": "0"
             }
         ]
     },
     "pid_pressure": {
-		"filter": "and(condition:PIDPressure,status:true)",
-		"lookup_key": "k8s_health_pid",
+        "filter": "and(condition:PIDPressure,status:true)",
+        "lookup_key": "k8s_health_pid",
         "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
         "name": "Kubernetes PID Pressure ({cluster_name})",
         "rules": [
             {
+                "criteria": "max value",
                 "severity": 1,
                 "wait": 0,
-                "value": "0",
                 "windowing_duration": 300,
-                "criteria": "max value"
+                "value": "0"
             }
         ]
     },
     "network_unavailable": {
-		"filter": "and(condition:NetworkUnavailable,status:true)",
-		"lookup_key": "k8s_health_network",
+        "filter": "and(condition:NetworkUnavailable,status:true)",
+        "lookup_key": "k8s_health_network",
         "metric_name": "kube_node_status_condition",
         "metric_type": "numeric",
         "name": "Kubernetes Network Unavailable ({cluster_name})",
         "rules": [
             {
+                "criteria": "max value",
                 "severity": 1,
                 "wait": 0,
-                "value": "0",
                 "windowing_duration": 300,
-                "criteria": "max value"
+                "value": "0"
             }
         ]
     },
     "job_failures": {
-		"filter": "and(job_name:*)",
-		"lookup_key": "k8s_health_jobs",
+        "filter": "and(job_name:*)",
+        "lookup_key": "k8s_health_jobs",
         "metric_name": "kube_job_status_failed",
         "metric_type": "numeric",
         "name": "Kubernetes Job Failures ({cluster_name})",
         "rules": [
             {
-                "value": "0",
                 "criteria": "max value",
                 "severity": 1,
+                "wait": 0,
                 "windowing_duration": 300,
-                "wait": 0
+                "value": "0"
             }
         ]        
     },
     "persistent_volume_failures": {
-		"filter": "and(phase:Failed)",
-		"lookup_key": "k8s_health_pvols",
+        "filter": "and(phase:Failed)",
+        "lookup_key": "k8s_health_pvols",
         "metric_name": "kube_persistentvolume_status_phase",
         "metric_type": "numeric",
         "name": "Kubernetes Persistent Volume Failures ({cluster_name})",
         "rules": [
             {
                 "criteria": "max value",
-                "value": "0",
+                "severity": 1,
                 "wait": 0,
                 "windowing_duration": 300,
-                "severity": 1
+                "value": "0"
             }
         ]        
     },
     "pod_pending_delays": {
-		"filter": "and(phase:Pending)",
-		"lookup_key": "k8s_health_poddelays",
+        "filter": "and(phase:Pending)",
+        "lookup_key": "k8s_health_poddelays",
         "metric_name": "kube_pod_status_phase",
         "metric_type": "numeric",
         "name": "Kubernetes Pod Pending Delays ({cluster_name})",
         "rules": [
             {
+                "criteria": "max value",
                 "severity": 1,
-                "windowing_function": "average",
                 "wait": 0,
                 "windowing_duration": 900,
-                "value": "0.99",
-                "criteria": "max value"
+                "windowing_function": "average",
+                "value": "0.99"
             }
         ]        
     },
     "deployment_glitches": {
-		"filter": "and(deployment:*)",
-		"lookup_key": "k8s_health_deploys",
+        "filter": "and(deployment:*)",
+        "lookup_key": "k8s_health_deploys",
         "metric_name": "deployment_generation_delta",
         "metric_type": "numeric",
         "name": "Kubernetes Deployment Glitches ({cluster_name})",
         "rules": [
             {
                 "criteria": "max value",
-                "value": "0",
-                "wait": 0,
-                "windowing_duration": 300,
-                "severity": 1
-            },
-            {
                 "severity": 1,
                 "wait": 0,
+                "windowing_duration": 300,
+                "value": "0"
+            },
+            {
                 "criteria": "min value",
+                "severity": 1,
+                "wait": 0,
                 "windowing_duration": 300,
                 "value": "0"
             }
         ]        
     },
     "daemonsets_not_ready": {
-		"filter": "and(daemonset:*)",
-		"lookup_key": "k8s_health_daemonsets",
+        "filter": "and(daemonset:*)",
+        "lookup_key": "k8s_health_daemonsets",
         "metric_name": "daemonset_scheduled_delta",
         "metric_type": "numeric",
         "name": "Kubernetes DaemonSets Not Ready ({cluster_name})",
@@ -598,32 +623,32 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
             {
                 "criteria": "min value",
                 "severity": 1,
-                "value": "0",
                 "wait": 0,
-                "windowing_duration": 300
+                "windowing_duration": 300,
+                "value": "0"
             }
         ]
     },
     "statefulsets_not_ready": {
-		"filter": "and(statefulset:*)",
-		"lookup_key": "k8s_health_statefulsets",
+        "filter": "and(statefulset:*)",
+        "lookup_key": "k8s_health_statefulsets",
         "metric_name": "statefulset_replica_delta",
         "metric_type": "numeric",
         "name": "Kubernetes StatefulSets Not Ready ({cluster_name})",
         "rules": [
             {
+                "criteria": "max value",
                 "severity": 1,
                 "wait": 0,
-                "value": "0",
                 "windowing_duration": 300,
-                "criteria": "max value"
+                "value": "0"
             },
             {
                 "criteria": "min value",
-                "value": "0",
+                "severity": 1,
                 "wait": 0,
                 "windowing_duration": 300,
-                "severity": 1
+                "value": "0"
             }
         ]
     }

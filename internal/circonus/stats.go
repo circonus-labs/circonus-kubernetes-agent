@@ -9,12 +9,12 @@ import "code.cloudfoundry.org/bytefmt"
 
 // Stats defines the submission stats tracked across metric submissions to broker
 type Stats struct {
-	Filtered  uint64 // agent: filtered based on namerx
-	BFiltered uint64 // broker: filtered
-	Metrics   uint64 // broker: "stats" received
-	TMetrics  uint64 // agent: total "unique" metrics sent
-	SentBytes uint64
-	SentSize  string
+	LocFiltered uint64 // agent: filtered based on namerx
+	BkrFiltered uint64 // broker: filtered
+	RecvMetrics uint64 // broker: "stats" received
+	SentMetrics uint64 // agent: total "unique" metrics sent
+	SentBytes   uint64
+	SentSize    string
 }
 
 // SubmitStats returns copy of the submission stats
@@ -22,12 +22,12 @@ func (c *Check) SubmitStats() Stats {
 	c.statsmu.Lock()
 	defer c.statsmu.Unlock()
 	return Stats{
-		Filtered:  c.stats.Filtered,
-		BFiltered: c.stats.BFiltered,
-		Metrics:   c.stats.Metrics,
-		TMetrics:  c.stats.TMetrics,
-		SentBytes: c.stats.SentBytes,
-		SentSize:  bytefmt.ByteSize(c.stats.SentBytes),
+		LocFiltered: c.stats.LocFiltered,
+		BkrFiltered: c.stats.BkrFiltered,
+		RecvMetrics: c.stats.RecvMetrics,
+		SentMetrics: c.stats.SentMetrics,
+		SentBytes:   c.stats.SentBytes,
+		SentSize:    bytefmt.ByteSize(c.stats.SentBytes),
 	}
 }
 
@@ -35,9 +35,9 @@ func (c *Check) SubmitStats() Stats {
 func (c *Check) ResetSubmitStats() {
 	c.statsmu.Lock()
 	defer c.statsmu.Unlock()
-	c.stats.Metrics = 0
-	c.stats.TMetrics = 0
+	c.stats.SentMetrics = 0
+	c.stats.RecvMetrics = 0
 	c.stats.SentBytes = 0
-	c.stats.Filtered = 0
-	c.stats.BFiltered = 0
+	c.stats.LocFiltered = 0
+	c.stats.BkrFiltered = 0
 }

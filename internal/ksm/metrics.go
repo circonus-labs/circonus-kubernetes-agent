@@ -63,8 +63,7 @@ func (ksm *KSM) queueMetrics(
 				return nil
 			}
 			metricName := mn
-			streamTags := getLabels(m)
-			streamTags = append(streamTags, baseStreamTags...)
+			streamTags := check.NewTagList(baseStreamTags, getLabels(m))
 			switch mf.GetType() {
 			case dto.MetricType_SUMMARY:
 				_ = check.QueueMetricSample(
@@ -78,9 +77,7 @@ func (ksm *KSM) queueMetrics(
 					streamTags, parentMeasurementTags,
 					m.GetSummary().GetSampleSum(), ts)
 				for qn, qv := range getQuantiles(m) {
-					var qtags []string
-					qtags = append(qtags, streamTags...)
-					qtags = append(qtags, "quantile:"+qn)
+					qtags := check.NewTagList(streamTags, []string{"quantile:" + qn})
 					_ = check.QueueMetricSample(
 						metrics, metricName,
 						circonus.MetricTypeFloat64,
@@ -107,21 +104,17 @@ func (ksm *KSM) queueMetrics(
 
 				if emitHistogramBuckets {
 					if circCumulativeHistogram {
-						var htags []string
-						htags = append(htags, streamTags...)
 						histo := promHistoBucketsToCircHisto(m)
 						if len(histo) > 0 {
 							_ = check.QueueMetricSample(
 								metrics, metricName,
 								circonus.MetricTypeCumulativeHistogram,
-								htags, parentMeasurementTags,
+								streamTags, parentMeasurementTags,
 								strings.Join(histo, ","), ts)
 						}
 					} else {
 						for bn, bv := range getBuckets(m) {
-							var htags []string
-							htags = append(htags, streamTags...)
-							htags = append(htags, "bucket:"+bn)
+							htags := check.NewTagList(streamTags, []string{"bucket:" + bn})
 							_ = check.QueueMetricSample(
 								metrics, metricName,
 								circonus.MetricTypeUint64,
@@ -140,50 +133,38 @@ func (ksm *KSM) queueMetrics(
 					case "kube_pod_container_status_terminated_reason", "kube_pod_init_container_status_terminated_reason":
 						reason, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "reason")
 						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
-						// check.IncrementCounterByValue(customMetricName+"_count", countTags, uint64(val))
 						if val > 0 {
 							ksm.cgmMetrics.SetTextValueWithTags(customMetricName, fullTags, reason)
-							// check.AddText(customMetricName, fullTags, reason)
 						}
 						// continue -- when original ksm metric no longer needed
 					case "kube_pod_status_phase":
 						phase, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "phase")
-						// logger.Warn().Str("metric", customMetricName).Interface("tags", countTags).Float64("val", val).Msg("pod status phase")
 						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
-						// check.IncrementCounterByValue(customMetricName+"_count", countTags, uint64(val))
 						if val > 0 {
 							ksm.cgmMetrics.SetTextValueWithTags(customMetricName, fullTags, phase)
-							// check.AddText(customMetricName, fullTags, phase)
 						}
 						// continue -- when original ksm metric no longer needed
 					case "kube_pod_status_ready", "kube_pod_status_scheduled":
 						condition, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "condition")
 						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
-						// check.IncrementCounterByValue(customMetricName+"_count", countTags, uint64(val))
 						if val > 0 {
 							ksm.cgmMetrics.SetTextValueWithTags(customMetricName, fullTags, condition)
-							// check.AddText(customMetricName, fullTags, condition)
 						}
 						// continue -- when original ksm metric no longer needed
 					case "kube_pod_container_status_running", "kube_pod_container_status_terminated", "kube_pod_container_status_waiting", "kube_pod_container_status_ready":
 						_, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "")
 						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
-						// check.IncrementCounterByValue(customMetricName+"_count", countTags, uint64(val))
 						if val > 0 {
 							shortName := "pod_container_status"
 							switch metricName {
 							case "kube_pod_container_status_running":
 								ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "running")
-								// check.AddText(shortName, fullTags, "running")
 							case "kube_pod_container_status_terminated":
 								ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "terminated")
-								// check.AddText(shortName, fullTags, "terminated")
 							case "kube_pod_container_status_waiting":
 								ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "waiting")
-								// check.AddText(shortName, fullTags, "waiting")
 							case "kube_pod_container_status_ready":
 								ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "ready")
-								// check.AddText(shortName, fullTags, "ready")
 							}
 						}
 						// continue -- when original ksm metric no longer needed
@@ -224,11 +205,35 @@ func (ksm *KSM) queueMetrics(
 
 	// add derived metrics
 	m := ksm.cgmMetrics.FlushMetrics()
+	// mts := uint64(0)
+	// if ts != nil {
+	// 	mts = makeTimestamp(ts)
+	// }
 	for mn, mv := range *m {
-		metrics[mn] = circonus.MetricSample{
-			Value: mv.Value,
-			Type:  mv.Type,
+		switch mv.Type {
+		case circonus.MetricTypeString:
+			_ = check.QueueMetricSample(
+				metrics, mn,
+				circonus.MetricTypeString,
+				[]string{}, []string{},
+				mv.Value, ts)
+		case circonus.MetricTypeUint64:
+			_ = check.QueueMetricSample(
+				metrics, mn,
+				circonus.MetricTypeUint64,
+				[]string{}, []string{},
+				mv.Value, ts)
+		default:
+			logger.Warn().Str("name", mn).Interface("mv", mv).Msg("unrecognized metric type")
 		}
+		// sample := circonus.MetricSample{
+		// 	Value: mv.Value,
+		// 	Type:  mv.Type,
+		// }
+		// if mts > 0 {
+		// 	sample.Timestamp = mts
+		// }
+		// metrics[mn] = sample
 	}
 
 	if len(metrics) == 0 {
@@ -243,7 +248,8 @@ func (ksm *KSM) queueMetrics(
 }
 
 func getLabels(m *dto.Metric) []string {
-	labels := []string{}
+	labels := make([]string, len(m.Label))
+	idx := 0
 
 	for _, label := range m.Label {
 		if label.Name == nil || *label.Name == "" {
@@ -253,7 +259,8 @@ func getLabels(m *dto.Metric) []string {
 			continue
 		}
 
-		labels = append(labels, *label.Name+":"+*label.Value)
+		labels[idx] = *label.Name + ":" + *label.Value
+		idx++
 	}
 
 	return labels
@@ -317,22 +324,36 @@ func done(ctx context.Context) bool {
 func keyTags(check *circonus.Check, originalTags []string, baseTags cgm.Tags, keyCat string) (string, cgm.Tags, cgm.Tags) {
 	keyVal := ""
 	tags := check.TagListToCGM(originalTags)
-	fullTags := make(cgm.Tags, 0)
-	fullTags = append(fullTags, baseTags...)
-	countTags := make(cgm.Tags, 0)
-	countTags = append(countTags, baseTags...)
+
+	fullTags := make(cgm.Tags, len(baseTags)+len(tags))
+	copy(fullTags, baseTags)
+
+	countTags := make(cgm.Tags, len(baseTags)+len(tags))
+	copy(countTags, baseTags)
+
+	fidx := len(baseTags)
+	cidx := len(baseTags)
 	for _, tag := range tags {
 		if keyCat != "" && tag.Category == keyCat {
-			countTags = append(countTags, tag)
+			countTags[cidx] = tag
+			cidx++
 			keyVal = tag.Value
 			continue
 		}
 		if tag.Category == "pod" || tag.Category == "container" {
-			fullTags = append(fullTags, tag)
+			fullTags[fidx] = tag
+			fidx++
 			continue
 		}
-		fullTags = append(fullTags, tag)
-		countTags = append(countTags, tag)
+		fullTags[fidx] = tag
+		fidx++
+		countTags[cidx] = tag
+		cidx++
 	}
 	return keyVal, fullTags, countTags
 }
+
+// makeTimestamp returns timestamp in ms units for _ts metric value
+// func makeTimestamp(ts *time.Time) uint64 {
+// 	return uint64(ts.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)))
+// }

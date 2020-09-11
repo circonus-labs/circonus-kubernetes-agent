@@ -46,6 +46,9 @@ const (
 	// without details on exactly which metric(s) caused the error.
 	// All metrics sent with the offending metric(s) are also rejected.
 
+	MaxTagLen = 256
+	MaxTagCat = 254
+
 	// MaxTags reconnoiter will accept in stream tagged metric name
 	MaxTags = 256 // sync w/MAX_TAGS https://github.com/circonus-labs/reconnoiter/blob/master/src/noit_metric.h#L41
 
@@ -79,6 +82,8 @@ var (
 
 // AddGauge to queue for submission
 func (c *Check) AddGauge(metricName string, tags cgm.Tags, value interface{}) {
+	c.metricsmu.Lock()
+	defer c.metricsmu.Unlock()
 	if c.metrics != nil {
 		tags = append(tags, c.defaultTags...)
 		c.metrics.GaugeWithTags(metricName, tags, value)
@@ -87,6 +92,8 @@ func (c *Check) AddGauge(metricName string, tags cgm.Tags, value interface{}) {
 
 // AddHistSample to queue for submission
 func (c *Check) AddHistSample(metricName string, tags cgm.Tags, value float64) {
+	c.metricsmu.Lock()
+	defer c.metricsmu.Unlock()
 	if c.metrics != nil {
 		tags = append(tags, c.defaultTags...)
 		c.metrics.TimingWithTags(metricName, tags, value)
@@ -95,6 +102,8 @@ func (c *Check) AddHistSample(metricName string, tags cgm.Tags, value float64) {
 
 // AddText to queue for submission
 func (c *Check) AddText(metricName string, tags cgm.Tags, value string) {
+	c.metricsmu.Lock()
+	defer c.metricsmu.Unlock()
 	if c.metrics != nil {
 		tags = append(tags, c.defaultTags...)
 		c.metrics.SetTextWithTags(metricName, tags, value)
@@ -103,6 +112,8 @@ func (c *Check) AddText(metricName string, tags cgm.Tags, value string) {
 
 // IncrementCounter to queue for submission
 func (c *Check) IncrementCounter(metricName string, tags cgm.Tags) {
+	c.metricsmu.Lock()
+	defer c.metricsmu.Unlock()
 	if c.metrics != nil {
 		tags = append(tags, c.defaultTags...)
 		c.metrics.IncrementWithTags(metricName, tags)
@@ -111,6 +122,8 @@ func (c *Check) IncrementCounter(metricName string, tags cgm.Tags) {
 
 // IncrementCounterByValue to queue for submission
 func (c *Check) IncrementCounterByValue(metricName string, tags cgm.Tags, val uint64) {
+	c.metricsmu.Lock()
+	defer c.metricsmu.Unlock()
 	if c.metrics != nil {
 		tags = append(tags, c.defaultTags...)
 		c.metrics.IncrementByValueWithTags(metricName, tags, val)
@@ -119,6 +132,8 @@ func (c *Check) IncrementCounterByValue(metricName string, tags cgm.Tags, val ui
 
 // SetCounter to queue for submission
 func (c *Check) SetCounter(metricName string, tags cgm.Tags, value uint64) {
+	c.metricsmu.Lock()
+	defer c.metricsmu.Unlock()
 	if c.metrics != nil {
 		tags = append(tags, c.defaultTags...)
 		c.metrics.SetWithTags(metricName, tags, value)
@@ -147,6 +162,13 @@ func (c *Check) QueueMetricSample(
 
 	if len(c.metricFilters) > 0 {
 		rejectMetric := true
+		origName := metricName
+		if strings.Contains(metricName, "|ST") {
+			parts := strings.SplitN(metricName, "|", 2)
+			if len(parts) == 2 {
+				metricName = parts[0]
+			}
+		}
 		for _, mf := range c.metricFilters {
 			if mf.Filter.MatchString(metricName) {
 				if mf.Allow {
@@ -155,16 +177,16 @@ func (c *Check) QueueMetricSample(
 				}
 			}
 		}
+		metricName = origName
 		if rejectMetric {
 			c.statsmu.Lock()
-			c.stats.Filtered++
+			c.stats.LocFiltered++
 			c.statsmu.Unlock()
 			return nil
 		}
 	}
 
-	streamTagList := strings.Split(c.config.DefaultStreamtags, ",")
-	streamTagList = append(streamTagList, streamTags...)
+	streamTagList := c.NewTagList(streamTags, strings.Split(c.config.DefaultStreamtags, ","))
 
 	if len(streamTagList)+len(measurementTags) > MaxTags {
 		c.log.Warn().

@@ -63,8 +63,7 @@ func QueueMetrics(
 				return nil
 			}
 			metricName := mn
-			streamTags := getLabels(m)
-			streamTags = append(streamTags, baseStreamTags...)
+			streamTags := check.NewTagList(baseStreamTags, getLabels(m))
 			switch mf.GetType() {
 			case dto.MetricType_SUMMARY:
 				_ = check.QueueMetricSample(
@@ -78,9 +77,7 @@ func QueueMetrics(
 					streamTags, parentMeasurementTags,
 					m.GetSummary().GetSampleSum(), ts)
 				for qn, qv := range getQuantiles(m) {
-					var qtags []string
-					qtags = append(qtags, streamTags...)
-					qtags = append(qtags, "quantile:"+qn)
+					qtags := check.NewTagList(streamTags, []string{"quantile:" + qn})
 					_ = check.QueueMetricSample(
 						metrics, metricName,
 						circonus.MetricTypeFloat64,
@@ -107,21 +104,17 @@ func QueueMetrics(
 
 				if emitHistogramBuckets {
 					if circCumulativeHistogram {
-						var htags []string
-						htags = append(htags, streamTags...)
 						histo := promHistoBucketsToCircHisto(m)
 						if len(histo) > 0 {
 							_ = check.QueueMetricSample(
 								metrics, metricName,
 								circonus.MetricTypeCumulativeHistogram,
-								htags, parentMeasurementTags,
+								streamTags, parentMeasurementTags,
 								strings.Join(histo, ","), ts)
 						}
 					} else {
 						for bn, bv := range getBuckets(m) {
-							var htags []string
-							htags = append(htags, streamTags...)
-							htags = append(htags, "bucket:"+bn)
+							htags := check.NewTagList(streamTags, []string{"bucket:" + bn})
 							_ = check.QueueMetricSample(
 								metrics, metricName,
 								circonus.MetricTypeUint64,
@@ -178,7 +171,8 @@ func QueueMetrics(
 }
 
 func getLabels(m *dto.Metric) []string {
-	labels := []string{}
+	labels := make([]string, len(m.Label))
+	idx := 0
 
 	for _, label := range m.Label {
 		if label.Name == nil || *label.Name == "" {
@@ -188,7 +182,8 @@ func getLabels(m *dto.Metric) []string {
 			continue
 		}
 
-		labels = append(labels, *label.Name+":"+*label.Value)
+		labels[idx] = *label.Name + ":" + *label.Value
+		idx++
 	}
 
 	return labels

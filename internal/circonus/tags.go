@@ -33,6 +33,9 @@ func (c *Check) TagListToCGM(tags []string) cgm.Tags {
 			log.Warn().Int("num", len(tags)).Int("max", MaxTags).Interface("tags", tags).Msg("ignoring tags over max")
 			break
 		}
+		if tag == "" {
+			continue
+		}
 
 		if !strings.Contains(tag, ":") {
 			tagList[i] = cgm.Tag{Category: tag, Value: ""}
@@ -46,6 +49,27 @@ func (c *Check) TagListToCGM(tags []string) cgm.Tags {
 		}
 
 		tagList[i] = cgm.Tag{Category: tagParts[0], Value: tagParts[1]}
+	}
+
+	return tagList
+}
+
+func (c *Check) NewTagList(tagSets ...[]string) []string {
+	totTags := 0
+	if len(tagSets) == 0 {
+		return []string{}
+	}
+	for i := 0; i < len(tagSets); i++ {
+		totTags += len(tagSets[i])
+	}
+
+	tagList := make([]string, totTags)
+	idx := 0
+	for i := 0; i < len(tagSets); i++ {
+		for j := 0; j < len(tagSets[i]); j++ {
+			tagList[idx] = tagSets[i][j]
+			idx++
+		}
 	}
 
 	return tagList
@@ -98,28 +122,50 @@ func encodeTags(tags []string, useBase64 bool) string {
 			break
 		}
 
-		if !strings.Contains(tag, ":") {
+		if tag == "" {
 			continue
 		}
 
-		tagParts := strings.SplitN(tag, ":", 2)
-		if len(tagParts) != 2 {
-			log.Warn().Str("tag", tag).Msg("stream tags must have a category and value, ignoring tag")
-			continue // invalid tag, skip it
+		tc := ""
+		tv := ""
+
+		if strings.Contains(tag, ":") {
+			tagParts := strings.SplitN(tag, ":", 2)
+			if len(tagParts) != 2 {
+				log.Warn().Str("tag", tag).Msg("stream tags must have a category and value, ignoring tag")
+				continue // invalid tag, skip it
+			}
+			tc = tagParts[0]
+			tv = tagParts[1]
+		} else {
+			tc = tag
 		}
-		tc := tagParts[0]
-		tv := tagParts[1]
+
+		if len(tc) > MaxTagCat {
+			log.Warn().Str("tag", tag).Msgf("tag category longer than %d", MaxTagCat)
+			continue
+		} else if len(tc)+len(tv) > MaxTagLen {
+			log.Warn().Str("tag", tag).Msgf("tag length longer than %d", MaxTagLen)
+			continue
+		}
 
 		encodeFmt := `b"%s"`
 		encodedSig := `b"` // has cat or val been previously (or manually) base64 encoded and formatted
+
+		tg := ""
 		if !strings.HasPrefix(tc, encodedSig) {
 			tc = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, strings.ToLower(tc)))))
 		}
-		if !strings.HasPrefix(tv, encodedSig) {
-			tv = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, tv))))
+		tg += tc
+
+		if tv != "" {
+			if !strings.HasPrefix(tv, encodedSig) {
+				tv = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, tv))))
+			}
+			tg += ":" + tv
 		}
 
-		tagList = append(tagList, tc+":"+tv)
+		tagList = append(tagList, tg)
 	}
 
 	return strings.Join(tagList, ",")
