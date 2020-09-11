@@ -130,7 +130,7 @@ func (h *Health) deployments(ctx context.Context, cs *kubernetes.Clientset, ts *
 	}
 
 	if len(metrics) == 0 {
-		h.log.Warn().Msg("no meta deployment health telemetry to submit")
+		// h.log.Warn().Msg("no meta deployment health telemetry to submit")
 		return
 	}
 
@@ -166,7 +166,7 @@ func (h *Health) daemonsets(ctx context.Context, cs *kubernetes.Clientset, ts *t
 	}
 
 	if len(metrics) == 0 {
-		h.log.Warn().Msg("no meta daemonset health telemetry to submit")
+		// h.log.Warn().Msg("no meta daemonset health telemetry to submit")
 		return
 	}
 
@@ -202,7 +202,7 @@ func (h *Health) statefulsets(ctx context.Context, cs *kubernetes.Clientset, ts 
 	}
 
 	if len(metrics) == 0 {
-		h.log.Warn().Msg("no meta statefulset health telemetry to submit")
+		// h.log.Warn().Msg("no meta statefulset health telemetry to submit")
 		return
 	}
 
