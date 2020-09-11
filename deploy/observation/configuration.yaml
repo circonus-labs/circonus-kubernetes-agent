@@ -1,0 +1,47 @@
+##
+## NOTE: Required attributes must be set:
+##       1. circonus-api-key
+##       2. kubernetes-name
+##
+---
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      # versioned, cadence independent of app version
+      name: cka-secrets-v1
+      labels:
+          app.kubernetes.io/name: circonus-kubernetes-agent
+    stringData:
+      ## REQUIRED -- Circonus API Key
+      circonus-api-key: ""
+
+---
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+      # versioned, cadence independent of app version
+      name: cka-config-v1
+      labels:
+          app.kubernetes.io/name: circonus-kubernetes-agent
+  data:
+      ## REQUIRED -- name identifying the cluster, used in the check 
+      ## title and check target when check is created (so agent can find
+      ## the check again when pod is re-deployed) also used in various
+      ## tags on rules, contact group, etc.
+      kubernetes-name: ""
+      ##
+      ## do not edit below for observation mode
+      ##
+      metric-filters.json: |
+        {
+          "metric_filters": [
+            ["allow", "^collect_.*$", "agent collection stats"],
+            ["deny", "^.+$", "all other metrics"]
+          ]
+        }
+      default-alerts.json: |
+        {
+          "contact": {
+            "email": ""
+          }
+        }
