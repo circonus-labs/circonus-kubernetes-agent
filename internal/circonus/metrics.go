@@ -162,6 +162,13 @@ func (c *Check) QueueMetricSample(
 
 	if len(c.metricFilters) > 0 {
 		rejectMetric := true
+		origName := metricName
+		if strings.Contains(metricName, "|ST") {
+			parts := strings.SplitN(metricName, "|", 2)
+			if len(parts) == 2 {
+				metricName = parts[0]
+			}
+		}
 		for _, mf := range c.metricFilters {
 			if mf.Filter.MatchString(metricName) {
 				if mf.Allow {
@@ -170,6 +177,7 @@ func (c *Check) QueueMetricSample(
 				}
 			}
 		}
+		metricName = origName
 		if rejectMetric {
 			c.statsmu.Lock()
 			c.stats.LocFiltered++

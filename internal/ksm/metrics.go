@@ -205,19 +205,35 @@ func (ksm *KSM) queueMetrics(
 
 	// add derived metrics
 	m := ksm.cgmMetrics.FlushMetrics()
-	mts := uint64(0)
-	if ts != nil {
-		mts = makeTimestamp(ts)
-	}
+	// mts := uint64(0)
+	// if ts != nil {
+	// 	mts = makeTimestamp(ts)
+	// }
 	for mn, mv := range *m {
-		sample := circonus.MetricSample{
-			Value: mv.Value,
-			Type:  mv.Type,
+		switch mv.Type {
+		case circonus.MetricTypeString:
+			_ = check.QueueMetricSample(
+				metrics, mn,
+				circonus.MetricTypeString,
+				[]string{}, []string{},
+				mv.Value, ts)
+		case circonus.MetricTypeUint64:
+			_ = check.QueueMetricSample(
+				metrics, mn,
+				circonus.MetricTypeUint64,
+				[]string{}, []string{},
+				mv.Value, ts)
+		default:
+			logger.Warn().Str("name", mn).Interface("mv", mv).Msg("unrecognized metric type")
 		}
-		if mts > 0 {
-			sample.Timestamp = mts
-		}
-		metrics[mn] = sample
+		// sample := circonus.MetricSample{
+		// 	Value: mv.Value,
+		// 	Type:  mv.Type,
+		// }
+		// if mts > 0 {
+		// 	sample.Timestamp = mts
+		// }
+		// metrics[mn] = sample
 	}
 
 	if len(metrics) == 0 {
@@ -338,6 +354,6 @@ func keyTags(check *circonus.Check, originalTags []string, baseTags cgm.Tags, ke
 }
 
 // makeTimestamp returns timestamp in ms units for _ts metric value
-func makeTimestamp(ts *time.Time) uint64 {
-	return uint64(ts.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)))
-}
+// func makeTimestamp(ts *time.Time) uint64 {
+// 	return uint64(ts.UTC().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond)))
+// }
