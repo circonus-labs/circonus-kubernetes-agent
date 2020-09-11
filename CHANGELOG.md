@@ -1,3 +1,23 @@
+# v0.10.0
+
+* doc: add observation deployment instructions
+* add: observation/sizing mode deployment manifests `deploy/observation`
+* upd: remove log warning when no metrics sent for specific collectors for sizing mode
+* add: total events counter metric
+* upd: rename internal tracking stats for clarity when logged
+* add: ability to disable default alert rulesets
+* upd: expose threshold & window settings for all default rulesets
+* upd: refactor stream tag handling
+* add: agent metric mutex
+* upd: reset any observed event counters
+* add: event counter metrics
+* upd: validate tag category and value lengths to match broker rules
+* add: max tag len, max category len
+* add: timestamp to derived ksm metrics
+* add: `collect_k8s_pod_count` metric
+* add: `collect_k8s_node_count` metric
+* fix: whitespace
+
 # v0.9.10
 
 * fix: separate ksm and agent metrics
