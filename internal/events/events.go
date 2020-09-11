@@ -127,6 +127,7 @@ type abridgedEvent struct {
 }
 
 func (e *Events) submitEvent(ctx context.Context, event *corev1.Event) {
+	e.check.IncrementCounter("collect_k8s_event_count", cgm.Tags{}) // aggregate
 	e.check.IncrementCounter("collect_k8s_event_count", cgm.Tags{
 		cgm.Tag{Category: "namespace", Value: event.InvolvedObject.Namespace},
 		cgm.Tag{Category: "kind", Value: event.InvolvedObject.Kind},
