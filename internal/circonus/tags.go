@@ -72,6 +72,8 @@ func (c *Check) NewTagList(tagSets ...[]string) []string {
 		}
 	}
 
+	sort.Strings(tagList)
+
 	return tagList
 }
 
@@ -157,12 +159,13 @@ func encodeTags(tags []string, useBase64 bool) string {
 			tc = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, strings.ToLower(tc)))))
 		}
 		tg += tc
+		tg += ":" // always add the colon, so category only tags will work (the metric is rejected w/o the colon)
 
 		if tv != "" {
 			if !strings.HasPrefix(tv, encodedSig) {
 				tv = fmt.Sprintf(encodeFmt, base64.StdEncoding.EncodeToString([]byte(strings.Map(removeSpaces, tv))))
 			}
-			tg += ":" + tv
+			tg += tv
 		}
 
 		tagList = append(tagList, tg)
