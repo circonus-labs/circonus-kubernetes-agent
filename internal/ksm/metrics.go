@@ -131,11 +131,13 @@ func (ksm *KSM) queueMetrics(
 					case "kube_pod_container_status_waiting_reason", "kube_pod_init_container_status_waiting_reason":
 						fallthrough
 					case "kube_pod_container_status_terminated_reason", "kube_pod_init_container_status_terminated_reason":
-						reason, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "reason")
+						// text metrics removed to reduce load - not used in dashboard
+						// reason, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "reason")
+						_, _, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "reason")
 						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
-						if val > 0 {
-							ksm.cgmMetrics.SetTextValueWithTags(customMetricName, fullTags, reason)
-						}
+						// if val > 0 {
+						// 	ksm.cgmMetrics.SetTextValueWithTags(customMetricName, fullTags, reason)
+						// }
 						// continue -- when original ksm metric no longer needed
 					case "kube_pod_status_phase":
 						phase, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "phase")
@@ -145,28 +147,35 @@ func (ksm *KSM) queueMetrics(
 						}
 						// continue -- when original ksm metric no longer needed
 					case "kube_pod_status_ready", "kube_pod_status_scheduled":
-						condition, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "condition")
+						// text metrics removed to reduce load - not used in dashboard
+						// condition, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "condition")
+						_, _, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "condition")
 						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
-						if val > 0 {
-							ksm.cgmMetrics.SetTextValueWithTags(customMetricName, fullTags, condition)
-						}
+						// if val > 0 {
+						// 	ksm.cgmMetrics.SetTextValueWithTags(customMetricName, fullTags, condition)
+						// }
 						// continue -- when original ksm metric no longer needed
-					case "kube_pod_container_status_running", "kube_pod_container_status_terminated", "kube_pod_container_status_waiting", "kube_pod_container_status_ready":
-						_, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "")
+					case "kube_pod_container_status_running",
+						"kube_pod_container_status_terminated",
+						"kube_pod_container_status_waiting",
+						"kube_pod_container_status_ready":
+						// text metrics removed to reduce load - not used in dashboard
+						// _, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "")
+						_, _, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "")
 						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
-						if val > 0 {
-							shortName := "pod_container_status"
-							switch metricName {
-							case "kube_pod_container_status_running":
-								ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "running")
-							case "kube_pod_container_status_terminated":
-								ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "terminated")
-							case "kube_pod_container_status_waiting":
-								ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "waiting")
-							case "kube_pod_container_status_ready":
-								ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "ready")
-							}
-						}
+						// if val > 0 {
+						// 	shortName := "pod_container_status"
+						// 	switch metricName {
+						// 	case "kube_pod_container_status_terminated":
+						// 		ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "terminated")
+						// 	case "kube_pod_container_status_waiting":
+						// 		ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "waiting")
+						// 	case "kube_pod_container_status_running":
+						// 		ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "running")
+						// 	case "kube_pod_container_status_ready":
+						// 		ksm.cgmMetrics.SetTextValueWithTags(shortName, fullTags, "ready")
+						// 	}
+						// }
 						// continue -- when original ksm metric no longer needed
 					}
 					_ = check.QueueMetricSample(
