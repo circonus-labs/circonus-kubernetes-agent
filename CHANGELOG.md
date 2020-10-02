@@ -1,5 +1,6 @@
 # v0.10.0
 
+* upd: send node conditions when status changes
 * doc: add observation deployment instructions
 * add: observation/sizing mode deployment manifests `deploy/observation`
 * upd: remove log warning when no metrics sent for specific collectors for sizing mode
