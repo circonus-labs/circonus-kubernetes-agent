@@ -11,11 +11,14 @@ import (
 
 func (nc *Collector) queueCPU(dest map[string]circonus.MetricSample, stats *cpu, isNode bool, parentStreamTags []string, parentMeasurementTags []string) {
 	cores := "usageNanoCores"
+	mcores := "usageMilliCores"
 	seconds := "usageCoreNanoSeconds"
 	utilization := "utilization"
 
 	streamTags := nc.check.NewTagList(parentStreamTags, []string{"resource:cpu"})
 	_ = nc.check.QueueMetricSample(dest, cores, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, stats.UsageNanoCores, nc.ts)
+	_ = nc.check.QueueMetricSample(dest, mcores, circonus.MetricTypeUint64, streamTags, parentMeasurementTags, float64(stats.UsageNanoCores)*1e-06, nc.ts)
+
 	{
 		st := nc.check.NewTagList(streamTags, []string{"units:seconds"})
 		_ = nc.check.QueueMetricSample(dest, seconds, circonus.MetricTypeUint64, st, parentMeasurementTags, stats.UsageCoreNanoSeconds, nc.ts)
@@ -31,8 +34,11 @@ func (nc *Collector) queueCPU(dest map[string]circonus.MetricSample, stats *cpu,
 				if ns.LastCPUNanoSeconds > 0 && stats.UsageCoreNanoSeconds > 0 && ns.CPUCapacity > 0 {
 					// calc ref: https://github.com/kubernetes-retired/heapster/issues/650#issuecomment-147795824
 					usage := float64(stats.UsageCoreNanoSeconds - ns.LastCPUNanoSeconds)
-					capacity := float64(ns.CPUCapacity * 1e+9)
+					capacity := float64(ns.CPUCapacity * 1e9)
 					pct = usage / capacity
+					if pct > 100 {
+						pct = 100
+					}
 				}
 
 				_ = nc.check.QueueMetricSample(dest, utilization, circonus.MetricTypeFloat64, st, parentMeasurementTags, pct, nc.ts)

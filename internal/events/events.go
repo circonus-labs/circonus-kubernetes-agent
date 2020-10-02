@@ -86,7 +86,6 @@ func (e *Events) Start(ctx context.Context, tlsConfig *tls.Config) {
 	}
 
 	go func() {
-		var streamTags []string
 		var measurementTags []string
 		ets := time.Now()
 		ae := abridgedEvent{
@@ -106,7 +105,7 @@ func (e *Events) Start(ctx context.Context, tlsConfig *tls.Config) {
 			metrics,
 			"events",
 			circonus.MetricTypeString,
-			streamTags, measurementTags,
+			[]string{"__rollup:false"}, measurementTags,
 			string(data),
 			&ets)
 		if err := e.check.SubmitMetrics(ctx, metrics, e.log.With().Str("type", "event").Logger(), true); err != nil {
@@ -133,6 +132,7 @@ func (e *Events) submitEvent(ctx context.Context, event *corev1.Event) {
 		cgm.Tag{Category: "kind", Value: event.InvolvedObject.Kind},
 		cgm.Tag{Category: "reason", Value: event.Reason},
 		cgm.Tag{Category: "source", Value: release.NAME},
+		cgm.Tag{Category: "__rollup", Value: "false"},
 	})
 
 	ets := event.GetCreationTimestamp().UTC()
@@ -150,14 +150,13 @@ func (e *Events) submitEvent(ctx context.Context, event *corev1.Event) {
 		return
 	}
 
-	var streamTags []string
 	var measurementTags []string
 	metrics := make(map[string]circonus.MetricSample)
 	_ = e.check.QueueMetricSample(
 		metrics,
 		"events",
 		circonus.MetricTypeString,
-		streamTags, measurementTags,
+		[]string{"__rollup:false"}, measurementTags,
 		string(data),
 		&ets)
 
