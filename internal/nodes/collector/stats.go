@@ -5,11 +5,16 @@
 
 package collector
 
-import "sync"
+import (
+	"sync"
+
+	v1 "k8s.io/api/core/v1"
+)
 
 type NodeStat struct {
 	CPUCapacity        uint64
 	LastCPUNanoSeconds uint64
+	Conditions         map[v1.NodeConditionType]v1.ConditionStatus
 }
 
 var (
@@ -19,6 +24,12 @@ var (
 
 func init() {
 	nodeStats = make(map[string]NodeStat)
+}
+
+func NewNodeStat() NodeStat {
+	return NodeStat{
+		Conditions: make(map[v1.NodeConditionType]v1.ConditionStatus),
+	}
 }
 
 func SetNodeStat(nodeName string, stat NodeStat) {

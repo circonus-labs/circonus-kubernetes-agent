@@ -145,31 +145,44 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 		_ = nc.check.QueueMetricSample(
 			metrics,
 			"node",
-			circonus.MetricTypeString,
+			circonus.MetricTypeInt32,
 			streamTags, parentMeasurementTags,
-			nc.node.Name,
+			1,
 			nc.ts)
 	}
 
 	{ // conditions
 		streamTags := nc.check.NewTagList(parentStreamTags, []string{"status:condition"})
+		ns, found := GetNodeStat(nc.node.Name) // cache conditions and only emit when changed?
+		if !found {
+			ns = NewNodeStat()
+		}
 		for _, cond := range nc.node.Status.Conditions {
 			if nc.done() {
 				break
 			}
-			_ = nc.check.QueueMetricSample(
-				metrics,
-				string(cond.Type),
-				circonus.MetricTypeString,
-				streamTags, parentMeasurementTags,
-				cond.Message,
-				nc.ts)
+			emit := true
+			if lastCondStatus, ok := ns.Conditions[cond.Type]; ok {
+				if lastCondStatus == cond.Status {
+					emit = false
+				}
+			}
+			ns.Conditions[cond.Type] = cond.Status
+			if emit {
+				_ = nc.check.QueueMetricSample(
+					metrics,
+					string(cond.Type),
+					circonus.MetricTypeString,
+					streamTags, parentMeasurementTags,
+					cond.Message,
+					nc.ts)
+			}
 		}
+		SetNodeStat(nc.node.Name, ns)
 	}
 
 	{ // capacity and allocatable
 		streamTags := nc.check.NewTagList(parentStreamTags)
-		cpu := int64(0)
 		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Cpu().String()); err == nil {
 			if cpu, ok := qty.AsInt64(); ok {
 				_ = nc.check.QueueMetricSample(
@@ -179,27 +192,21 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 					streamTags, parentMeasurementTags,
 					uint64(cpu),
 					nc.ts)
-				if ns, ok := GetNodeStat(nc.node.Name); ok {
-					ns.CPUCapacity = uint64(cpu)
-					SetNodeStat(nc.node.Name, ns)
-				} else {
-					ns := NodeStat{
-						CPUCapacity: uint64(cpu),
-					}
-					SetNodeStat(nc.node.Name, ns)
+				ns, ok := GetNodeStat(nc.node.Name)
+				if !ok {
+					ns = NewNodeStat()
 				}
+				ns.CPUCapacity = uint64(cpu)
+				SetNodeStat(nc.node.Name, ns)
 			}
 		} else {
 			nc.log.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.Cpu().String()).Msg("converting capacity.cpu")
-		}
-		if ns, ok := GetNodeStat(nc.node.Name); ok {
-			ns.CPUCapacity = uint64(cpu)
-			SetNodeStat(nc.node.Name, ns)
-		} else {
-			ns := NodeStat{
-				CPUCapacity: uint64(cpu),
+			ns, ok := GetNodeStat(nc.node.Name)
+			if !ok {
+				ns = NewNodeStat()
+				ns.CPUCapacity = uint64(1) // use 1 as a default placeholder
+				SetNodeStat(nc.node.Name, ns)
 			}
-			SetNodeStat(nc.node.Name, ns)
 		}
 
 		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Pods().String()); err == nil {
@@ -269,7 +276,7 @@ type statsSummaryNode struct {
 	Memory           memory      `json:"memory"`
 	Network          network     `json:"network"`
 	FS               fs          `json:"fs"`
-	Runtime          runtime     `json:"runtime"`
+	RuntimeFS        runtimeFS   `json:"runtime"`
 	Rlimit           rlimit      `json:"rlimit"`
 }
 
@@ -304,7 +311,7 @@ type fs struct {
 	Inodes         uint64 `json:"inodes"`
 	InodesUsed     uint64 `json:"inodesUsed"`
 }
-type runtime struct {
+type runtimeFS struct {
 	ImageFs fs `json:"imageFs"`
 }
 type rlimit struct {
@@ -399,7 +406,7 @@ func (nc *Collector) summaryNode(node *statsSummaryNode, parentStreamTags []stri
 	nc.queueMemory(metrics, &node.Memory, parentStreamTags, parentMeasurementTags, true)
 	nc.queueNetwork(metrics, &node.Network, parentStreamTags, parentMeasurementTags)
 	nc.queueFS(metrics, &node.FS, parentStreamTags, parentMeasurementTags)
-	nc.queueRuntimeImageFS(metrics, &node.Runtime.ImageFs, parentStreamTags, parentMeasurementTags)
+	nc.queueRuntimeImageFS(metrics, &node.RuntimeFS.ImageFs, parentStreamTags, parentMeasurementTags)
 	nc.queueRlimit(metrics, &node.Rlimit, parentStreamTags, parentMeasurementTags)
 
 	if len(metrics) == 0 {
@@ -460,14 +467,29 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 
 	metrics := make(map[string]circonus.MetricSample)
 
+	// clientset
+	clientset, err := k8s.GetClient(nc.cfg)
+	if err != nil {
+		nc.log.Error().Err(err).Msg("initializing client set for pods, abandoning collection")
+		return
+	}
+
 	for _, pod := range stats.Pods {
 		if nc.done() {
 			break
 		}
-		collect, podLabels, err := nc.getPodLabels(pod.PodRef.Namespace, pod.PodRef.Name)
+		podSpec, err := clientset.CoreV1().Pods(pod.PodRef.Namespace).Get(pod.PodRef.Name, metav1.GetOptions{})
 		if err != nil {
-			nc.log.Warn().Err(err).Str("pod", pod.PodRef.Name).Str("ns", pod.PodRef.Namespace).Msg("fetching pod labels")
+			nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
+				cgm.Tag{Category: "source", Value: release.NAME},
+				cgm.Tag{Category: "request", Value: "pod"},
+				cgm.Tag{Category: "target", Value: "api-server"},
+			})
+			nc.log.Error().Err(err).Str("pod", pod.PodRef.Name).Str("ns", pod.PodRef.Namespace).Msg("fetching pod, skipping")
+			continue
 		}
+
+		collect, podLabels := nc.getPodLabels(podSpec)
 		if !collect {
 			continue
 		}
@@ -500,6 +522,8 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 			_ = nc.check.QueueMetricSample(metrics, "used", circonus.MetricTypeUint64, streamTags, parentMeasurementTags, totUsed, nc.ts)
 		}
 
+		nc.resourceMetrics(metrics, podSpec.Spec, podStreamTags, parentMeasurementTags)
+
 		if nc.cfg.IncludeContainers {
 			for _, container := range pod.Containers {
 				if nc.done() {
@@ -524,6 +548,108 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 	}
 	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "pods").Logger(), true); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
+	}
+}
+
+// resourceMetrics emits pod and container resource requests and limits (if they are set)
+func (nc *Collector) resourceMetrics(metrics map[string]circonus.MetricSample, podSpec v1.PodSpec, parentStreamTags []string, parentMeasurementTags []string) {
+	lcpu := int64(0)
+	lmem := int64(0)
+	les := int64(0)
+	rcpu := int64(0)
+	rmem := int64(0)
+	res := int64(0)
+	for _, container := range podSpec.Containers {
+		ctags := nc.check.NewTagList(parentStreamTags, []string{"container_name:" + container.Name})
+		btags := nc.check.NewTagList(ctags, []string{"units:bytes"})
+		{
+			// limits
+			if qty, err := resource.ParseQuantity(container.Resources.Limits.Cpu().String()); err == nil {
+				if v := qty.MilliValue(); v > 0 {
+					lcpu += v
+					if nc.cfg.IncludeContainers {
+						mtags := nc.check.NewTagList(ctags, []string{"resource:cpu"})
+						_ = nc.check.QueueMetricSample(metrics, "resource_limit", circonus.MetricTypeInt64, mtags, parentMeasurementTags, v, nc.ts)
+					}
+				}
+			}
+			if x := container.Resources.Limits.Memory(); x != nil {
+				if v, ok := x.AsInt64(); ok && v > 0 {
+					lmem += v
+					if nc.cfg.IncludeContainers {
+						mtags := nc.check.NewTagList(btags, []string{"resource:memory"})
+						_ = nc.check.QueueMetricSample(metrics, "resource_limit", circonus.MetricTypeInt64, mtags, parentMeasurementTags, v, nc.ts)
+					}
+				}
+			}
+			if x := container.Resources.Limits.StorageEphemeral(); x != nil {
+				if v, ok := x.AsInt64(); ok && v > 0 {
+					les += v
+					if nc.cfg.IncludeContainers {
+						mtags := nc.check.NewTagList(btags, []string{"resource:ephemeral_storage"})
+						_ = nc.check.QueueMetricSample(metrics, "resource_limit", circonus.MetricTypeInt64, mtags, parentMeasurementTags, v, nc.ts)
+					}
+				}
+			}
+		}
+		{
+			// requests
+			if qty, err := resource.ParseQuantity(container.Resources.Requests.Cpu().String()); err == nil {
+				if v := qty.MilliValue(); v > 0 {
+					rcpu += v
+					if nc.cfg.IncludeContainers {
+						mtags := nc.check.NewTagList(ctags, []string{"resource:cpu"})
+						_ = nc.check.QueueMetricSample(metrics, "resource_request", circonus.MetricTypeInt64, mtags, parentMeasurementTags, v, nc.ts)
+					}
+				}
+			}
+			if x := container.Resources.Requests.Memory(); x != nil {
+				if v, ok := x.AsInt64(); ok && v > 0 {
+					rmem += v
+					if nc.cfg.IncludeContainers {
+						mtags := nc.check.NewTagList(btags, []string{"resource:memory"})
+						_ = nc.check.QueueMetricSample(metrics, "resource_request", circonus.MetricTypeInt64, mtags, parentMeasurementTags, v, nc.ts)
+					}
+				}
+			}
+			if x := container.Resources.Requests.StorageEphemeral(); x != nil {
+				if v, ok := x.AsInt64(); ok && v > 0 {
+					res += v
+					if nc.cfg.IncludeContainers {
+						mtags := nc.check.NewTagList(btags, []string{"resource:ephemeral_storage"})
+						_ = nc.check.QueueMetricSample(metrics, "resource_ephemeral_storage", circonus.MetricTypeInt64, mtags, parentMeasurementTags, v, nc.ts)
+					}
+				}
+			}
+		}
+	}
+
+	btags := nc.check.NewTagList(parentStreamTags, []string{"units:bytes"})
+	// pod limits
+	if lcpu > 0 {
+		mtags := nc.check.NewTagList(parentStreamTags, []string{"resource:cpu"})
+		_ = nc.check.QueueMetricSample(metrics, "resource_limit", circonus.MetricTypeInt64, mtags, parentMeasurementTags, lcpu, nc.ts)
+	}
+	if lmem > 0 {
+		mtags := nc.check.NewTagList(btags, []string{"resource:memory"})
+		_ = nc.check.QueueMetricSample(metrics, "resource_limit", circonus.MetricTypeInt64, mtags, parentMeasurementTags, lmem, nc.ts)
+	}
+	if les > 0 {
+		mtags := nc.check.NewTagList(btags, []string{"resource:ephemeral_storage"})
+		_ = nc.check.QueueMetricSample(metrics, "resource_limit", circonus.MetricTypeInt64, mtags, parentMeasurementTags, les, nc.ts)
+	}
+	// pod requests
+	if rcpu > 0 {
+		mtags := nc.check.NewTagList(parentStreamTags, []string{"resource:cpu"})
+		_ = nc.check.QueueMetricSample(metrics, "resource_request", circonus.MetricTypeInt64, mtags, parentMeasurementTags, rcpu, nc.ts)
+	}
+	if rmem > 0 {
+		mtags := nc.check.NewTagList(btags, []string{"resource:memory"})
+		_ = nc.check.QueueMetricSample(metrics, "resource_request", circonus.MetricTypeInt64, mtags, parentMeasurementTags, rmem, nc.ts)
+	}
+	if res > 0 {
+		mtags := nc.check.NewTagList(btags, []string{"resource:ephemeral_storage"})
+		_ = nc.check.QueueMetricSample(metrics, "resource_request", circonus.MetricTypeInt64, mtags, parentMeasurementTags, res, nc.ts)
 	}
 }
 
@@ -611,37 +737,8 @@ func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags [
 	}
 }
 
-func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error) {
-	collect := false
-	tags := []string{}
-
-	start := time.Now()
-
-	clientset, err := k8s.GetClient(nc.cfg)
-	if err != nil {
-		nc.log.Error().Err(err).Msg("initializing client set for pod labels, abandoning collection")
-		return collect, tags, err
-	}
-
-	pod, err := clientset.CoreV1().Pods(ns).Get(name, metav1.GetOptions{})
-	if err != nil {
-		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "source", Value: release.NAME},
-			cgm.Tag{Category: "request", Value: "pod"},
-			cgm.Tag{Category: "target", Value: "api-server"},
-		})
-		nc.log.Error().Err(err).Str("pod", name).Str("ns", ns).Msg("fetching pod labels")
-		return collect, tags, err
-	}
-
-	nc.check.AddHistSample("collect_latency", cgm.Tags{
-		cgm.Tag{Category: "request", Value: "pod-labels"},
-		cgm.Tag{Category: "target", Value: "api-server"},
-		cgm.Tag{Category: "source", Value: release.NAME},
-		cgm.Tag{Category: "units", Value: "milliseconds"},
-	}, float64(time.Since(start).Milliseconds()))
-
-	collect = true
+func (nc *Collector) getPodLabels(pod *v1.Pod) (bool, []string) {
+	collect := true
 	if nc.cfg.PodLabelKey != "" {
 		collect = false
 		if v, ok := pod.Labels[nc.cfg.PodLabelKey]; ok {
@@ -652,16 +749,21 @@ func (nc *Collector) getPodLabels(ns string, name string) (bool, []string, error
 			}
 		}
 	}
-
-	tags = labelsToTags(pod.Labels)
-	return collect, tags, nil
+	return collect, labelsToTags(pod.Labels)
 }
 
 func labelsToTags(labels map[string]string) []string {
 	tags := make([]string, len(labels))
 	idx := 0
 	for k, v := range labels {
-		tags[idx] = k + ":" + v
+		if k == "" {
+			continue
+		}
+		tag := k
+		if v != "" {
+			tag += ":" + v
+		}
+		tags[idx] = tag
 		idx++
 	}
 	return tags
