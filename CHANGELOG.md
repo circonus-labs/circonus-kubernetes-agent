@@ -1,6 +1,16 @@
-# v0.10.0
+# v0.10.1
 
 * upd: send node conditions when status changes
+* upd: remove unused text metrics
+* add: usage millicores for res req/lim comparisson
+* fix: need ':' when category only tag
+* upd: ensure sorted tag list
+* add: resource request/limit metric filters
+* add: hpa metric filters
+* upd: add rollup:false to events
+    
+# v0.10.0
+
 * doc: add observation deployment instructions
 * add: observation/sizing mode deployment manifests `deploy/observation`
 * upd: remove log warning when no metrics sent for specific collectors for sizing mode
