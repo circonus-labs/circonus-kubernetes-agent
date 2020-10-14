@@ -1,3 +1,8 @@
+# v0.10.2
+
+* upd: add on absence rule to all default rulesets in order to clear stale alerts
+* upd: remove previously created ruleset if configuration updated to disable a default ruleset
+
 # v0.10.1
 
 * upd: send node conditions when status changes
@@ -8,7 +13,7 @@
 * add: resource request/limit metric filters
 * add: hpa metric filters
 * upd: add rollup:false to events
-    
+
 # v0.10.0
 
 * doc: add observation deployment instructions

@@ -185,10 +185,6 @@ func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da Default
 
 	for rid, ruleTemplate := range rules {
 		ruleSettings, haveSettings := da.RuleSettings[rid]
-		if haveSettings && ruleSettings.Disabled {
-			logger.Warn().Str("rule_id", rid).Msg("disabled, skipping")
-			continue
-		}
 
 		if ruleTemplate.Name == "" {
 			ruleTemplate.Name = rid + " (" + clusterName + ")"
@@ -228,30 +224,30 @@ func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da Default
 						Str("threshold", ruleSettings.Threshold).
 						Msg("invalid threshold, acceptable 1-99, using default")
 				default:
-					ruleTemplate.Rules[0].Value = ruleSettings.Threshold
+					ruleTemplate.Rules[1].Value = ruleSettings.Threshold
 				}
 				if ruleSettings.Window > 59 {
-					ruleTemplate.Rules[0].WindowingDuration = ruleSettings.Window
+					ruleTemplate.Rules[1].WindowingDuration = ruleSettings.Window
 				}
 			case "deployment_glitches", "daemonsets_not_ready", "statefulsets_not_ready":
 				if ruleSettings.MaxThreshold != "" {
-					ruleTemplate.Rules[0].Value = ruleSettings.MaxThreshold
+					ruleTemplate.Rules[1].Value = ruleSettings.MaxThreshold
 				}
 				if ruleSettings.MaxWindow > 59 {
-					ruleTemplate.Rules[0].WindowingDuration = ruleSettings.MaxWindow
+					ruleTemplate.Rules[1].WindowingDuration = ruleSettings.MaxWindow
 				}
 				if ruleSettings.MinThreshold != "" {
-					ruleTemplate.Rules[1].Value = ruleSettings.MinThreshold
+					ruleTemplate.Rules[2].Value = ruleSettings.MinThreshold
 				}
 				if ruleSettings.MinWindow > 59 {
-					ruleTemplate.Rules[0].WindowingDuration = ruleSettings.MinWindow
+					ruleTemplate.Rules[2].WindowingDuration = ruleSettings.MinWindow
 				}
 			default:
 				if ruleSettings.Threshold != "" {
-					ruleTemplate.Rules[0].Value = ruleSettings.Threshold
+					ruleTemplate.Rules[1].Value = ruleSettings.Threshold
 				}
 				if ruleSettings.Window > 59 {
-					ruleTemplate.Rules[0].WindowingDuration = ruleSettings.Window
+					ruleTemplate.Rules[1].WindowingDuration = ruleSettings.Window
 				}
 			}
 		}
@@ -266,6 +262,10 @@ func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da Default
 			continue
 		}
 		if len(*existingRules) == 0 {
+			if haveSettings && ruleSettings.Disabled {
+				logger.Warn().Str("rule_id", rid).Msg("disabled, skipping")
+				continue
+			}
 			logger.Debug().Str("rule_id", rid).Msg("creating rule")
 			if err := makeRule(client, logger, ruleTemplate, true); err != nil {
 				logger.Warn().Err(err).Str("rule_id", rid).Interface("rule_cfg", ruleTemplate).Msg("creating rule")
@@ -286,7 +286,6 @@ func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da Default
 		ruleTemplate.CID = origRule.CID
 		ruleTemplate.Host = origRule.Host
 		ruleTemplate.Tags = addTag(origRule.Tags, clusterTag)
-		// ruleTemplate.Derive = origRule.Derive
 		if len(origRule.ContactGroups) > 0 {
 			for sevLevel, cgList := range origRule.ContactGroups {
 				if sevLevel != 1 {
@@ -315,6 +314,12 @@ func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da Default
 		case origRule.MetricName != ruleTemplate.MetricName:
 			delete = true
 		case origRule.Filter != ruleTemplate.Filter:
+			delete = true
+		}
+
+		// delete disabled rule if found in search
+		if haveSettings && ruleSettings.Disabled {
+			logger.Warn().Str("rule_id", rid).Msg("disabled, removing old ruleset")
 			delete = true
 		}
 
@@ -428,6 +433,15 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "metric_type": "numeric",
         "name": "Kubernetes CrashLoops ({cluster_name})",
         "rules": [
+			{
+				"wait": 0,
+				"severity": 0,
+				"windowing_duration": 300,
+				"windowing_min_duration": 0,
+				"criteria": "on absence",
+				"windowing_function": null,
+				"value": 900
+        	},
             {
                 "criteria": "max value",
                 "severity": 1,
@@ -444,6 +458,15 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "metric_type": "numeric",
         "name": "Kubernetes CrashLoops (Init) ({cluster_name})",
         "rules": [
+			{
+				"wait": 0,
+				"severity": 0,
+				"windowing_duration": 300,
+				"windowing_min_duration": 0,
+				"criteria": "on absence",
+				"windowing_function": null,
+				"value": 900
+        	},
             {
                 "criteria": "max value",
                 "severity": 1,
@@ -460,6 +483,15 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "metric_type": "numeric",
         "name": "Kubernetes CPU ({cluster_name})",
         "rules": [
+			{
+				"wait": 0,
+				"severity": 0,
+				"windowing_duration": 300,
+				"windowing_min_duration": 0,
+				"criteria": "on absence",
+				"windowing_function": null,
+				"value": 900
+        	},
             {
                 "criteria": "max value",
                 "severity": 1,
@@ -477,6 +509,15 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "metric_type": "numeric",
         "name": "Kubernetes Disk Pressure ({cluster_name})",
         "rules": [
+			{
+				"wait": 0,
+				"severity": 0,
+				"windowing_duration": 300,
+				"windowing_min_duration": 0,
+				"criteria": "on absence",
+				"windowing_function": null,
+				"value": 900
+        	},
             {
                 "criteria": "max value",
                 "severity": 1,
@@ -493,6 +534,15 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "metric_type": "numeric",
         "name": "Kubernetes Memory Pressure ({cluster_name})",
         "rules": [
+			{
+				"wait": 0,
+				"severity": 0,
+				"windowing_duration": 300,
+				"windowing_min_duration": 0,
+				"criteria": "on absence",
+				"windowing_function": null,
+				"value": 900
+        	},
             {
                 "criteria": "max value",
                 "severity": 1,
@@ -509,6 +559,15 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "metric_type": "numeric",
         "name": "Kubernetes PID Pressure ({cluster_name})",
         "rules": [
+			{
+				"wait": 0,
+				"severity": 0,
+				"windowing_duration": 300,
+				"windowing_min_duration": 0,
+				"criteria": "on absence",
+				"windowing_function": null,
+				"value": 900
+        	},
             {
                 "criteria": "max value",
                 "severity": 1,
@@ -525,6 +584,15 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "metric_type": "numeric",
         "name": "Kubernetes Network Unavailable ({cluster_name})",
         "rules": [
+			{
+				"wait": 0,
+				"severity": 0,
+				"windowing_duration": 300,
+				"windowing_min_duration": 0,
+				"criteria": "on absence",
+				"windowing_function": null,
+				"value": 900
+        	},
             {
                 "criteria": "max value",
                 "severity": 1,
@@ -541,6 +609,15 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "metric_type": "numeric",
         "name": "Kubernetes Job Failures ({cluster_name})",
         "rules": [
+			{
+				"wait": 0,
+				"severity": 0,
+				"windowing_duration": 300,
+				"windowing_min_duration": 0,
+				"criteria": "on absence",
+				"windowing_function": null,
+				"value": 900
+        	},
             {
                 "criteria": "max value",
                 "severity": 1,
@@ -557,6 +634,15 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "metric_type": "numeric",
         "name": "Kubernetes Persistent Volume Failures ({cluster_name})",
         "rules": [
+			{
+				"wait": 0,
+				"severity": 0,
+				"windowing_duration": 300,
+				"windowing_min_duration": 0,
+				"criteria": "on absence",
+				"windowing_function": null,
+				"value": 900
+        	},
             {
                 "criteria": "max value",
                 "severity": 1,
@@ -573,6 +659,15 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "metric_type": "numeric",
         "name": "Kubernetes Pod Pending Delays ({cluster_name})",
         "rules": [
+			{
+				"wait": 0,
+				"severity": 0,
+				"windowing_duration": 300,
+				"windowing_min_duration": 0,
+				"criteria": "on absence",
+				"windowing_function": null,
+				"value": 900
+        	},
             {
                 "criteria": "max value",
                 "severity": 1,
@@ -590,6 +685,15 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "metric_type": "numeric",
         "name": "Kubernetes Deployment Glitches ({cluster_name})",
         "rules": [
+			{
+				"wait": 0,
+				"severity": 0,
+				"windowing_duration": 300,
+				"windowing_min_duration": 0,
+				"criteria": "on absence",
+				"windowing_function": null,
+				"value": 900
+        	},
             {
                 "criteria": "max value",
                 "severity": 1,
@@ -613,6 +717,15 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "metric_type": "numeric",
         "name": "Kubernetes DaemonSets Not Ready ({cluster_name})",
         "rules": [
+			{
+				"wait": 0,
+				"severity": 0,
+				"windowing_duration": 300,
+				"windowing_min_duration": 0,
+				"criteria": "on absence",
+				"windowing_function": null,
+				"value": 900
+        	},
             {
                 "criteria": "max value",
                 "severity": 1,
@@ -636,6 +749,15 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
         "metric_type": "numeric",
         "name": "Kubernetes StatefulSets Not Ready ({cluster_name})",
         "rules": [
+			{
+				"wait": 0,
+				"severity": 0,
+				"windowing_duration": 300,
+				"windowing_min_duration": 0,
+				"criteria": "on absence",
+				"windowing_function": null,
+				"value": 900
+        	},
             {
                 "criteria": "max value",
                 "severity": 1,
