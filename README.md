@@ -6,7 +6,7 @@ An agent designed to retrieve metrics from a Kubernetes cluster. Runs as a deplo
 
 ### kube-state-metrics
 
-For full functionality [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) should be installed in the cluster
+For full functionality a recent version of [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) should be installed in the cluster - see [kube-state-metrics deployment instructions](https://github.com/kubernetes/kube-state-metrics#kubernetes-deployment) for more information.
 
 ### DNS
 
