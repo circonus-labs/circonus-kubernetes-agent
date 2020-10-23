@@ -596,9 +596,11 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
             {
                 "criteria": "max value",
                 "severity": 1,
-                "wait": 0,
-                "windowing_duration": 300,
-                "value": "0"
+				"wait": 0,
+				"windowing_duration": 300,
+				"windowing_function": "average"
+				"windowing_min_duration": 0,
+                "value": "0.99"
             }
         ]
     },

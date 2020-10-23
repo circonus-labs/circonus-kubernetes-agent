@@ -72,7 +72,7 @@
             },
             "network_unavailable": {
               "disabled": false,
-              "threshold": "0",
+              "threshold": "0.99",
               "window": 300
             },
             "job_failures": {
