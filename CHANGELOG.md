@@ -1,3 +1,7 @@
+# v0.10.3
+
+* upd: alter default `network_unavailable` ruleset to help with spurious alerts CIRC-5849
+
 # v0.10.2
 
 * upd: add on absence rule to all default rulesets in order to clear stale alerts
