@@ -502,7 +502,7 @@ func (ksm *KSM) metrics(ctx context.Context, metricURL string) error {
 	measurementTags := []string{}
 
 	var parser expfmt.TextParser
-	if err := ksm.queueMetrics(ctx, parser, ksm.check, ksm.log, data, streamTags, measurementTags, ksm.ts); err != nil {
+	if err := ksm.queueMetrics(ctx, metricURL+" - metrics", parser, ksm.check, data, streamTags, measurementTags); err != nil {
 		return err
 	}
 
@@ -600,7 +600,7 @@ func (ksm *KSM) telemetry(ctx context.Context, telemetryURL string) error {
 	measurementTags := []string{}
 
 	var parser expfmt.TextParser
-	if err := ksm.queueMetrics(ctx, parser, ksm.check, ksm.log, data, streamTags, measurementTags, ksm.ts); err != nil {
+	if err := ksm.queueMetrics(ctx, telemetryURL+" - telemetry", parser, ksm.check, data, streamTags, measurementTags); err != nil {
 		return err
 	}
 
