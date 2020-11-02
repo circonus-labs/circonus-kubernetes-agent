@@ -52,7 +52,7 @@ func (h *Health) ID() string {
 func (h *Health) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time) {
 	var cfg *rest.Config
 	if c, err := rest.InClusterConfig(); err != nil {
-		if err != rest.ErrNotInCluster {
+		if !errors.Is(err, rest.ErrNotInCluster) {
 			h.log.Error().Err(err).Msg("unable to initialize health collector")
 			return
 		}

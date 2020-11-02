@@ -2,9 +2,10 @@ package k8s
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
-	"github.com/pkg/errors"
 	apimachineryversion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -13,8 +14,8 @@ import (
 func GetClient(clusterConfig *config.Cluster) (*kubernetes.Clientset, error) {
 	var cfg *rest.Config
 	if c, err := rest.InClusterConfig(); err != nil {
-		if err != rest.ErrNotInCluster {
-			return nil, errors.Wrap(err, "unable to configure k8s api client")
+		if !errors.Is(err, rest.ErrNotInCluster) {
+			return nil, fmt.Errorf("unable to configure k8s api client: %w", err)
 		}
 		// not in cluster, use supplied customer config for cluster
 		cfg = &rest.Config{}
@@ -33,7 +34,7 @@ func GetClient(clusterConfig *config.Cluster) (*kubernetes.Clientset, error) {
 
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return nil, errors.Wrap(err, "initializing k8s api Clientset")
+		return nil, fmt.Errorf("initializing k8s api Clientset: %w", err)
 	}
 
 	return clientset, nil

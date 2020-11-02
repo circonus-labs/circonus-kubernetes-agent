@@ -8,6 +8,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"expvar"
 	"fmt"
 	"net/http"
@@ -21,7 +22,6 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -61,7 +61,7 @@ func New() (*Agent, error) {
 	var cfg *config.Config
 
 	if err := viper.Unmarshal(&cfg); err != nil {
-		return nil, errors.Wrap(err, "parsing config")
+		return nil, fmt.Errorf("parsing config: %w", err)
 	}
 
 	// Set the hidden settings based on viper
@@ -125,7 +125,7 @@ func New() (*Agent, error) {
 					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 				}
 			}))
-		if err != nil && err != http.ErrServerClosed {
+		if !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal().Err(err).Msg("internal http server exited")
 		}
 	}()
