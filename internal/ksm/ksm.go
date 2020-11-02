@@ -267,6 +267,8 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 					wg.Done()
 				}()
 			}
+		} else {
+			ksm.log.Warn().Interface("addresses", addresses).Str("port_name", metricPortName).Msg("unable to find address for metric port")
 		}
 		if telemetryPortName != "" {
 			if addr, ok := addresses[telemetryPortName]; ok && addr != "" {
@@ -284,6 +286,8 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 					collected++
 					wg.Done()
 				}()
+			} else {
+				ksm.log.Warn().Interface("addresses", addresses).Str("port_name", telemetryPortName).Msg("unable to find address for telemetry port")
 			}
 		}
 	default:
@@ -336,6 +340,10 @@ func (ksm *KSM) getEndpointIP(metricPortName, telemetryPortName string) (map[str
 	metricAddress := ""
 	telemetryAddress := ""
 
+	if len(endpoints.Items) == 0 {
+		return nil, fmt.Errorf("no 'kube-state-metrics' endpoints found (FieldSelector:%s)", ksm.config.KSMFieldSelectorQuery)
+	}
+
 	for _, endpoint := range endpoints.Items {
 		for _, subset := range endpoint.Subsets {
 			if len(subset.Addresses) == len(subset.Ports) {
@@ -366,6 +374,8 @@ func (ksm *KSM) getEndpointIP(metricPortName, telemetryPortName string) (map[str
 	urls[metricPortName] = metricAddress
 	urls[telemetryPortName] = telemetryAddress
 
+	ksm.log.Debug().Interface("endpoints", urls).Msg("using endpoint addresses")
+
 	return urls, nil
 }
 
@@ -393,7 +403,7 @@ func (ksm *KSM) getServiceDefinition() (*v1.Service, error) {
 	}
 
 	if len(services.Items) == 0 {
-		return nil, errors.New("no 'kube-state-metrics' service found")
+		return nil, fmt.Errorf("no 'kube-state-metrics' service found (FieldSelector:%s)", ksm.config.KSMFieldSelectorQuery)
 	}
 
 	if len(services.Items) > 1 {
@@ -492,7 +502,7 @@ func (ksm *KSM) metrics(ctx context.Context, metricURL string) error {
 	measurementTags := []string{}
 
 	var parser expfmt.TextParser
-	if err := ksm.queueMetrics(ctx, parser, ksm.check, ksm.log, data, streamTags, measurementTags, ksm.ts); err != nil {
+	if err := ksm.queueMetrics(ctx, metricURL+" - metrics", parser, ksm.check, data, streamTags, measurementTags); err != nil {
 		return err
 	}
 
@@ -590,7 +600,7 @@ func (ksm *KSM) telemetry(ctx context.Context, telemetryURL string) error {
 	measurementTags := []string{}
 
 	var parser expfmt.TextParser
-	if err := ksm.queueMetrics(ctx, parser, ksm.check, ksm.log, data, streamTags, measurementTags, ksm.ts); err != nil {
+	if err := ksm.queueMetrics(ctx, telemetryURL+" - telemetry", parser, ksm.check, data, streamTags, measurementTags); err != nil {
 		return err
 	}
 

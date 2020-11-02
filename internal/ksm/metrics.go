@@ -11,13 +11,11 @@ import (
 	"io"
 	"math"
 	"strings"
-	"time"
 
 	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
-	"github.com/rs/zerolog"
 )
 
 const (
@@ -33,13 +31,14 @@ const (
 // Formats supported: https://prometheus.io/docs/instrumenting/exposition_formats/
 func (ksm *KSM) queueMetrics(
 	ctx context.Context,
+	ksmSource string,
 	parser expfmt.TextParser,
 	check *circonus.Check,
-	logger zerolog.Logger,
 	data io.Reader,
 	parentStreamTags []string,
-	parentMeasurementTags []string,
-	ts *time.Time) error {
+	parentMeasurementTags []string) error {
+
+	srcLogger := ksm.log.With().Str("ksm_source", ksmSource).Logger()
 
 	var baseStreamTags []string
 	if len(parentStreamTags) > 0 {
@@ -52,13 +51,14 @@ func (ksm *KSM) queueMetrics(
 		return err
 	}
 
+	metricsProcessed := 0
 	metrics := make(map[string]circonus.MetricSample)
-
 	for mn, mf := range metricFamilies {
 		if done(ctx) {
 			return nil
 		}
 		for _, m := range mf.Metric {
+			metricsProcessed++
 			if done(ctx) {
 				return nil
 			}
@@ -70,37 +70,37 @@ func (ksm *KSM) queueMetrics(
 					metrics, metricName+"_count",
 					circonus.MetricTypeUint64,
 					streamTags, parentMeasurementTags,
-					m.GetSummary().GetSampleCount(), ts)
+					m.GetSummary().GetSampleCount(), ksm.ts)
 				_ = check.QueueMetricSample(
 					metrics, metricName+"_sum",
 					circonus.MetricTypeFloat64,
 					streamTags, parentMeasurementTags,
-					m.GetSummary().GetSampleSum(), ts)
+					m.GetSummary().GetSampleSum(), ksm.ts)
 				for qn, qv := range getQuantiles(m) {
 					qtags := check.NewTagList(streamTags, []string{"quantile:" + qn})
 					_ = check.QueueMetricSample(
 						metrics, metricName,
 						circonus.MetricTypeFloat64,
 						qtags, parentMeasurementTags,
-						qv, ts)
+						qv, ksm.ts)
 				}
 			case dto.MetricType_HISTOGRAM:
 				_ = check.QueueMetricSample(
 					metrics, metricName+"_count",
 					circonus.MetricTypeUint64,
 					streamTags, parentMeasurementTags,
-					m.GetHistogram().GetSampleCount(), ts)
+					m.GetHistogram().GetSampleCount(), ksm.ts)
 				_ = check.QueueMetricSample(
 					metrics, metricName+"_sum",
 					circonus.MetricTypeFloat64,
 					streamTags, parentMeasurementTags,
-					m.GetHistogram().GetSampleSum(), ts)
+					m.GetHistogram().GetSampleSum(), ksm.ts)
 				// add average, requested for dns dashboard
 				_ = check.QueueMetricSample(
 					metrics, metricName+"_avg",
 					circonus.MetricTypeFloat64,
 					streamTags, parentMeasurementTags,
-					m.GetHistogram().GetSampleSum()/float64(m.GetHistogram().GetSampleCount()), ts)
+					m.GetHistogram().GetSampleSum()/float64(m.GetHistogram().GetSampleCount()), ksm.ts)
 
 				if emitHistogramBuckets {
 					if circCumulativeHistogram {
@@ -110,7 +110,7 @@ func (ksm *KSM) queueMetrics(
 								metrics, metricName,
 								circonus.MetricTypeCumulativeHistogram,
 								streamTags, parentMeasurementTags,
-								strings.Join(histo, ","), ts)
+								strings.Join(histo, ","), ksm.ts)
 						}
 					} else {
 						for bn, bv := range getBuckets(m) {
@@ -119,7 +119,7 @@ func (ksm *KSM) queueMetrics(
 								metrics, metricName,
 								circonus.MetricTypeUint64,
 								htags, parentMeasurementTags,
-								bv, ts)
+								bv, ksm.ts)
 						}
 					}
 				}
@@ -182,7 +182,7 @@ func (ksm *KSM) queueMetrics(
 						metrics, metricName,
 						circonus.MetricTypeFloat64,
 						streamTags, parentMeasurementTags,
-						val, ts)
+						val, ksm.ts)
 				}
 			case dto.MetricType_COUNTER:
 				if m.GetCounter().Value != nil {
@@ -190,12 +190,12 @@ func (ksm *KSM) queueMetrics(
 						metrics, metricName,
 						circonus.MetricTypeFloat64,
 						streamTags, parentMeasurementTags,
-						m.GetCounter().GetValue(), ts)
+						m.GetCounter().GetValue(), ksm.ts)
 				}
 			case dto.MetricType_UNTYPED:
 				if m.GetUntyped().Value != nil {
 					if *m.GetUntyped().Value == math.Inf(+1) {
-						logger.Warn().
+						srcLogger.Warn().
 							Str("metric", metricName).
 							Str("type", mf.GetType().String()).
 							Str("value", (*m).GetUntyped().String()).
@@ -206,7 +206,7 @@ func (ksm *KSM) queueMetrics(
 						metrics, metricName,
 						circonus.MetricTypeFloat64,
 						streamTags, parentMeasurementTags,
-						m.GetUntyped().GetValue(), ts)
+						m.GetUntyped().GetValue(), ksm.ts)
 				}
 			}
 		}
@@ -214,10 +214,6 @@ func (ksm *KSM) queueMetrics(
 
 	// add derived metrics
 	m := ksm.cgmMetrics.FlushMetrics()
-	// mts := uint64(0)
-	// if ts != nil {
-	// 	mts = makeTimestamp(ts)
-	// }
 	for mn, mv := range *m {
 		switch mv.Type {
 		case circonus.MetricTypeString:
@@ -225,32 +221,25 @@ func (ksm *KSM) queueMetrics(
 				metrics, mn,
 				circonus.MetricTypeString,
 				[]string{}, []string{},
-				mv.Value, ts)
+				mv.Value, ksm.ts)
 		case circonus.MetricTypeUint64:
 			_ = check.QueueMetricSample(
 				metrics, mn,
 				circonus.MetricTypeUint64,
 				[]string{}, []string{},
-				mv.Value, ts)
+				mv.Value, ksm.ts)
 		default:
-			logger.Warn().Str("name", mn).Interface("mv", mv).Msg("unrecognized metric type")
+			srcLogger.Warn().Str("name", mn).Interface("mv", mv).Msg("unrecognized metric type")
 		}
-		// sample := circonus.MetricSample{
-		// 	Value: mv.Value,
-		// 	Type:  mv.Type,
-		// }
-		// if mts > 0 {
-		// 	sample.Timestamp = mts
-		// }
-		// metrics[mn] = sample
 	}
 
 	if len(metrics) == 0 {
+		srcLogger.Warn().Int("metrics_processed", metricsProcessed).Msg("zero metrics to submit")
 		return nil
 	}
 
-	if err := check.SubmitMetrics(ctx, metrics, logger, true); err != nil {
-		logger.Warn().Err(err).Msg("submitting metrics")
+	if err := check.SubmitMetrics(ctx, metrics, srcLogger, true); err != nil {
+		srcLogger.Warn().Err(err).Msg("submitting metrics")
 	}
 
 	return nil

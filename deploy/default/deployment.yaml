@@ -26,6 +26,7 @@
             ## for ARM64, remove line above and uncomment line below
             #image: circonuslabs/circonus-kubernetes-agent-arm64:latest
             command: ["/circonus-kubernetes-agentd"]
+            #args: ["--debug"]
             env:
               - name: CKA_CIRCONUS_API_KEY
                 valueFrom:
