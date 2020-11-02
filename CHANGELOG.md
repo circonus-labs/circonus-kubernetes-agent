@@ -1,3 +1,11 @@
+# v0.10.4
+
+* add: additional logging for ksm collection/processing
+* upd: add field selector to ksm errors for service and endpoint queries
+* upd: example args (debug) to default deployment
+* upd: switching to main errors pkg and new error handling
+* upd: lastest lint release
+
 # v0.10.3
 
 * upd: alter default `network_unavailable` ruleset to help with spurious alerts CIRC-5849
