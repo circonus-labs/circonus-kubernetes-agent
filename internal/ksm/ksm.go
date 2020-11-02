@@ -341,7 +341,7 @@ func (ksm *KSM) getEndpointIP(metricPortName, telemetryPortName string) (map[str
 	telemetryAddress := ""
 
 	if len(endpoints.Items) == 0 {
-		return nil, errors.New("no endpoint items found")
+		return nil, fmt.Errorf("no 'kube-state-metrics' endpoints found (FieldSelector:%s)", ksm.config.KSMFieldSelectorQuery)
 	}
 
 	for _, endpoint := range endpoints.Items {
@@ -403,7 +403,7 @@ func (ksm *KSM) getServiceDefinition() (*v1.Service, error) {
 	}
 
 	if len(services.Items) == 0 {
-		return nil, errors.New("no 'kube-state-metrics' service found")
+		return nil, fmt.Errorf("no 'kube-state-metrics' service found (FieldSelector:%s)", ksm.config.KSMFieldSelectorQuery)
 	}
 
 	if len(services.Items) > 1 {
