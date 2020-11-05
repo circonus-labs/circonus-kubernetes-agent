@@ -34,9 +34,8 @@ type Cluster struct {
 	BearerTokenFile        string `mapstructure:"bearer_token_file" json:"bearer_token_file" toml:"bearer_token_file" yaml:"bearer_token_file"`
 	EnableEvents           bool   `mapstructure:"enable_events" json:"enable_events" toml:"enable_events" yaml:"enable_events"`
 	EnableKubeStateMetrics bool   `mapstructure:"enable_kube_state_metrics" json:"enable_kube_state_metrics" toml:"enable_kube_state_metrics" yaml:"enable_kube_state_metrics"`
-	KSMRequestMode         string `mapstructure:"ksm_request_mode" json:"ksm_request_mode" toml:"ksm_request_mode" yaml:"ksm_request_mode"`
+	KSMMetricsPort         string `mapstructure:"ksm_metrics_port" json:"ksm_metrics_port" toml:"ksm_metrics_port" yaml:"ksm_metrics_port"`
 	KSMMetricsPortName     string `mapstructure:"ksm_metrics_port_name" json:"ksm_metrics_port_name" toml:"ksm_metrics_port_name" yaml:"ksm_metrics_port_name"`
-	KSMTelemetryPortName   string `mapstructure:"ksm_telemetry_port_name" json:"ksm_telemetry_port_name" toml:"ksm_telemetry_port_name" yaml:"ksm_telemetry_port_name"`
 	KSMFieldSelectorQuery  string `mapstructure:"ksm_field_selector_query" json:"ksm_field_selector_query" toml:"ksm_field_selector_query" yaml:"ksm_field_selector_query"`
 	EnableAPIServer        bool   `mapstructure:"enable_api_server" json:"enable_api_server" toml:"enable_api_server" yaml:"enable_metrics_server"`
 	EnableNodes            bool   `mapstructure:"enable_nodes" json:"enable_nodes" toml:"enable_nodes" yaml:"enable_nodes"`
@@ -55,6 +54,10 @@ type Cluster struct {
 	URL                    string `mapstructure:"api_url" json:"api_url" toml:"api_url" yaml:"api_url"`
 	CAFile                 string `mapstructure:"api_ca_file" json:"api_ca_file" toml:"api_ca_file" yaml:"api_ca_file"`
 	APITimelimit           string `mapstructure:"api_timelimit" json:"api_timelimit" toml:"api_timelimit" yaml:"api_timelimit"`
+	DynamicCollectorFile   string `mapstructure:"dynamic_collector_file" json:"dynamic_collector_file" yaml:"dynamic_collector_file"`
+	// DEPRECATED
+	KSMRequestMode       string `mapstructure:"ksm_request_mode" json:"ksm_request_mode" toml:"ksm_request_mode" yaml:"ksm_request_mode"`
+	KSMTelemetryPortName string `mapstructure:"ksm_telemetry_port_name" json:"ksm_telemetry_port_name" toml:"ksm_telemetry_port_name" yaml:"ksm_telemetry_port_name"`
 }
 
 // LabelFilters defines labels to include and exclude
