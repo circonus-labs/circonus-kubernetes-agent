@@ -497,7 +497,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
                 "severity": 1,
                 "wait": 0,
                 "windowing_duration": 900,
-                "windowing_function": "average",
+				"windowing_function": "average",
+				"windowing_min_duration": 900,
                 "value": "75"
             }
         ]    
@@ -599,7 +600,7 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
 				"wait": 0,
 				"windowing_duration": 300,
 				"windowing_function": "average",
-				"windowing_min_duration": 0,
+				"windowing_min_duration": 300,
                 "value": "0.99"
             }
         ]
@@ -675,7 +676,8 @@ func defaultRules() (map[string]apiclient.RuleSet, error) {
                 "severity": 1,
                 "wait": 0,
                 "windowing_duration": 900,
-                "windowing_function": "average",
+				"windowing_function": "average",
+				"windowing_min_duration": 900,
                 "value": "0.99"
             }
         ]        
