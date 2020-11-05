@@ -27,12 +27,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -46,12 +42,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -65,12 +57,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -84,12 +72,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -103,12 +87,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -122,12 +102,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -141,12 +117,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -160,12 +132,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -179,12 +147,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -198,12 +162,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -217,12 +177,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -236,12 +192,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -255,12 +207,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -274,12 +222,8 @@ func init() {
 		defaultValue := defaults.CheckTarget
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -293,12 +237,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 	{
@@ -311,12 +251,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 	{
@@ -329,12 +265,8 @@ func init() {
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		if err := viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -354,12 +286,8 @@ func init() {
 		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
 		flag := rootCmd.PersistentFlags().Lookup(longOpt)
 		flag.Hidden = true
-		if err := viper.BindPFlag(key, flag); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, flag))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -375,12 +303,8 @@ func init() {
 		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
 		flag := rootCmd.PersistentFlags().Lookup(longOpt)
 		flag.Hidden = true
-		if err := viper.BindPFlag(key, flag); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, flag))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -396,12 +320,8 @@ func init() {
 		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
 		flag := rootCmd.PersistentFlags().Lookup(longOpt)
 		flag.Hidden = true
-		if err := viper.BindPFlag(key, flag); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, flag))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -417,12 +337,8 @@ func init() {
 		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
 		flag := rootCmd.PersistentFlags().Lookup(longOpt)
 		flag.Hidden = true
-		if err := viper.BindPFlag(key, flag); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, flag))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 
@@ -438,12 +354,8 @@ func init() {
 		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
 		flag := rootCmd.PersistentFlags().Lookup(longOpt)
 		flag.Hidden = true
-		if err := viper.BindPFlag(key, flag); err != nil {
-			bindFlagError(longOpt, err)
-		}
-		if err := viper.BindEnv(key, envVar); err != nil {
-			bindEnvError(envVar, err)
-		}
+		bindFlagError(longOpt, viper.BindPFlag(key, flag))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
 }
