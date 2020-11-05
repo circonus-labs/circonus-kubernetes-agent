@@ -26,7 +26,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/expfmt"
 	"github.com/rs/zerolog"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -41,10 +40,15 @@ type KSM struct {
 	ts *time.Time
 }
 
-const (
-	modeProxy  = "proxy"
-	modeDirect = "direct"
-)
+type Address struct {
+	Name   string
+	Target string
+}
+
+// const (
+// 	modeProxy  = "proxy"
+// 	modeDirect = "direct"
+// )
 
 // NOTES:
 // curl -v localhost:8080/api/v1/services?fieldSelector=metadata.name%3Dkube-state-metrics
@@ -134,169 +138,40 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	}()
 
 	collectStart := time.Now()
-	svc, err := ksm.getServiceDefinition()
-	if err != nil {
-		ksm.check.AddText("collect_ksm_state", cgm.Tags{
-			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
-			cgm.Tag{Category: "source", Value: release.NAME},
-		}, err.Error())
-		ksm.log.Error().Err(err).Msg("service definition")
-		ksm.Lock()
-		ksm.running = false
-		ksm.Unlock()
-		return
-	}
-	if svc == nil {
-		ksm.check.AddText("collect_ksm_state", cgm.Tags{
-			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
-			cgm.Tag{Category: "source", Value: release.NAME},
-		}, "invalid service definition")
-		ksm.log.Error().Msg("invalid service definition (nil)")
-		ksm.Lock()
-		ksm.running = false
-		ksm.Unlock()
-		return
-	}
-
-	metricPortName := ""
-	telemetryPortName := ""
-	for _, p := range svc.Spec.Ports {
-		if p.Name != "" {
-			if ksm.config.KSMMetricsPortName != "" && ksm.config.KSMMetricsPortName == p.Name {
-				metricPortName = p.Name
-			} else if ksm.config.KSMTelemetryPortName != "" && ksm.config.KSMTelemetryPortName == p.Name {
-				telemetryPortName = p.Name
-			}
-		}
-	}
-
-	if metricPortName == "" && telemetryPortName == "" {
-		ksm.check.AddText("collect_ksm_state", cgm.Tags{
-			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
-			cgm.Tag{Category: "source", Value: release.NAME},
-		}, "invalid service definition, named ports not found")
-		ksm.log.Error().
-			Str("metrics_port", ksm.config.KSMMetricsPortName).
-			Str("telemetry_port", ksm.config.KSMTelemetryPortName).
-			Msg("invalid service definition, named ports not found")
-		ksm.Lock()
-		ksm.running = false
-		ksm.Unlock()
-		return
-	}
-
-	if ksm.config.KSMMetricsPortName != "" && metricPortName == "" {
-		ksm.log.Warn().Str("port", ksm.config.KSMMetricsPortName).Msg("metrics port not found in service definition")
-	}
-	if ksm.config.KSMTelemetryPortName != "" && telemetryPortName == "" {
-		ksm.log.Warn().Str("port", ksm.config.KSMTelemetryPortName).Msg("telemetry port not found in service definition")
-	}
-
 	var wg sync.WaitGroup
 
 	collected := 0
 	collectErr := 0
 
-	switch ksm.config.KSMRequestMode {
-	case modeProxy:
-		metricPath := "/proxy/metrics"
-
-		// NOTE: w/re to ksm being run with HTTPS - https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#manually-constructing-apiserver-proxy-urls
-		//       if the port name is prefixed with 'https-', "https:" will be added before the service name in the selfLink below.
-
-		if metricPortName != "" {
-			wg.Add(1)
-			go func() {
-				svcPath := svc.SelfLink
-				if strings.HasPrefix(metricPortName, "https-") {
-					svcPath = strings.Replace(svcPath, svc.Name, "https:"+svc.Name, -1)
-				}
-
-				metricURL := svcPath + ":" + metricPortName + metricPath
-				if err := ksm.metrics(ctx, metricURL); err != nil {
-					ksm.log.Error().Err(err).Str("url", metricURL).Msg("http-metrics")
-					collectErr++
-				}
-				collected++
-				wg.Done()
-			}()
-		}
-
-		if telemetryPortName != "" {
-			wg.Add(1)
-			go func() {
-				svcPath := svc.SelfLink
-				if strings.HasPrefix(telemetryPortName, "https-") {
-					svcPath = strings.Replace(svcPath, svc.Name, "https:"+svc.Name, -1)
-				}
-
-				telemetryURL := svcPath + ":" + telemetryPortName + metricPath
-				if err := ksm.telemetry(ctx, telemetryURL); err != nil {
-					ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("telemetry")
-					collectErr++
-				}
-				collected++
-				wg.Done()
-			}()
-		}
-
-	case modeDirect:
-		addresses, err := ksm.getEndpointIP(metricPortName, telemetryPortName)
-		if err != nil {
-			ksm.check.AddText("collect_ksm_state", cgm.Tags{
-				cgm.Tag{Category: "cluster", Value: ksm.config.Name},
-				cgm.Tag{Category: "source", Value: release.NAME},
-			}, err.Error())
-			ksm.log.Error().Err(err).Msg("getting ksm addresses")
-			return
-		}
-		if metricPortName != "" {
-			if addr, ok := addresses[metricPortName]; ok && addr != "" {
-				wg.Add(1)
-				go func() {
-					proto := "http"
-					if strings.HasPrefix(metricPortName, "https-") {
-						proto = "https"
-					}
-					metricURL := fmt.Sprintf("%s://%s/metrics", proto, addr)
-					if err := ksm.metrics(ctx, metricURL); err != nil {
-						ksm.log.Error().Err(err).Str("url", metricURL).Msg("http-metrics")
-						collectErr++
-					}
-					collected++
-					wg.Done()
-				}()
-			}
-		} else {
-			ksm.log.Warn().Interface("addresses", addresses).Str("port_name", metricPortName).Msg("unable to find address for metric port")
-		}
-		if telemetryPortName != "" {
-			if addr, ok := addresses[telemetryPortName]; ok && addr != "" {
-				wg.Add(1)
-				go func() {
-					proto := "http"
-					if strings.HasPrefix(telemetryPortName, "https-") {
-						proto = "https"
-					}
-					telemetryURL := fmt.Sprintf("%s://%s/metrics", proto, addr)
-					if err := ksm.telemetry(ctx, telemetryURL); err != nil {
-						ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("telemetry")
-						collectErr++
-					}
-					collected++
-					wg.Done()
-				}()
-			} else {
-				ksm.log.Warn().Interface("addresses", addresses).Str("port_name", telemetryPortName).Msg("unable to find address for telemetry port")
-			}
-		}
-	default:
+	addresses, err := ksm.getEndpointTargets()
+	if err != nil {
 		ksm.check.AddText("collect_ksm_state", cgm.Tags{
 			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
 			cgm.Tag{Category: "source", Value: release.NAME},
-		}, "invalid request mode "+ksm.config.KSMRequestMode)
-		ksm.log.Warn().Str("mode", ksm.config.KSMRequestMode).Msg("unknown request mode, skipping ksm collection")
+		}, err.Error())
+		ksm.Lock()
+		ksm.running = false
+		ksm.Unlock()
 		return
+	}
+
+	ksm.log.Debug().Interface("addresses", addresses).Msg("ksm targets")
+
+	for _, address := range addresses {
+		wg.Add(1)
+		go func(addr Address) {
+			proto := "http"
+			if strings.HasPrefix(addr.Name, "https") {
+				proto = "https"
+			}
+			metricURL := fmt.Sprintf("%s://%s/metrics", proto, addr.Target)
+			if err := ksm.getMetrics(ctx, metricURL); err != nil {
+				ksm.log.Error().Err(err).Interface("address", addr).Str("url", metricURL).Msg("metrics")
+				collectErr++
+			}
+			collected++
+			wg.Done()
+		}(address)
 	}
 
 	wg.Wait()
@@ -318,12 +193,15 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	ksm.Unlock()
 }
 
-func (ksm *KSM) getEndpointIP(metricPortName, telemetryPortName string) (map[string]string, error) {
+// getEndpointTargets returns a list of ip:port targets for metric requests
+func (ksm *KSM) getEndpointTargets() ([]Address, error) {
 	if ksm.config.KSMFieldSelectorQuery == "" {
+		err := fmt.Errorf("kube-state-metrics field selectory query not found in configuration")
 		ksm.log.Error().
+			Err(err).
 			Str("field_selector_query", ksm.config.KSMFieldSelectorQuery).
-			Msg("invalid service definition, KSM field selectory query not found")
-		return nil, errors.New("invalid service definition, missing KSM field selector query")
+			Msg("invalid configuration")
+		return nil, err
 	}
 
 	clientset, err := k8s.GetClient(ksm.config)
@@ -336,163 +214,95 @@ func (ksm *KSM) getEndpointIP(metricPortName, telemetryPortName string) (map[str
 		return nil, err
 	}
 
-	urls := make(map[string]string)
-	metricAddress := ""
-	telemetryAddress := ""
-
 	if len(endpoints.Items) == 0 {
-		return nil, fmt.Errorf("no 'kube-state-metrics' endpoints found (FieldSelector:%s)", ksm.config.KSMFieldSelectorQuery)
+		return nil, fmt.Errorf("unable to find endpoint matching field selector (%s)", ksm.config.KSMFieldSelectorQuery)
 	}
 
-	for _, endpoint := range endpoints.Items {
-		for _, subset := range endpoint.Subsets {
-			if len(subset.Addresses) == len(subset.Ports) {
-				// it's 1:1 addr[0] goes with port[0], addr[1] with port[1], etc.
-				for idx, addr := range subset.Addresses {
-					switch subset.Ports[idx].Name {
-					case metricPortName:
-						metricAddress = fmt.Sprintf("%s:%d", addr.IP, subset.Ports[idx].Port)
-					case telemetryPortName:
-						telemetryAddress = fmt.Sprintf("%s:%d", addr.IP, subset.Ports[idx].Port)
-					}
-				}
-			} else if len(subset.Addresses) == 1 && len(subset.Ports) > 1 {
-				// all ports go with the one address
-				for _, port := range subset.Ports {
-					switch port.Name {
-					case metricPortName:
-						metricAddress = fmt.Sprintf("%s:%d", subset.Addresses[0].IP, port.Port)
-					case telemetryPortName:
-						telemetryAddress = fmt.Sprintf("%s:%d", subset.Addresses[0].IP, port.Port)
+	cfgPortName := ksm.config.KSMMetricsPortName
+	cfgPort := ksm.config.KSMMetricsPort
+	addresses := make([]Address, 0)
 
-					}
+	for _, subset := range endpoints.Items[0].Subsets {
+		if cfgPort != "" { // use static port from configuration for all addresses
+			for _, addr := range subset.Addresses {
+				addresses = append(addresses, Address{Name: "static", Target: addr.IP + ":" + cfgPort})
+			}
+		} else if len(subset.Ports) == 1 && len(subset.Addresses) > 1 { // only one port, use it for all addresses
+			port := subset.Ports[0].Port
+			for _, addr := range subset.Addresses {
+				addresses = append(addresses, Address{Name: subset.Ports[0].Name, Target: fmt.Sprintf("%s:%d", addr.IP, port)})
+			}
+		} else if len(subset.Addresses) == len(subset.Ports) { // it's 1:1 addr[0] goes with port[0], addr[1] with port[1], etc.
+			for idx, addr := range subset.Addresses {
+				if subset.Ports[idx].Name == cfgPortName || strings.HasPrefix(strings.ToLower(subset.Ports[idx].Name), "http") {
+					addresses = append(addresses, Address{Name: subset.Ports[idx].Name, Target: fmt.Sprintf("%s:%d", addr.IP, subset.Ports[idx].Port)})
+				}
+			}
+		} else if len(subset.Addresses) == 1 && len(subset.Ports) > 1 { // all ports go with the one address
+			ip := subset.Addresses[0].IP
+			for _, port := range subset.Ports {
+				if port.Name == cfgPortName || strings.HasPrefix(strings.ToLower(port.Name), "http") {
+					addresses = append(addresses, Address{Name: port.Name, Target: fmt.Sprintf("%s:%d", ip, port.Port)})
 				}
 			}
 		}
 	}
 
-	urls[metricPortName] = metricAddress
-	urls[telemetryPortName] = telemetryAddress
+	if len(addresses) == 0 {
+		return nil, fmt.Errorf("no viable addresses found for endpoint (%#v)", endpoints.Items[0].Subsets)
+	}
 
-	ksm.log.Debug().Interface("endpoints", urls).Msg("using endpoint addresses")
-
-	return urls, nil
+	return addresses, nil
 }
 
-func (ksm *KSM) getServiceDefinition() (*v1.Service, error) {
-	if ksm.config.KSMFieldSelectorQuery == "" {
-		ksm.log.Error().
-			Str("field_selector_query", ksm.config.KSMFieldSelectorQuery).
-			Msg("invalid service definition, KSM field selectory query not found")
-		return nil, errors.New("invalid service definition, missing KSM field selector query")
-	}
-
-	clientset, err := k8s.GetClient(ksm.config)
-	if err != nil {
-		return nil, err
-	}
-
-	services, err := clientset.CoreV1().Services("").List(metav1.ListOptions{FieldSelector: ksm.config.KSMFieldSelectorQuery})
-	if err != nil {
-		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
-			cgm.Tag{Category: "source", Value: release.NAME},
-			cgm.Tag{Category: "request", Value: "kube-state-metrics_service"},
-			cgm.Tag{Category: "target", Value: "api-server"},
-		})
-		return nil, err
-	}
-
-	if len(services.Items) == 0 {
-		return nil, fmt.Errorf("no 'kube-state-metrics' service found (FieldSelector:%s)", ksm.config.KSMFieldSelectorQuery)
-	}
-
-	if len(services.Items) > 1 {
-		return nil, fmt.Errorf("multiple (%d) 'kube-state-metrics' services found", len(services.Items))
-	}
-
-	svc := services.Items[0]
-
-	return &svc, nil
-}
-
-func (ksm *KSM) metrics(ctx context.Context, metricURL string) error {
-	ksm.log.Debug().Str("mode", ksm.config.KSMRequestMode).Str("url", metricURL).Msg("metrics")
-
+func (ksm *KSM) getMetrics(ctx context.Context, metricURL string) error {
 	var data *bytes.Reader
 
 	start := time.Now()
 
-	switch ksm.config.KSMRequestMode {
-	case modeProxy:
-		clientset, err := k8s.GetClient(ksm.config)
-		if err != nil {
-			return err
-		}
-
-		req := clientset.CoreV1().RESTClient().Get().RequestURI(metricURL)
-		res := req.Do()
-		d, err := res.Raw()
-		if err != nil {
-			ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
-				cgm.Tag{Category: "source", Value: release.NAME},
-				cgm.Tag{Category: "request", Value: "metrics"},
-				cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
-				cgm.Tag{Category: "target", Value: "kube-state-metrics"},
-			})
-			ksm.log.Error().Err(err).Str("url", req.URL().String()).Msg("metrics")
-			return err
-		}
-
-		data = bytes.NewReader(d)
-
-	case modeDirect:
-		client := &http.Client{}
-		if strings.HasPrefix(metricURL, "https:") {
-			client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} //nolint:gosec
-		}
-		req, err := http.NewRequestWithContext(ctx, "GET", metricURL, nil)
-		if err != nil {
-			return errors.Wrap(err, "/metrics req")
-		}
-		req.Header.Add("User-Agent", release.NAME+"/"+release.VERSION)
-		defer client.CloseIdleConnections()
-		resp, err := client.Do(req)
-		if err != nil {
-			ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
-				cgm.Tag{Category: "source", Value: release.NAME},
-				cgm.Tag{Category: "request", Value: "metrics"},
-				cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
-				cgm.Tag{Category: "target", Value: "kube-state-metrics"},
-			})
-			return err
-		}
-		defer resp.Body.Close()
-		ksm.check.AddHistSample("collect_latency", cgm.Tags{
+	client := &http.Client{}
+	if strings.HasPrefix(metricURL, "https:") {
+		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} //nolint:gosec
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", metricURL, nil)
+	if err != nil {
+		return errors.Wrap(err, "/metrics req")
+	}
+	req.Header.Add("User-Agent", release.NAME+"/"+release.VERSION)
+	defer client.CloseIdleConnections()
+	resp, err := client.Do(req)
+	if err != nil {
+		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "metrics"},
-			cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
 			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
-			cgm.Tag{Category: "units", Value: "milliseconds"},
-		}, float64(time.Since(start).Milliseconds()))
-
-		d, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			ksm.log.Error().Err(err).Str("url", metricURL).Msg("reading response")
-			return err
-		}
-		if resp.StatusCode != http.StatusOK {
-			ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
-				cgm.Tag{Category: "source", Value: release.NAME},
-				cgm.Tag{Category: "request", Value: "metrics"},
-				cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
-				cgm.Tag{Category: "target", Value: "kube-state-metrics"},
-				cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
-			})
-			ksm.log.Warn().Str("status", resp.Status).RawJSON("response", d).Msg("error from API server")
-			return errors.New("error response from api server")
-		}
-		data = bytes.NewReader(d)
+		})
+		return err
 	}
+	defer resp.Body.Close()
+	ksm.check.AddHistSample("collect_latency", cgm.Tags{
+		cgm.Tag{Category: "source", Value: release.NAME},
+		cgm.Tag{Category: "request", Value: "metrics"},
+		cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+		cgm.Tag{Category: "units", Value: "milliseconds"},
+	}, float64(time.Since(start).Milliseconds()))
+
+	d, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		ksm.log.Error().Err(err).Str("url", metricURL).Msg("reading response")
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+			cgm.Tag{Category: "source", Value: release.NAME},
+			cgm.Tag{Category: "request", Value: "metrics"},
+			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+		})
+		ksm.log.Warn().Str("status", resp.Status).RawJSON("response", d).Msg("error from API server")
+		return errors.New("error response from api server")
+	}
+	data = bytes.NewReader(d)
 
 	streamTags := []string{
 		"source:kube-state-metrics",
@@ -509,100 +319,498 @@ func (ksm *KSM) metrics(ctx context.Context, metricURL string) error {
 	return nil
 }
 
-func (ksm *KSM) telemetry(ctx context.Context, telemetryURL string) error {
-	ksm.log.Debug().Str("mode", ksm.config.KSMRequestMode).Str("url", telemetryURL).Msg("telemetry")
+// // Collect metrics from kube-state-metrics
+// func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time) {
+// 	ksm.Lock()
+// 	if ksm.running {
+// 		ksm.log.Warn().Msg("already running")
+// 		ksm.Unlock()
+// 		return
+// 	}
+// 	ksm.running = true
+// 	ksm.ts = ts
+// 	ksm.Unlock()
 
-	var data *bytes.Reader
+// 	defer func() {
+// 		if r := recover(); r != nil {
+// 			ksm.log.Error().Interface("panic", r).Msg("recover")
+// 			ksm.Lock()
+// 			ksm.running = false
+// 			ksm.Unlock()
+// 		}
+// 	}()
 
-	start := time.Now()
+// collectStart := time.Now()
 
-	switch ksm.config.KSMRequestMode {
-	case modeProxy:
-		clientset, err := k8s.GetClient(ksm.config)
-		if err != nil {
-			return err
-		}
+// 	svc, err := ksm.getServiceDefinition()
+// 	if err != nil {
+// 		ksm.check.AddText("collect_ksm_state", cgm.Tags{
+// 			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
+// 			cgm.Tag{Category: "source", Value: release.NAME},
+// 		}, err.Error())
+// 		ksm.log.Error().Err(err).Msg("service definition")
+// 		ksm.Lock()
+// 		ksm.running = false
+// 		ksm.Unlock()
+// 		return
+// 	}
+// 	if svc == nil {
+// 		ksm.check.AddText("collect_ksm_state", cgm.Tags{
+// 			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
+// 			cgm.Tag{Category: "source", Value: release.NAME},
+// 		}, "invalid service definition")
+// 		ksm.log.Error().Msg("invalid service definition (nil)")
+// 		ksm.Lock()
+// 		ksm.running = false
+// 		ksm.Unlock()
+// 		return
+// 	}
 
-		req := clientset.CoreV1().RESTClient().Get().RequestURI(telemetryURL)
-		res := req.Do()
-		d, err := res.Raw()
-		if err != nil {
-			ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
-				cgm.Tag{Category: "source", Value: release.NAME},
-				cgm.Tag{Category: "request", Value: "telemetry"},
-				cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
-				cgm.Tag{Category: "target", Value: "kube-state-metrics"},
-			})
-			ksm.log.Error().Err(err).Str("url", req.URL().String()).Msg("telemetry")
-			return err
-		}
+// 	metricPortName := ""
+// 	telemetryPortName := ""
+// 	for _, p := range svc.Spec.Ports {
+// 		if p.Name != "" {
+// 			if ksm.config.KSMMetricsPortName != "" && ksm.config.KSMMetricsPortName == p.Name {
+// 				metricPortName = p.Name
+// 			} else if ksm.config.KSMTelemetryPortName != "" && ksm.config.KSMTelemetryPortName == p.Name {
+// 				telemetryPortName = p.Name
+// 			}
+// 		}
+// 	}
 
-		data = bytes.NewReader(d)
+// 	if metricPortName == "" && telemetryPortName == "" {
+// 		ksm.check.AddText("collect_ksm_state", cgm.Tags{
+// 			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
+// 			cgm.Tag{Category: "source", Value: release.NAME},
+// 		}, "invalid service definition, named ports not found")
+// 		ksm.log.Error().
+// 			Str("metrics_port", ksm.config.KSMMetricsPortName).
+// 			Str("telemetry_port", ksm.config.KSMTelemetryPortName).
+// 			Msg("invalid service definition, named ports not found")
+// 		ksm.Lock()
+// 		ksm.running = false
+// 		ksm.Unlock()
+// 		return
+// 	}
 
-	case modeDirect:
-		client := &http.Client{}
-		if strings.HasPrefix(telemetryURL, "https:") {
-			client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} //nolint:gosec
-		}
-		req, err := http.NewRequestWithContext(ctx, "GET", telemetryURL, nil)
-		if err != nil {
-			return errors.Wrap(err, "/telemetry req")
-		}
-		req.Header.Add("User-Agent", release.NAME+"/"+release.VERSION)
-		defer client.CloseIdleConnections()
+// 	if ksm.config.KSMMetricsPortName != "" && metricPortName == "" {
+// 		ksm.log.Warn().Str("port", ksm.config.KSMMetricsPortName).Msg("metrics port not found in service definition")
+// 	}
+// 	if ksm.config.KSMTelemetryPortName != "" && telemetryPortName == "" {
+// 		ksm.log.Warn().Str("port", ksm.config.KSMTelemetryPortName).Msg("telemetry port not found in service definition")
+// 	}
 
-		resp, err := client.Do(req)
-		if err != nil {
-			ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
-				cgm.Tag{Category: "source", Value: release.NAME},
-				cgm.Tag{Category: "request", Value: "telemetry"},
-				cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
-				cgm.Tag{Category: "target", Value: "kube-state-metrics"},
-			})
-			return err
-		}
-		defer resp.Body.Close()
+// 	var wg sync.WaitGroup
 
-		ksm.check.AddHistSample("collect_latency", cgm.Tags{
-			cgm.Tag{Category: "source", Value: release.NAME},
-			cgm.Tag{Category: "request", Value: "telemetry"},
-			cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
-			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
-			cgm.Tag{Category: "units", Value: "milliseconds"},
-		}, float64(time.Since(start).Milliseconds()))
+// 	collected := 0
+// 	collectErr := 0
 
-		d, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("reading response")
-			return err
-		}
+// 	switch ksm.config.KSMRequestMode {
+// 	case modeProxy:
+// 		metricPath := "/proxy/metrics"
 
-		if resp.StatusCode != http.StatusOK {
-			ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
-				cgm.Tag{Category: "source", Value: release.NAME},
-				cgm.Tag{Category: "request", Value: "telemetry"},
-				cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
-				cgm.Tag{Category: "target", Value: "kube-state-metrics"},
-				cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
-			})
-			ksm.log.Warn().Str("status", resp.Status).RawJSON("response", d).Msg("error from API server")
-			return errors.New("error response from api server")
-		}
+// 		// NOTE: w/re to ksm being run with HTTPS - https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#manually-constructing-apiserver-proxy-urls
+// 		//       if the port name is prefixed with 'https-', "https:" will be added before the service name in the selfLink below.
 
-		data = bytes.NewReader(d)
-	}
+// 		if metricPortName != "" {
+// 			wg.Add(1)
+// 			go func() {
+// 				svcPath := svc.SelfLink
+// 				if strings.HasPrefix(metricPortName, "https-") {
+// 					svcPath = strings.Replace(svcPath, svc.Name, "https:"+svc.Name, -1)
+// 				}
 
-	streamTags := []string{
-		"source:kube-state-metrics",
-		"source_type:telemetry",
-		"__rollup:false", // prevent high cardinality metrics from rolling up
-	}
-	measurementTags := []string{}
+// 				metricURL := svcPath + ":" + metricPortName + metricPath
+// 				if err := ksm.metrics(ctx, metricURL); err != nil {
+// 					ksm.log.Error().Err(err).Str("url", metricURL).Msg("http-metrics")
+// 					collectErr++
+// 				}
+// 				collected++
+// 				wg.Done()
+// 			}()
+// 		}
 
-	var parser expfmt.TextParser
-	if err := ksm.queueMetrics(ctx, telemetryURL+" - telemetry", parser, ksm.check, data, streamTags, measurementTags); err != nil {
-		return err
-	}
+// 		if telemetryPortName != "" {
+// 			wg.Add(1)
+// 			go func() {
+// 				svcPath := svc.SelfLink
+// 				if strings.HasPrefix(telemetryPortName, "https-") {
+// 					svcPath = strings.Replace(svcPath, svc.Name, "https:"+svc.Name, -1)
+// 				}
 
-	return nil
-}
+// 				telemetryURL := svcPath + ":" + telemetryPortName + metricPath
+// 				if err := ksm.telemetry(ctx, telemetryURL); err != nil {
+// 					ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("telemetry")
+// 					collectErr++
+// 				}
+// 				collected++
+// 				wg.Done()
+// 			}()
+// 		}
+
+// 	case modeDirect:
+// 		addresses, err := ksm.getEndpointIP(metricPortName, telemetryPortName)
+// 		if err != nil {
+// 			ksm.check.AddText("collect_ksm_state", cgm.Tags{
+// 				cgm.Tag{Category: "cluster", Value: ksm.config.Name},
+// 				cgm.Tag{Category: "source", Value: release.NAME},
+// 			}, err.Error())
+// 			ksm.log.Error().Err(err).Msg("getting ksm addresses")
+// 			return
+// 		}
+// 		if metricPortName != "" {
+// 			if addr, ok := addresses[metricPortName]; ok && addr != "" {
+// 				wg.Add(1)
+// 				go func() {
+// 					proto := "http"
+// 					if strings.HasPrefix(metricPortName, "https-") {
+// 						proto = "https"
+// 					}
+// 					metricURL := fmt.Sprintf("%s://%s/metrics", proto, addr)
+// 					if err := ksm.metrics(ctx, metricURL); err != nil {
+// 						ksm.log.Error().Err(err).Str("url", metricURL).Msg("http-metrics")
+// 						collectErr++
+// 					}
+// 					collected++
+// 					wg.Done()
+// 				}()
+// 			}
+// 		} else {
+// 			ksm.log.Warn().Interface("addresses", addresses).Str("port_name", metricPortName).Msg("unable to find address for metric port")
+// 		}
+// 		if telemetryPortName != "" {
+// 			if addr, ok := addresses[telemetryPortName]; ok && addr != "" {
+// 				wg.Add(1)
+// 				go func() {
+// 					proto := "http"
+// 					if strings.HasPrefix(telemetryPortName, "https-") {
+// 						proto = "https"
+// 					}
+// 					telemetryURL := fmt.Sprintf("%s://%s/metrics", proto, addr)
+// 					if err := ksm.telemetry(ctx, telemetryURL); err != nil {
+// 						ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("telemetry")
+// 						collectErr++
+// 					}
+// 					collected++
+// 					wg.Done()
+// 				}()
+// 			} else {
+// 				ksm.log.Warn().Interface("addresses", addresses).Str("port_name", telemetryPortName).Msg("unable to find address for telemetry port")
+// 			}
+// 		}
+// 	default:
+// 		ksm.check.AddText("collect_ksm_state", cgm.Tags{
+// 			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
+// 			cgm.Tag{Category: "source", Value: release.NAME},
+// 		}, "invalid request mode "+ksm.config.KSMRequestMode)
+// 		ksm.log.Warn().Str("mode", ksm.config.KSMRequestMode).Msg("unknown request mode, skipping ksm collection")
+// 		return
+// 	}
+
+// 	wg.Wait()
+
+// 	ksm.check.AddText("collect_ksm_state", cgm.Tags{
+// 		cgm.Tag{Category: "cluster", Value: ksm.config.Name},
+// 		cgm.Tag{Category: "source", Value: release.NAME},
+// 	}, fmt.Sprintf("OK:%d,ERR:%d", collected, collectErr))
+
+// 	ksm.check.AddHistSample("collect_latency", cgm.Tags{
+// 		cgm.Tag{Category: "source", Value: release.NAME},
+// 		cgm.Tag{Category: "op", Value: "collect_kube-state-metrics"},
+// 		cgm.Tag{Category: "units", Value: "milliseconds"},
+// 	}, float64(time.Since(collectStart).Milliseconds()))
+
+// 	ksm.log.Debug().Str("duration", time.Since(collectStart).String()).Msg("kube-state-metrics collect end")
+// 	ksm.Lock()
+// 	ksm.running = false
+// 	ksm.Unlock()
+// }
+
+// func (ksm *KSM) getEndpointIP(metricPortName, telemetryPortName string) (map[string]string, error) {
+// 	if ksm.config.KSMFieldSelectorQuery == "" {
+// 		ksm.log.Error().
+// 			Str("field_selector_query", ksm.config.KSMFieldSelectorQuery).
+// 			Msg("invalid service definition, KSM field selectory query not found")
+// 		return nil, errors.New("invalid service definition, missing KSM field selector query")
+// 	}
+
+// 	clientset, err := k8s.GetClient(ksm.config)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	endpoints, err := clientset.CoreV1().Endpoints("").List(metav1.ListOptions{FieldSelector: ksm.config.KSMFieldSelectorQuery})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	urls := make(map[string]string)
+// 	metricAddress := ""
+// 	telemetryAddress := ""
+
+// 	if len(endpoints.Items) == 0 {
+// 		return nil, fmt.Errorf("no 'kube-state-metrics' endpoints found (FieldSelector:%s)", ksm.config.KSMFieldSelectorQuery)
+// 	}
+
+// 	for _, endpoint := range endpoints.Items {
+// 		for _, subset := range endpoint.Subsets {
+// 			if len(subset.Addresses) == len(subset.Ports) {
+// 				// it's 1:1 addr[0] goes with port[0], addr[1] with port[1], etc.
+// 				for idx, addr := range subset.Addresses {
+// 					switch subset.Ports[idx].Name {
+// 					case metricPortName:
+// 						metricAddress = fmt.Sprintf("%s:%d", addr.IP, subset.Ports[idx].Port)
+// 					case telemetryPortName:
+// 						telemetryAddress = fmt.Sprintf("%s:%d", addr.IP, subset.Ports[idx].Port)
+// 					}
+// 				}
+// 			} else if len(subset.Addresses) == 1 && len(subset.Ports) > 1 {
+// 				// all ports go with the one address
+// 				for _, port := range subset.Ports {
+// 					switch port.Name {
+// 					case metricPortName:
+// 						metricAddress = fmt.Sprintf("%s:%d", subset.Addresses[0].IP, port.Port)
+// 					case telemetryPortName:
+// 						telemetryAddress = fmt.Sprintf("%s:%d", subset.Addresses[0].IP, port.Port)
+
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+
+// 	urls[metricPortName] = metricAddress
+// 	urls[telemetryPortName] = telemetryAddress
+
+// 	ksm.log.Debug().Interface("endpoints", urls).Msg("using endpoint addresses")
+
+// 	return urls, nil
+// }
+
+// func (ksm *KSM) getServiceDefinition() (*v1.Service, error) {
+// 	if ksm.config.KSMFieldSelectorQuery == "" {
+// 		ksm.log.Error().
+// 			Str("field_selector_query", ksm.config.KSMFieldSelectorQuery).
+// 			Msg("invalid service definition, KSM field selectory query not found")
+// 		return nil, errors.New("invalid service definition, missing KSM field selector query")
+// 	}
+
+// 	clientset, err := k8s.GetClient(ksm.config)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	services, err := clientset.CoreV1().Services("").List(metav1.ListOptions{FieldSelector: ksm.config.KSMFieldSelectorQuery})
+// 	if err != nil {
+// 		ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+// 			cgm.Tag{Category: "source", Value: release.NAME},
+// 			cgm.Tag{Category: "request", Value: "kube-state-metrics_service"},
+// 			cgm.Tag{Category: "target", Value: "api-server"},
+// 		})
+// 		return nil, err
+// 	}
+
+// 	if len(services.Items) == 0 {
+// 		return nil, fmt.Errorf("no 'kube-state-metrics' service found (FieldSelector:%s)", ksm.config.KSMFieldSelectorQuery)
+// 	}
+
+// 	if len(services.Items) > 1 {
+// 		return nil, fmt.Errorf("multiple (%d) 'kube-state-metrics' services found", len(services.Items))
+// 	}
+
+// 	svc := services.Items[0]
+
+// 	return &svc, nil
+// }
+
+// func (ksm *KSM) metrics(ctx context.Context, metricURL string) error {
+// 	ksm.log.Debug().Str("mode", ksm.config.KSMRequestMode).Str("url", metricURL).Msg("metrics")
+
+// 	var data *bytes.Reader
+
+// 	start := time.Now()
+
+// 	switch ksm.config.KSMRequestMode {
+// 	case modeProxy:
+// 		clientset, err := k8s.GetClient(ksm.config)
+// 		if err != nil {
+// 			return err
+// 		}
+
+// 		req := clientset.CoreV1().RESTClient().Get().RequestURI(metricURL)
+// 		res := req.Do()
+// 		d, err := res.Raw()
+// 		if err != nil {
+// 			ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+// 				cgm.Tag{Category: "source", Value: release.NAME},
+// 				cgm.Tag{Category: "request", Value: "metrics"},
+// 				cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
+// 				cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+// 			})
+// 			ksm.log.Error().Err(err).Str("url", req.URL().String()).Msg("metrics")
+// 			return err
+// 		}
+
+// 		data = bytes.NewReader(d)
+
+// 	case modeDirect:
+// 		client := &http.Client{}
+// 		if strings.HasPrefix(metricURL, "https:") {
+// 			client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} //nolint:gosec
+// 		}
+// 		req, err := http.NewRequestWithContext(ctx, "GET", metricURL, nil)
+// 		if err != nil {
+// 			return errors.Wrap(err, "/metrics req")
+// 		}
+// 		req.Header.Add("User-Agent", release.NAME+"/"+release.VERSION)
+// 		defer client.CloseIdleConnections()
+// 		resp, err := client.Do(req)
+// 		if err != nil {
+// 			ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+// 				cgm.Tag{Category: "source", Value: release.NAME},
+// 				cgm.Tag{Category: "request", Value: "metrics"},
+// 				cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
+// 				cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+// 			})
+// 			return err
+// 		}
+// 		defer resp.Body.Close()
+// 		ksm.check.AddHistSample("collect_latency", cgm.Tags{
+// 			cgm.Tag{Category: "source", Value: release.NAME},
+// 			cgm.Tag{Category: "request", Value: "metrics"},
+// 			cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
+// 			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+// 			cgm.Tag{Category: "units", Value: "milliseconds"},
+// 		}, float64(time.Since(start).Milliseconds()))
+
+// 		d, err := ioutil.ReadAll(resp.Body)
+// 		if err != nil {
+// 			ksm.log.Error().Err(err).Str("url", metricURL).Msg("reading response")
+// 			return err
+// 		}
+// 		if resp.StatusCode != http.StatusOK {
+// 			ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+// 				cgm.Tag{Category: "source", Value: release.NAME},
+// 				cgm.Tag{Category: "request", Value: "metrics"},
+// 				cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
+// 				cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+// 				cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+// 			})
+// 			ksm.log.Warn().Str("status", resp.Status).RawJSON("response", d).Msg("error from API server")
+// 			return errors.New("error response from api server")
+// 		}
+// 		data = bytes.NewReader(d)
+// 	}
+
+// 	streamTags := []string{
+// 		"source:kube-state-metrics",
+// 		"source_type:metrics",
+// 		"__rollup:false", // prevent high cardinality metrics from rolling up
+// 	}
+// 	measurementTags := []string{}
+
+// 	var parser expfmt.TextParser
+// 	if err := ksm.queueMetrics(ctx, metricURL+" - metrics", parser, ksm.check, data, streamTags, measurementTags); err != nil {
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// func (ksm *KSM) telemetry(ctx context.Context, telemetryURL string) error {
+// 	ksm.log.Debug().Str("mode", ksm.config.KSMRequestMode).Str("url", telemetryURL).Msg("telemetry")
+
+// 	var data *bytes.Reader
+
+// 	start := time.Now()
+
+// 	switch ksm.config.KSMRequestMode {
+// 	case modeProxy:
+// 		clientset, err := k8s.GetClient(ksm.config)
+// 		if err != nil {
+// 			return err
+// 		}
+
+// 		req := clientset.CoreV1().RESTClient().Get().RequestURI(telemetryURL)
+// 		res := req.Do()
+// 		d, err := res.Raw()
+// 		if err != nil {
+// 			ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+// 				cgm.Tag{Category: "source", Value: release.NAME},
+// 				cgm.Tag{Category: "request", Value: "telemetry"},
+// 				cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
+// 				cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+// 			})
+// 			ksm.log.Error().Err(err).Str("url", req.URL().String()).Msg("telemetry")
+// 			return err
+// 		}
+
+// 		data = bytes.NewReader(d)
+
+// 	case modeDirect:
+// 		client := &http.Client{}
+// 		if strings.HasPrefix(telemetryURL, "https:") {
+// 			client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} //nolint:gosec
+// 		}
+// 		req, err := http.NewRequestWithContext(ctx, "GET", telemetryURL, nil)
+// 		if err != nil {
+// 			return errors.Wrap(err, "/telemetry req")
+// 		}
+// 		req.Header.Add("User-Agent", release.NAME+"/"+release.VERSION)
+// 		defer client.CloseIdleConnections()
+
+// 		resp, err := client.Do(req)
+// 		if err != nil {
+// 			ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+// 				cgm.Tag{Category: "source", Value: release.NAME},
+// 				cgm.Tag{Category: "request", Value: "telemetry"},
+// 				cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
+// 				cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+// 			})
+// 			return err
+// 		}
+// 		defer resp.Body.Close()
+
+// 		ksm.check.AddHistSample("collect_latency", cgm.Tags{
+// 			cgm.Tag{Category: "source", Value: release.NAME},
+// 			cgm.Tag{Category: "request", Value: "telemetry"},
+// 			cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
+// 			cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+// 			cgm.Tag{Category: "units", Value: "milliseconds"},
+// 		}, float64(time.Since(start).Milliseconds()))
+
+// 		d, err := ioutil.ReadAll(resp.Body)
+// 		if err != nil {
+// 			ksm.log.Error().Err(err).Str("url", telemetryURL).Msg("reading response")
+// 			return err
+// 		}
+
+// 		if resp.StatusCode != http.StatusOK {
+// 			ksm.check.IncrementCounter("collect_api_errors", cgm.Tags{
+// 				cgm.Tag{Category: "source", Value: release.NAME},
+// 				cgm.Tag{Category: "request", Value: "telemetry"},
+// 				cgm.Tag{Category: "mode", Value: ksm.config.KSMRequestMode},
+// 				cgm.Tag{Category: "target", Value: "kube-state-metrics"},
+// 				cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
+// 			})
+// 			ksm.log.Warn().Str("status", resp.Status).RawJSON("response", d).Msg("error from API server")
+// 			return errors.New("error response from api server")
+// 		}
+
+// 		data = bytes.NewReader(d)
+// 	}
+
+// 	streamTags := []string{
+// 		"source:kube-state-metrics",
+// 		"source_type:telemetry",
+// 		"__rollup:false", // prevent high cardinality metrics from rolling up
+// 	}
+// 	measurementTags := []string{}
+
+// 	var parser expfmt.TextParser
+// 	if err := ksm.queueMetrics(ctx, telemetryURL+" - telemetry", parser, ksm.check, data, streamTags, measurementTags); err != nil {
+// 		return err
+// 	}
+
+// 	return nil
+// }
