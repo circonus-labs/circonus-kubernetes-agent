@@ -416,7 +416,6 @@ func (c *Check) defaultFilters() [][]string {
 	defaultMetricFiltersData := []byte(`
 {
     "metric_filters": [
-	["allow", "^coredns_plugin_enabled$", "tags", "and(collector:dynamic)"],
     ["allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"],
     ["allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"],
 	["allow", "^usage(Milli|Nano)Cores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"],
