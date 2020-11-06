@@ -168,8 +168,9 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 			if err := ksm.getMetrics(ctx, metricURL); err != nil {
 				ksm.log.Error().Err(err).Interface("address", addr).Str("url", metricURL).Msg("metrics")
 				collectErr++
+			} else {
+				collected++
 			}
-			collected++
 			wg.Done()
 		}(address)
 	}

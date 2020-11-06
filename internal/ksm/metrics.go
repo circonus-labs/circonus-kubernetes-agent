@@ -235,6 +235,10 @@ func (ksm *KSM) queueMetrics(
 
 	if len(metrics) == 0 {
 		srcLogger.Warn().Int("metrics_processed", metricsProcessed).Msg("zero metrics to submit")
+		if metricsProcessed == 0 {
+			// if there are none to send and none were processed, this indicates KSM may be having issues
+			return fmt.Errorf("zero metrics received from KSM - check KSM logs for errors")
+		}
 		return nil
 	}
 
