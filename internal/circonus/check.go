@@ -431,7 +431,7 @@ func (c *Check) defaultFilters() [][]string {
     ["allow", "^kube_job_status_failed$", "health"],
     ["allow", "^kube_persistentvolume_status_phase$", "health"],
 	["allow", "^kube_deployment_status_replicas_unavailable$", "deployments"],
-    ["allow", "^kube_hpa_spec_(min|max)_replicas", "scale"],
+    ["allow", "^kube_hpa_(spec_max|status_current)_replicas$", "scale"],
     ["allow", "^kube_pod_start_time$", "pods"],
     ["allow", "^kube_pod_status_condition$", "pods"],
     ["allow", "^(kube_)?pod_status_phase(_count)?$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"],

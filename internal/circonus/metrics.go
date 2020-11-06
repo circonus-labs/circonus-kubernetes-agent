@@ -8,6 +8,7 @@ package circonus
 import (
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"strings"
 	"time"
@@ -212,6 +213,15 @@ func (c *Check) QueueMetricSample(
 
 	if !metricTypeRx.MatchString(metricType) {
 		return fmt.Errorf("unrecognized circonus metric type (%s)", metricType)
+	}
+
+	if metricType == "n" && math.IsNaN(value.(float64)) {
+		c.log.Warn().
+			Str("metric_name", metricName).
+			Strs("stream_tags", streamTagList).
+			Interface("value", value).
+			Msg("is NaN, skipping")
+		return fmt.Errorf("metric value is NaN")
 	}
 
 	val := value

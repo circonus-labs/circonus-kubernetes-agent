@@ -11,7 +11,6 @@ import (
 	stdlog "log"
 	"os"
 	"runtime"
-	"time"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/agent"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
@@ -99,7 +98,8 @@ func envDescription(desc, env string) string {
 }
 
 func init() {
-	zerolog.TimeFieldFormat = time.RFC3339Nano
+	// zerolog.TimeFieldFormat = time.RFC3339Nano
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	zlog := zerolog.New(zerolog.SyncWriter(os.Stderr)).With().Timestamp().Logger()
 	log.Logger = zlog

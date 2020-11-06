@@ -1,3 +1,16 @@
+# v0.11.0
+
+* add: dynamic collectors - define objects (endpoints, nodes, pods, services) to collect metrics from in configuration CIRC-5871
+* upd: refactor ksm collection to be more intelligent w/re to port used (not all deployment methods name ports the same) CIRC-5890
+* add: static ksm port option to configuration CIRC-5890
+* upd: deprecate ksm mode and telemetry port options CIRC-5890
+* upd: `pod_pending`, `network_unavailable` and `cpu_utilization` rulesets with `windowing_min_duration` CIRC-5875
+* upd: return error when no metrics received from ksm so it can be expose in dashboard
+* upd: add check for NaN values (skip) in metric processing
+* upd: emit warning when no metrics to submit, with number processed (e.g. locally filtered)
+* upd: use epoch for log timestamps (performace)
+* upd: refactor cli arg handling
+
 # v0.10.4
 
 * add: additional logging for ksm collection/processing

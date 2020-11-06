@@ -5,26 +5,26 @@
     name: circonus-kubernetes-agent
     labels:
       app.kubernetes.io/name: circonus-kubernetes-agent
-      app.kubernetes.io/version: v0.10.4
+      app.kubernetes.io/version: v0.11.0
   spec:
     selector:
       matchLabels:
         app.kubernetes.io/name: circonus-kubernetes-agent
-        app.kubernetes.io/version: v0.10.4
+        app.kubernetes.io/version: v0.11.0
     replicas: 1
     template:
       metadata:
         name: circonus-kubernetes-agent
         labels:
           app.kubernetes.io/name: circonus-kubernetes-agent
-          app.kubernetes.io/version: v0.10.4
+          app.kubernetes.io/version: v0.11.0
       spec:
         serviceAccountName: circonus-kubernetes-agent
         containers:
           - name: circonus-kubernetes-agent
-            image: circonuslabs/circonus-kubernetes-agent:v0.10.4
+            image: circonuslabs/circonus-kubernetes-agent:v0.11.0
             ## for ARM64, remove line above and uncomment line below
-            #image: circonuslabs/circonus-kubernetes-agent-arm64:v0.10.4
+            #image: circonuslabs/circonus-kubernetes-agent-arm64:v0.11.0
             command: ["/circonus-kubernetes-agentd"]
             args: 
               #- --debug
@@ -146,26 +146,21 @@
                   configMapKeyRef:
                     name: cka-config-v1
                     key: kubernetes-enable-kube-state-metrics
-              - name: CKA_K8S_KSM_REQUEST_MODE
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-ksm-request-mode
-              - name: CKA_K8S_KSM_METRICS_PORT_NAME
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-ksm-metrics-port-name
-              - name: CKA_K8S_KSM_TELEMETRY_PORT_NAME
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-ksm-telemetry-port-name
               - name: CKA_K8S_KSM_FIELD_SELECTOR_QUERY
                 valueFrom:
                   configMapKeyRef:
                     name: cka-config-v1
                     key: kubernetes-ksm-field-selector-query
+              - name: CKA_K8S_KSM_METRICS_PORT
+                valueFrom:
+                  configMapKeyRef:
+                    name: cka-config-v1
+                    key: kubernetes-ksm-metrics-port
+              - name: CKA_K8S_KSM_METRICS_PORT_NAME
+                valueFrom:
+                  configMapKeyRef:
+                    name: cka-config-v1
+                    key: kubernetes-ksm-metrics-port-name
               - name: CKA_K8S_ENABLE_API_SERVER
                 valueFrom:
                   configMapKeyRef:
@@ -273,3 +268,5 @@
                   path: default-alerts.json
                 - key: custom-rules.json
                   path: custom-rules.json
+                - key: dynamic-collectors.yaml
+                  path: dynamic-collectors.yaml

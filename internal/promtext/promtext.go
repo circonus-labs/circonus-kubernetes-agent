@@ -54,11 +54,13 @@ func QueueMetrics(
 
 	metrics := make(map[string]circonus.MetricSample)
 
+	metricsProcessed := 0
 	for mn, mf := range metricFamilies {
 		if done(ctx) {
 			return nil
 		}
 		for _, m := range mf.Metric {
+			metricsProcessed++
 			if done(ctx) {
 				return nil
 			}
@@ -160,6 +162,7 @@ func QueueMetrics(
 	}
 
 	if len(metrics) == 0 {
+		logger.Warn().Int("metrics_processed", metricsProcessed).Msg("zero metrics to submit")
 		return nil
 	}
 
