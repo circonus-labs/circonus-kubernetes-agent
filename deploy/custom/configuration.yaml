@@ -49,7 +49,8 @@
       ## Use a static target to ensure that the agent can find the check
       ## the next time the pod starts. Otherwise, the pod's hostname will
       ## be used and a new check would be created each time the pod is
-      ## created when create is enabled.
+      ## created when create is enabled. The kubernetes-name will be
+      ## used if check-target is not set.
       circonus-check-target: ""
       ## set a custom display title for the check when it is created
       #circonus-check-title: ""
@@ -66,14 +67,13 @@
       kubernetes-enable-events: "true"
       ## collect metrics from kube-state-metrics if running - default is enabled for dashboard
       kubernetes-enable-kube-state-metrics: "true"
-      ## kube-state-metrics reqeust mode (direct or proxy) proxy goes through api-server, direct uses the service endpoint ip
-      kubernetes-ksm-request-mode: "direct"
-      ## kube-state-metrics metrics port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
-      kubernetes-ksm-metrics-port-name: "http-metrics"
-      ## kube-state-metrics telemetry port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
-      kubernetes-ksm-telemetry-port-name: "telemetry"
       ## kube-state-metrics fieldSelector query, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
       kubernetes-ksm-field-selector-query: "metadata.name=kube-state-metrics"
+      ## kube-state-metrics metrics port, no default, service endpoint ports will be used if not set
+      kubernetes-ksm-metrics-port: ""
+      ## kube-state-metrics metrics port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
+      ## if using helm or some other tool, look at the configuration to see if the port is named differently in the service endpoint...
+      kubernetes-ksm-metrics-port-name: "http-metrics"
       ## collect metrics from api-server - default is enabled for dashboard
       kubernetes-enable-api-server: "true"
       ## collect node metrics - default is enabled for dashboard
@@ -104,6 +104,30 @@
       ## api request timelimit
       #kubernetes-api-timelimit: "10s"
       ##
+      ## dynamic collectors (see readme in github repository)
+      ##
+      dynamic-collectors.yaml: |
+        collectors:
+          - name: "" 
+            disable: true
+            type: "" 
+            schema: ""
+            selectors:
+              label: "" 
+              field: ""
+            control:
+              annotation: ""
+              label: ""
+              value: ""
+            metric_port:
+              annotation: ""
+              label: ""
+              value: ""
+            metric_path:
+              annotation: ""
+              label: ""
+              value: ""
+      ##
       ## Metric filters control which metrics are passed on by the broker
       ## NOTE: This list is applied to the check every time the agent pod starts.
       ##       Updates through any other method will be overwritten by this list.
@@ -125,7 +149,7 @@
             ["allow", "^kube_job_status_failed$", "health"],
             ["allow", "^kube_persistentvolume_status_phase$", "health"],
             ["allow", "^kube_deployment_status_replicas_unavailable$", "deployments"],
-            ["allow", "^kube_hpa_spec_(min|max)_replicas", "scale"],
+            ["allow", "^kube_hpa_(spec_max|status_current)_replicas$", "scale"],
             ["allow", "^kube_pod_start_time$", "pods"],
             ["allow", "^kube_pod_status_condition$", "pods"],
             ["allow", "^(kube_)?pod_status_phase(_count)?$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"],

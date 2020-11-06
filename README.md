@@ -2,6 +2,26 @@
 
 An agent designed to retrieve metrics from a Kubernetes cluster. Runs as a deployment, forwards Kubernetes provided metrics for cluster, nodes, pods, and containers to Circonus.
 
+---
+
+## Table of contents
+
+* [Prerequisites](#prerequisites)
+  * [kube-state-metrics](#kube-state-metrics)
+  * [DNS](#dns)
+* [Installation](#installation)
+  * [kubectl](#kubectl)
+    * [Default](#default)
+    * [Custom](#custom)
+    * [Observation](#observation)
+  * [helm](#helm) - contributed example helm chart **will require modfiication**
+* [Options](#options) - command line parameters
+* [Dynamic collection](#dynamic-collection) - endpoints, services, pods, and nodes
+  * [Configuration options](#configuration-options)
+  * [Examples](#examples)
+
+---
+
 ## Prerequisites
 
 ### kube-state-metrics
@@ -98,7 +118,7 @@ helm install contrib/helm \
 
 ## Options
 
-```
+```text
 Usage:
   circonus-kubernetes-agent [flags]
 
@@ -127,6 +147,7 @@ Flags:
       --k8s-api-url string                    [ENV: CKA_K8S_API_URL] Kubernetes API URL (default "https://kubernetes.default.svc")
       --k8s-bearer-token string               [ENV: CKA_K8S_BEARER_TOKEN] Kubernetes Bearer Token
       --k8s-bearer-token-file string          [ENV: CKA_K8S_BEARER_TOKEN_FILE] Kubernetes Bearer Token File (default "/var/run/secrets/kubernetes.io/serviceaccount/token")
+       --k8s-dynamic-collector-file string     [ENV: CKA_K8S_DYNAMIC_COLLECTOR_FILE] Kubernetes dynamic collectors configuration file (default "/ck8sa/dynamic-collectors.json")
       --k8s-enable-api-server                 [ENV: CKA_K8S_ENABLE_API_SERVER] Kubernetes enable collection from api-server (default true)
       --k8s-enable-cadvisor-metrics           [ENV: CKA_K8S_ENABLE_CADVISOR_METRICS] Kubernetes enable collection of kubelet cadvisor metrics
       --k8s-enable-events                     [ENV: CKA_K8S_ENABLE_EVENTS] Kubernetes enable collection of events (default true)
@@ -155,4 +176,97 @@ Flags:
       --show-config string                    Show config (json|toml|yaml) and exit
       --trace-submits string                  Trace metrics submitted to Circonus to passed directory (one file per submission)
   -V, --version                               Show version and exit
-``` 
+```
+
+## Dynamic collection
+
+Dynamic collection simplifies gathering desirable metrics exposed in Prometheus format from endpoints, services, pods, and nodes.
+
+1. Use [Custom](#custom) deployment in order to configure dynamic collectors
+1. Add metric filters to the configuration for the desired metrics from dynamic collectors.
+
+### Configuraiton options
+
+The configuraiton is defined in the [custom](deploy/custom/configuration.yaml) deployment.
+
+```yaml
+collectors:
+  - name: ""           # required
+    disable: false     # disable this collector
+    type: ""           # required - endpoints, nodes, pods, services
+    schema: ""         # http or https
+    selectors:         # defaults to all of the type
+      label: ""        # labelSelector expression
+      field: ""        # fieldSelector expression
+    control:           # control whether to collect metrics from specific item
+      annotation: ""   # compare annotation setting against value
+      label: ""        # compare label setting against value
+      value: ""        # value to use in comparisson to annotation or label
+    metric_port:       # define port to use in metric request
+      annotation: ""   # use the value of an annotation
+      label: ""        # use the value of a label
+      value: ""        # use a static value
+    metric_path:       # define path to use in metric request, default `/metrics`
+      annotation: ""   # use the value of an annotation
+      label: ""        # use the value of a label
+      value: ""        # use a static value
+    tags: ""           # comma separated list of static tags to add
+    label_tags: ""     # comma separated list of labels on the item to add as tags
+```
+
+| option | required | description | default |
+| ------- | ---------| ----------- | ------- |
+| name | yes | name of this collector | n/a |
+| disable | no | disable a collector, but keep the configuration | false |
+| type | yes | type of the collector (`endpoints`, `nodes`, `pods`, `services`) | n/a |
+| schema | no | HTTP request schema `http` or `https` | `http` |
+| selectors || define what items of the type to collect ||
+| selectors.label | no | a [labelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) for the type | all for type |
+| selectors.field | no | a [fieldSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/) for the type | all for type |
+| control || controls collection of metrics at instance level ||
+| control.annotation | no | annotation to use e.g. `"monitor"` ||
+| control.label | no | label to use  e.g. `"metricsCollect"` ||
+| control.value | no | value the annotation or label should be for collection e.g. `"true"` ||
+| metric_port || defines the port to use for the metric request ||
+| metric_port.annotation | no | annotation to use ||
+| metric_port.label | no | label to use ||
+| metric_port.value | no | static port for all instances ||
+| metric_path || defines the path to use for the metric request ||
+| metric_path.annotation | no | annotation to use ||
+| metric_path.label | no | label to use ||
+| metric_path.value | no | static path to use for all instances | `/metrics`|
+| tags | no | comma separated list of static tags to add e.g. `"app:myapp,foo:bar"` ||
+| label_tags | no | comma separated list of labels to use as tags e.g. `"environment,location"` ||
+
+### Examples
+
+From `endpoints` with the label `kubernetes.io/name=KubeDNS` collect metrics from port `9153` using the default path of `/metrics`.
+
+```yaml
+collectors:
+  - name: "kube-dns"
+    type: "endpoints"
+    selectors:
+      label: "kubernetes.io/name=KubeDNS"
+    metric_port:
+      value: "9153"
+```
+
+From all `pods` with a label `appName` set to `myapp`, collect if the pod has an annotation `metricsCollect` with a value of `true`, use the values of the `metricsPort` and `metricsPath` annotations when constructing the metric request URL. Add the static tag `env:prod` and use the item labels `appName` and `location` as tags.
+
+```yaml
+collectors:
+  - name: "myapp"
+    type: "pods"
+    selectors:
+      label: "appName=myapp"
+    control:
+      annotation: "metricsCollect"
+      value: "true"
+    metric_port:
+      annotation: "metricsPort"
+    metric_path:
+      annotation: "metricsPath"
+    tags: "env:prod"
+    label_tags: "appName,location"
+```

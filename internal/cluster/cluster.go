@@ -23,6 +23,7 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/as"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/dc"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/dns"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/events"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/health"
@@ -148,7 +149,18 @@ func (c *Cluster) Start(ctx context.Context) error {
 		eventWatcher = ew
 	}
 
-	if len(c.collectors) == 0 && eventWatcher == nil {
+	var dynamicCollectors *dc.DC
+	if c.cfg.DynamicCollectorFile != "" {
+		var err error
+		d, err := dc.New(&c.cfg, c.logger, c.check)
+		if err != nil {
+			c.logger.Warn().Err(err).Msg("initializing dynamic collectors, disabling")
+		} else {
+			dynamicCollectors = d
+		}
+	}
+
+	if len(c.collectors) == 0 && eventWatcher == nil && dynamicCollectors == nil {
 		return errors.New("invalid cluster (zero collectors)")
 	}
 
@@ -156,7 +168,7 @@ func (c *Cluster) Start(ctx context.Context) error {
 		go eventWatcher.Start(ctx, c.tlsConfig)
 	}
 
-	c.collect(ctx)
+	c.collect(ctx, dynamicCollectors)
 
 	c.logger.Info().Str("collection_interval", c.interval.String()).Time("next_collection", time.Now().Add(c.interval)).Msg("client started")
 
@@ -192,13 +204,13 @@ func (c *Cluster) Start(ctx context.Context) error {
 			c.Unlock()
 
 			go func() {
-				c.collect(ctx)
+				c.collect(ctx, dynamicCollectors)
 			}()
 		}
 	}
 }
 
-func (c *Cluster) collect(ctx context.Context) {
+func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 	c.Lock()
 	start := time.Now()
 	c.lastStart = &start
@@ -209,6 +221,15 @@ func (c *Cluster) collect(ctx context.Context) {
 	c.check.SetCounter("collect_submit_retries", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, 0)
 
 	var wg sync.WaitGroup
+
+	if dynamicCollectors != nil {
+		wg.Add(1)
+		go func() {
+			dynamicCollectors.Collect(ctx, c.tlsConfig, &start)
+			wg.Done()
+		}()
+	}
+
 	for _, collectorID := range c.collectors {
 		switch collectorID {
 		case "node":

@@ -416,6 +416,7 @@ func (c *Check) defaultFilters() [][]string {
 	defaultMetricFiltersData := []byte(`
 {
     "metric_filters": [
+	["allow", "^coredns_plugin_enabled$", "tags", "and(collector:dynamic)"],
     ["allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"],
     ["allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"],
 	["allow", "^usage(Milli|Nano)Cores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"],
@@ -431,7 +432,7 @@ func (c *Check) defaultFilters() [][]string {
     ["allow", "^kube_job_status_failed$", "health"],
     ["allow", "^kube_persistentvolume_status_phase$", "health"],
 	["allow", "^kube_deployment_status_replicas_unavailable$", "deployments"],
-    ["allow", "^kube_hpa_spec_(min|max)_replicas", "scale"],
+    ["allow", "^kube_hpa_(spec_max|status_current)_replicas$", "scale"],
     ["allow", "^kube_pod_start_time$", "pods"],
     ["allow", "^kube_pod_status_condition$", "pods"],
     ["allow", "^(kube_)?pod_status_phase(_count)?$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"],
