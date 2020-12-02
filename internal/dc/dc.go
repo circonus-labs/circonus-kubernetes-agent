@@ -56,6 +56,7 @@ type Collector struct {
 	MetricPath MetricPath `yaml:"metric_path"`
 	Tags       string     `yaml:"tags"`
 	LabelTags  string     `yaml:"label_tags"`
+	Rollup     bool       `yaml:"rollup"`
 }
 
 type Selectors struct {
@@ -529,7 +530,9 @@ func (dc *DC) getMetrics(ctx context.Context, collector Collector, target metric
 		"collector:dynamic",
 		"collector_name:" + collector.Name,
 		"collector_type:" + collector.Type,
-		"__rollup:false", // prevent high cardinality metrics from rolling up
+	}
+	if !collector.Rollup {
+		streamTags = append(streamTags, "__rollup:false") // prevent high cardinality metrics from rolling up
 	}
 	streamTags = append(streamTags, target.Tags...)
 	measurementTags := []string{}

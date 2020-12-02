@@ -212,6 +212,7 @@ collectors:
       value: ""        # use a static value
     tags: ""           # comma separated list of static tags to add
     label_tags: ""     # comma separated list of labels on the item to add as tags
+    rollup: false      # rollup metrics
 ```
 
 | option | required | description | default |
@@ -237,6 +238,7 @@ collectors:
 | metric_path.value | no | static path to use for all instances | `/metrics`|
 | tags | no | comma separated list of static tags to add e.g. `"app:myapp,foo:bar"` ||
 | label_tags | no | comma separated list of labels to use as tags e.g. `"environment,location"` ||
+| rollup | no | true or false, control rolling up metrics | false |
 
 ### Examples
 
