@@ -49,18 +49,25 @@ type Collector struct {
 	Name       string     `yaml:"name"`
 	Disable    bool       `yaml:"disable"`
 	Type       string     `yaml:"type"`
-	Schema     string     `yaml:"schema"`
+	Schema     Schema     `yaml:"schema"`
 	Selectors  Selectors  `yaml:"selectors"`
 	Control    Control    `yaml:"control"`
 	MetricPort MetricPort `yaml:"metric_port"`
 	MetricPath MetricPath `yaml:"metric_path"`
 	Tags       string     `yaml:"tags"`
 	LabelTags  string     `yaml:"label_tags"`
+	Rollup     bool       `yaml:"rollup"`
 }
 
 type Selectors struct {
 	Label string `yaml:"label"`
 	Field string `yaml:"field"`
+}
+
+type Schema struct {
+	Annotation string `yaml:"annotation"`
+	Label      string `yaml:"label"`
+	Value      string `yaml:"value"`
 }
 
 type Control struct {
@@ -111,8 +118,8 @@ func New(cfg *config.Cluster, parentLogger zerolog.Logger, check *circonus.Check
 		if collector.MetricPath.Value == "" && collector.MetricPath.Annotation == "" && collector.MetricPath.Label == "" {
 			collector.MetricPath.Value = "/metrics"
 		}
-		if collector.Schema == "" {
-			collector.Schema = "http"
+		if collector.Schema.Value == "" && collector.Schema.Annotation == "" && collector.Schema.Label == "" {
+			collector.Schema.Value = "http"
 		}
 		dc.collectors = append(dc.collectors, collector)
 	}
@@ -235,11 +242,16 @@ func (dc *DC) collectEndpoints(ctx context.Context, collector Collector) {
 			logger.Warn().Str("endpoint", item.Name).Interface("collector", collector).Msg("unable to find metric path, skipping")
 			continue
 		}
+		schema := dc.getSchema(collector, item.Labels, item.Annotations)
+		if schema == "" {
+			logger.Warn().Str("service", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
+			continue
+		}
 
 		for _, subset := range item.Subsets {
 			for _, addr := range subset.Addresses {
 				u := url.URL{
-					Scheme: collector.Schema,
+					Scheme: schema,
 					Host:   addr.IP + ":" + port,
 					Path:   path,
 				}
@@ -300,6 +312,11 @@ func (dc *DC) collectNodes(ctx context.Context, collector Collector) {
 			logger.Warn().Str("node", item.Name).Interface("collector", collector).Msg("unable to find metric path, skipping")
 			continue
 		}
+		schema := dc.getSchema(collector, item.Labels, item.Annotations)
+		if schema == "" {
+			logger.Warn().Str("service", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
+			continue
+		}
 
 		ip := ""
 		for _, addr := range item.Status.Addresses {
@@ -313,7 +330,7 @@ func (dc *DC) collectNodes(ctx context.Context, collector Collector) {
 		}
 
 		u := url.URL{
-			Scheme: collector.Schema,
+			Scheme: schema,
 			Host:   ip + ":" + port,
 			Path:   path,
 		}
@@ -372,6 +389,11 @@ func (dc *DC) collectPods(ctx context.Context, collector Collector) {
 			logger.Warn().Str("pod", item.Name).Interface("collector", collector).Msg("unable to find metric path, skipping")
 			continue
 		}
+		schema := dc.getSchema(collector, item.Labels, item.Annotations)
+		if schema == "" {
+			logger.Warn().Str("service", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
+			continue
+		}
 
 		ip := item.Status.PodIP
 		if ip == "" {
@@ -380,7 +402,7 @@ func (dc *DC) collectPods(ctx context.Context, collector Collector) {
 		}
 
 		u := url.URL{
-			Scheme: collector.Schema,
+			Scheme: schema,
 			Host:   ip + ":" + port,
 			Path:   path,
 		}
@@ -439,6 +461,11 @@ func (dc *DC) collectServices(ctx context.Context, collector Collector) {
 			logger.Warn().Str("service", item.Name).Interface("collector", collector).Msg("unable to find metric path, skipping")
 			continue
 		}
+		schema := dc.getSchema(collector, item.Labels, item.Annotations)
+		if schema == "" {
+			logger.Warn().Str("service", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
+			continue
+		}
 
 		ip := item.Spec.ClusterIP
 		if ip == "" || ip == v1.ClusterIPNone {
@@ -447,7 +474,7 @@ func (dc *DC) collectServices(ctx context.Context, collector Collector) {
 		}
 
 		u := url.URL{
-			Scheme: collector.Schema,
+			Scheme: schema,
 			Host:   ip + ":" + port,
 			Path:   path,
 		}
@@ -529,7 +556,9 @@ func (dc *DC) getMetrics(ctx context.Context, collector Collector, target metric
 		"collector:dynamic",
 		"collector_name:" + collector.Name,
 		"collector_type:" + collector.Type,
-		"__rollup:false", // prevent high cardinality metrics from rolling up
+	}
+	if !collector.Rollup {
+		streamTags = append(streamTags, "__rollup:false") // prevent high cardinality metrics from rolling up
 	}
 	streamTags = append(streamTags, target.Tags...)
 	measurementTags := []string{}
@@ -614,6 +643,31 @@ func (dc *DC) getPath(collector Collector, labels map[string]string, annotations
 	if collector.MetricPath.Label != "" {
 		for ln, lv := range labels {
 			if ln == collector.MetricPath.Label {
+				return lv
+			}
+		}
+	}
+
+	return ""
+}
+
+// getSchema uses the configuration's Schema settings to determine what schema to use for metric request
+func (dc *DC) getSchema(collector Collector, labels map[string]string, annotations map[string]string) string {
+	if collector.Schema.Value != "" {
+		return collector.Schema.Value
+	}
+
+	if collector.Schema.Annotation != "" {
+		for an, av := range annotations {
+			if an == collector.Schema.Annotation {
+				return av
+			}
+		}
+	}
+
+	if collector.Schema.Label != "" {
+		for ln, lv := range labels {
+			if ln == collector.Schema.Label {
 				return lv
 			}
 		}

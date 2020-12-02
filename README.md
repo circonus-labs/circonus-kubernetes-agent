@@ -194,7 +194,10 @@ collectors:
   - name: ""           # required
     disable: false     # disable this collector
     type: ""           # required - endpoints, nodes, pods, services
-    schema: ""         # http or https
+    schema:            # scema to use in metric request (http or https)
+      annotation: ""   # use the value of an annotation
+      label: ""        # use the value of a label
+      value: ""        # use a static value (http or https)
     selectors:         # defaults to all of the type
       label: ""        # labelSelector expression
       field: ""        # fieldSelector expression
@@ -212,6 +215,7 @@ collectors:
       value: ""        # use a static value
     tags: ""           # comma separated list of static tags to add
     label_tags: ""     # comma separated list of labels on the item to add as tags
+    rollup: false      # rollup metrics
 ```
 
 | option | required | description | default |
@@ -219,7 +223,10 @@ collectors:
 | name | yes | name of this collector | n/a |
 | disable | no | disable a collector, but keep the configuration | false |
 | type | yes | type of the collector (`endpoints`, `nodes`, `pods`, `services`) | n/a |
-| schema | no | HTTP request schema `http` or `https` | `http` |
+| schema | no | HTTP request schema `http` or `https` ||
+| schema.annotation | no | annotation to use ||
+| schema.label | no | label to use ||
+| schema.value | no | static schema for all instances | `http` |
 | selectors || define what items of the type to collect ||
 | selectors.label | no | a [labelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) for the type | all for type |
 | selectors.field | no | a [fieldSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/) for the type | all for type |
@@ -237,6 +244,7 @@ collectors:
 | metric_path.value | no | static path to use for all instances | `/metrics`|
 | tags | no | comma separated list of static tags to add e.g. `"app:myapp,foo:bar"` ||
 | label_tags | no | comma separated list of labels to use as tags e.g. `"environment,location"` ||
+| rollup | no | true or false, control rolling up metrics | false |
 
 ### Examples
 

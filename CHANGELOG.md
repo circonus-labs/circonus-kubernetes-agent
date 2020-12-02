@@ -1,3 +1,8 @@
+# v0.11.1
+
+* add: rollup setting for dynamic collection
+* add: support annotation/label/value for schema
+
 # v0.11.0
 
 * add: dynamic collectors - define objects (endpoints, nodes, pods, services) to collect metrics from in configuration CIRC-5871
