@@ -194,7 +194,10 @@ collectors:
   - name: ""           # required
     disable: false     # disable this collector
     type: ""           # required - endpoints, nodes, pods, services
-    schema: ""         # http or https
+    schema:            # http or https
+      annotation: ""   # use the value of an annotation
+      label: ""        # use the value of a label
+      value: ""        # use a static value
     selectors:         # defaults to all of the type
       label: ""        # labelSelector expression
       field: ""        # fieldSelector expression
@@ -220,7 +223,10 @@ collectors:
 | name | yes | name of this collector | n/a |
 | disable | no | disable a collector, but keep the configuration | false |
 | type | yes | type of the collector (`endpoints`, `nodes`, `pods`, `services`) | n/a |
-| schema | no | HTTP request schema `http` or `https` | `http` |
+| schema | no | HTTP request schema `http` or `https` ||
+| schema.annotation | no | annotation to use ||
+| schema.label | no | label to use ||
+| schema.value | no | static schema for all instances | `http` |
 | selectors || define what items of the type to collect ||
 | selectors.label | no | a [labelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) for the type | all for type |
 | selectors.field | no | a [fieldSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/) for the type | all for type |
