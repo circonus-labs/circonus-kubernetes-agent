@@ -194,10 +194,10 @@ collectors:
   - name: ""           # required
     disable: false     # disable this collector
     type: ""           # required - endpoints, nodes, pods, services
-    schema:            # scema to use in metric request (http or https)
+    schema:            # scema to use in metric request
       annotation: ""   # use the value of an annotation
       label: ""        # use the value of a label
-      value: ""        # use a static value (http or https)
+      value: ""        # use a static value ("http" or "https")
     selectors:         # defaults to all of the type
       label: ""        # labelSelector expression
       field: ""        # fieldSelector expression
@@ -213,9 +213,12 @@ collectors:
       annotation: ""   # use the value of an annotation
       label: ""        # use the value of a label
       value: ""        # use a static value
+    rollup:            # rollup metrics
+      annotation: ""   # use the value of an annotation
+      label: ""        # use the value of a label
+      value: ""        # use a static value ("1", "t", "T", "TRUE", "true", "True", "0", "f", "F", "FALSE", "false", "False")
     tags: ""           # comma separated list of static tags to add
     label_tags: ""     # comma separated list of labels on the item to add as tags
-    rollup: false      # rollup metrics
 ```
 
 | option | required | description | default |
@@ -242,9 +245,12 @@ collectors:
 | metric_path.annotation | no | annotation to use ||
 | metric_path.label | no | label to use ||
 | metric_path.value | no | static path to use for all instances | `/metrics`|
+| rollup | no | control rolling up metrics (`1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, `False`) ||
+| rollup.annotation | no | annotation to use ||
+| rollup.label | no | label to use ||
+| rollup.value | no | static schema for all instances | `false` |
 | tags | no | comma separated list of static tags to add e.g. `"app:myapp,foo:bar"` ||
 | label_tags | no | comma separated list of labels to use as tags e.g. `"environment,location"` ||
-| rollup | no | true or false, control rolling up metrics | false |
 
 ### Examples
 

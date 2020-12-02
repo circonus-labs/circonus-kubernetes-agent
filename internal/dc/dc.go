@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -56,7 +57,7 @@ type Collector struct {
 	MetricPath MetricPath `yaml:"metric_path"`
 	Tags       string     `yaml:"tags"`
 	LabelTags  string     `yaml:"label_tags"`
-	Rollup     bool       `yaml:"rollup"`
+	Rollup     Rollup     `yaml:"rollup"`
 }
 
 type Selectors struct {
@@ -83,6 +84,12 @@ type MetricPort struct {
 }
 
 type MetricPath struct {
+	Annotation string `yaml:"annotation"`
+	Label      string `yaml:"label"`
+	Value      string `yaml:"value"`
+}
+
+type Rollup struct {
 	Annotation string `yaml:"annotation"`
 	Label      string `yaml:"label"`
 	Value      string `yaml:"value"`
@@ -120,6 +127,9 @@ func New(cfg *config.Cluster, parentLogger zerolog.Logger, check *circonus.Check
 		}
 		if collector.Schema.Value == "" && collector.Schema.Annotation == "" && collector.Schema.Label == "" {
 			collector.Schema.Value = "http"
+		}
+		if collector.Rollup.Value == "" && collector.Rollup.Annotation == "" && collector.Rollup.Label == "" {
+			collector.Rollup.Value = "false"
 		}
 		dc.collectors = append(dc.collectors, collector)
 	}
@@ -200,8 +210,9 @@ func (dc *DC) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 }
 
 type metricTarget struct {
-	URL  string
-	Tags []string
+	URL    string
+	Tags   []string
+	Rollup bool
 }
 
 func (dc *DC) collectEndpoints(ctx context.Context, collector Collector) {
@@ -244,7 +255,12 @@ func (dc *DC) collectEndpoints(ctx context.Context, collector Collector) {
 		}
 		schema := dc.getSchema(collector, item.Labels, item.Annotations)
 		if schema == "" {
-			logger.Warn().Str("service", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
+			logger.Warn().Str("endpoint", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
+			continue
+		}
+		rollup, err := dc.getRollup(collector, item.Labels, item.Annotations)
+		if err != nil {
+			logger.Warn().Err(err).Str("endpoint", item.Name).Interface("collector", collector).Msg("unable to set metric rollup, skipping")
 			continue
 		}
 
@@ -257,7 +273,7 @@ func (dc *DC) collectEndpoints(ctx context.Context, collector Collector) {
 				}
 				tags := generateTags(collector.Tags, collector.LabelTags, item.Labels)
 				tags = append(tags, "collector_target:"+addr.TargetRef.Name)
-				targets = append(targets, metricTarget{URL: u.String(), Tags: tags})
+				targets = append(targets, metricTarget{URL: u.String(), Tags: tags, Rollup: rollup})
 			}
 		}
 
@@ -314,7 +330,12 @@ func (dc *DC) collectNodes(ctx context.Context, collector Collector) {
 		}
 		schema := dc.getSchema(collector, item.Labels, item.Annotations)
 		if schema == "" {
-			logger.Warn().Str("service", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
+			logger.Warn().Str("node", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
+			continue
+		}
+		rollup, err := dc.getRollup(collector, item.Labels, item.Annotations)
+		if err != nil {
+			logger.Warn().Err(err).Str("node", item.Name).Interface("collector", collector).Msg("unable to set metric rollup, skipping")
 			continue
 		}
 
@@ -336,7 +357,7 @@ func (dc *DC) collectNodes(ctx context.Context, collector Collector) {
 		}
 		tags := generateTags(collector.Tags, collector.LabelTags, item.Labels)
 		tags = append(tags, "collector_target:"+item.Name)
-		targets = append(targets, metricTarget{URL: u.String(), Tags: tags})
+		targets = append(targets, metricTarget{URL: u.String(), Tags: tags, Rollup: rollup})
 
 		if done(ctx) {
 			return
@@ -391,7 +412,12 @@ func (dc *DC) collectPods(ctx context.Context, collector Collector) {
 		}
 		schema := dc.getSchema(collector, item.Labels, item.Annotations)
 		if schema == "" {
-			logger.Warn().Str("service", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
+			logger.Warn().Str("pod", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
+			continue
+		}
+		rollup, err := dc.getRollup(collector, item.Labels, item.Annotations)
+		if err != nil {
+			logger.Warn().Err(err).Str("pod", item.Name).Interface("collector", collector).Msg("unable to set metric rollup, skipping")
 			continue
 		}
 
@@ -408,7 +434,7 @@ func (dc *DC) collectPods(ctx context.Context, collector Collector) {
 		}
 		tags := generateTags(collector.Tags, collector.LabelTags, item.Labels)
 		tags = append(tags, "collector_target:"+item.Name)
-		targets = append(targets, metricTarget{URL: u.String(), Tags: tags})
+		targets = append(targets, metricTarget{URL: u.String(), Tags: tags, Rollup: rollup})
 
 		if done(ctx) {
 			return
@@ -466,6 +492,11 @@ func (dc *DC) collectServices(ctx context.Context, collector Collector) {
 			logger.Warn().Str("service", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
 			continue
 		}
+		rollup, err := dc.getRollup(collector, item.Labels, item.Annotations)
+		if err != nil {
+			logger.Warn().Err(err).Str("service", item.Name).Interface("collector", collector).Msg("unable to set metric rollup, skipping")
+			continue
+		}
 
 		ip := item.Spec.ClusterIP
 		if ip == "" || ip == v1.ClusterIPNone {
@@ -480,7 +511,7 @@ func (dc *DC) collectServices(ctx context.Context, collector Collector) {
 		}
 		tags := generateTags(collector.Tags, collector.LabelTags, item.Labels)
 		tags = append(tags, "collector_target:"+item.Name)
-		targets = append(targets, metricTarget{URL: u.String(), Tags: tags})
+		targets = append(targets, metricTarget{URL: u.String(), Tags: tags, Rollup: rollup})
 
 		if done(ctx) {
 			return
@@ -557,7 +588,7 @@ func (dc *DC) getMetrics(ctx context.Context, collector Collector, target metric
 		"collector_name:" + collector.Name,
 		"collector_type:" + collector.Type,
 	}
-	if !collector.Rollup {
+	if target.Rollup {
 		streamTags = append(streamTags, "__rollup:false") // prevent high cardinality metrics from rolling up
 	}
 	streamTags = append(streamTags, target.Tags...)
@@ -674,6 +705,42 @@ func (dc *DC) getSchema(collector Collector, labels map[string]string, annotatio
 	}
 
 	return ""
+}
+
+// getRollup uses the configuration's Rollup settings to determine what whether to set __rollup tag
+func (dc *DC) getRollup(collector Collector, labels map[string]string, annotations map[string]string) (bool, error) {
+	v := ""
+
+	if collector.Schema.Value != "" {
+		v = collector.Schema.Value
+	}
+
+	if v != "" && collector.Schema.Annotation != "" {
+		for an, av := range annotations {
+			if an == collector.Schema.Annotation {
+				v = av
+			}
+		}
+	}
+
+	if v != "" && collector.Schema.Label != "" {
+		for ln, lv := range labels {
+			if ln == collector.Schema.Label {
+				v = lv
+			}
+		}
+	}
+
+	if v == "" {
+		return false, fmt.Errorf("unable to find specified label/annotation")
+	}
+
+	rollup, err := strconv.ParseBool(v)
+	if err != nil {
+		return false, err
+	}
+
+	return rollup, nil
 }
 
 // generateTags creates the initial streamtags for the metric based on configured tags and labels
