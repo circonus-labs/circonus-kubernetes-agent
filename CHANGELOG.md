@@ -1,3 +1,7 @@
+# v0.11.2
+
+* add: support annotation/label/value for dynamic collection rollup
+
 # v0.11.1
 
 * add: rollup setting for dynamic collection
