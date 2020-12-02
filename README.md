@@ -194,10 +194,10 @@ collectors:
   - name: ""           # required
     disable: false     # disable this collector
     type: ""           # required - endpoints, nodes, pods, services
-    schema:            # http or https
+    schema:            # scema to use in metric request (http or https)
       annotation: ""   # use the value of an annotation
       label: ""        # use the value of a label
-      value: ""        # use a static value
+      value: ""        # use a static value (http or https)
     selectors:         # defaults to all of the type
       label: ""        # labelSelector expression
       field: ""        # fieldSelector expression
