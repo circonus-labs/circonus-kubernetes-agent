@@ -133,8 +133,14 @@ func (ksm *KSM) queueMetrics(
 					case "kube_pod_container_status_terminated_reason", "kube_pod_init_container_status_terminated_reason":
 						// text metrics removed to reduce load - not used in dashboard
 						// reason, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "reason")
+
 						_, _, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "reason")
 						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
+						// pod_container_status_waiting_reason_count
+						// pod_init_container_status_waiting_reason_count
+						// pod_container_status_terminated_reason_count
+						// pod_init_container_status_terminated_reason_count
+
 						// if val > 0 {
 						// 	ksm.cgmMetrics.SetTextValueWithTags(customMetricName, fullTags, reason)
 						// }
@@ -142,8 +148,10 @@ func (ksm *KSM) queueMetrics(
 					case "kube_pod_status_phase":
 						phase, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "phase")
 						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
+						// pod_status_phase_count
 						if val > 0 {
 							ksm.cgmMetrics.SetTextValueWithTags(customMetricName, fullTags, phase)
+							// pod_status_phase
 						}
 						// continue -- when original ksm metric no longer needed
 					case "kube_pod_status_ready", "kube_pod_status_scheduled":
@@ -151,6 +159,9 @@ func (ksm *KSM) queueMetrics(
 						// condition, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "condition")
 						_, _, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "condition")
 						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
+						// pod_status_ready_count
+						// pod_status_scheduled_count
+
 						// if val > 0 {
 						// 	ksm.cgmMetrics.SetTextValueWithTags(customMetricName, fullTags, condition)
 						// }
@@ -163,6 +174,11 @@ func (ksm *KSM) queueMetrics(
 						// _, fullTags, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "")
 						_, _, countTags := keyTags(check, streamTags, check.DefaultCGMTags(), "")
 						ksm.cgmMetrics.IncrementByValueWithTags(customMetricName+"_count", countTags, uint64(val))
+						// pod_container_status_running_count
+						// pod_container_status_terminated_count
+						// pod_container_status_waiting_count
+						// pod_container_status_ready_count
+
 						// if val > 0 {
 						// 	shortName := "pod_container_status"
 						// 	switch metricName {
