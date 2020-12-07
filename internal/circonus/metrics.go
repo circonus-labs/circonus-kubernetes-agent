@@ -161,7 +161,12 @@ func (c *Check) QueueMetricSample(
 		return errors.New("invalid metric type (empty)")
 	}
 
-	if len(c.metricFilters) > 0 {
+	applyFilters := true
+	if strings.Contains(strings.Join(streamTags, ","), "collector:dynamic") {
+		applyFilters = c.filterDynamicMetrics
+	}
+
+	if applyFilters && len(c.metricFilters) > 0 {
 		rejectMetric := true
 		origName := metricName
 		if strings.Contains(metricName, "|ST") {
@@ -171,6 +176,9 @@ func (c *Check) QueueMetricSample(
 			}
 		}
 		for _, mf := range c.metricFilters {
+			if !mf.Enabled {
+				continue
+			}
 			if mf.Filter.MatchString(metricName) {
 				if mf.Allow {
 					rejectMetric = false
