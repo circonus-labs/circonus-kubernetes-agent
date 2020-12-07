@@ -263,7 +263,7 @@ func (ksm *KSM) getMetrics(ctx context.Context, metricURL string) error {
 
 	client := &http.Client{}
 	if strings.HasPrefix(metricURL, "https:") {
-		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} //nolint:gosec lgtm[go/disabled-certificate-check]
+		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} //nolint:gosec // lgtm[go/disabled-certificate-check]
 	}
 	req, err := http.NewRequestWithContext(ctx, "GET", metricURL, nil)
 	if err != nil {
