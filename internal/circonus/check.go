@@ -39,37 +39,42 @@ const (
 )
 
 type MetricFilter struct {
-	Allow  bool
-	Filter *regexp.Regexp
+	Enabled bool
+	Allow   bool
+	Filter  *regexp.Regexp
 }
 
 type Check struct {
-	config          *config.Circonus
-	clusterName     string
-	clusterTag      string
-	brokerTLSConfig *tls.Config
-	checkBundleCID  string
-	checkUUID       string
-	checkCID        string
-	submissionURL   string
-	log             zerolog.Logger
-	stats           Stats
-	statsmu         sync.Mutex
-	metrics         *cgm.CirconusMetrics
-	metricsmu       sync.Mutex
-	defaultTags     cgm.Tags
-	metricFilters   []MetricFilter
-	client          *http.Client
+	config               *config.Circonus
+	clusterName          string
+	clusterTag           string
+	brokerTLSConfig      *tls.Config
+	checkBundleCID       string
+	checkUUID            string
+	checkCID             string
+	submissionURL        string
+	log                  zerolog.Logger
+	stats                Stats
+	statsmu              sync.Mutex
+	metrics              *cgm.CirconusMetrics
+	metricsmu            sync.Mutex
+	defaultTags          cgm.Tags
+	metricFilters        []MetricFilter
+	client               *http.Client
+	filterDynamicMetrics bool
 }
 
-func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterName string) (*Check, error) {
+func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterCfg *config.Cluster) (*Check, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid circonus config (nil)")
 	}
+	if clusterCfg == nil {
+		return nil, errors.New("invalid cluster config (nil)")
+	}
 	c := &Check{
 		config:      cfg,
-		clusterName: clusterName,
-		clusterTag:  "cluster:" + clusterName,
+		clusterName: clusterCfg.Name,
+		clusterTag:  "cluster:" + clusterCfg.Name,
 		log:         parentLogger.With().Str("pkg", "circonus.check").Logger(),
 	}
 
@@ -245,8 +250,24 @@ func (c *Check) setSubmissionURL(client *apiclient.API, checkBundle *apiclient.C
 
 		c.log.Debug().Strs("filter", filter).Msg("adding metric filter")
 		c.metricFilters[idx] = MetricFilter{
-			Allow:  strings.ToLower(filter[0]) == "allow",
-			Filter: regexp.MustCompile(filter[1]),
+			Enabled: true,
+			Allow:   strings.ToLower(filter[0]) == "allow",
+			Filter:  regexp.MustCompile(filter[1]),
+		}
+
+		fs := strings.Join(filter, ",")
+		// by default all dynamic metrics are sent to the broker
+		// we can't filter them locally because the regex is `^.+$`
+		// which would catch ALL metrics regardless of source
+		// the broker would then have to filter everything
+		// increases memory, bandwidth and collection time in larger clusters.
+		// default rule:
+		// ["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
+		if strings.Contains(fs, "and(collector:dynamic)") {
+			if strings.Contains(fs, "NO_LOCAL_FILTER") {
+				c.metricFilters[idx].Enabled = false
+				c.filterDynamicMetrics = false
+			}
 		}
 	}
 
@@ -416,6 +437,7 @@ func (c *Check) defaultFilters() [][]string {
 	defaultMetricFiltersData := []byte(`
 {
     "metric_filters": [
+	["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
     ["allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"],
     ["allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"],
 	["allow", "^usage(Milli|Nano)Cores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"],
