@@ -1,3 +1,14 @@
+# v0.11.4
+
+* add: dynamic collector filter to allow all dc metrics by default
+* add: only apply local filters if rule enabled
+* add: enable flag on filter rules
+* add: disable dynamic collector rule with no local filter
+* upd: dependencies (specifically cgm for better invalid tag messages)
+* upd: pass cluster config to check
+* fix: rollup setting parsing
+* fix: filter and log NaNs
+
 # v0.11.3
 
 * fix: default dynamic collector file extension .json->.yaml (must be yaml)
