@@ -93,7 +93,7 @@ const (
 	K8SPodLabelVal            = ""                                                    // blank=all
 	K8SIncludeContainers      = false                                                 // not needed by dashboard
 	K8SAPITimelimit           = "10s"                                                 // default timeout
-	K8SDynamicCollectorFile   = "/ck8sa/dynamic-collectors.json"                      // assumes running in a pod, ConfigMap mounted volume
+	K8SDynamicCollectorFile   = "/ck8sa/dynamic-collectors.yaml"                      // assumes running in a pod, ConfigMap mounted volume
 )
 
 var (
