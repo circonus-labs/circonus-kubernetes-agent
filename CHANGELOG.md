@@ -1,3 +1,7 @@
+# v0.11.3
+
+* fix: default dynamic collector file extension .json->.yaml (must be yaml)
+
 # v0.11.2
 
 * add: support annotation/label/value for dynamic collection rollup
