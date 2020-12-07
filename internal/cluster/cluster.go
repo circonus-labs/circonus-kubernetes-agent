@@ -108,7 +108,7 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 	if circCfg.Check.Target == "" {
 		circCfg.Check.Target = strings.Replace(cfg.Name, " ", "_", -1)
 	}
-	check, err := circonus.NewCheck(c.logger, &circCfg, cfg.Name)
+	check, err := circonus.NewCheck(c.logger, &circCfg, &cfg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to initialize circonus for cluster (%s)", cfg.Name)
 	}
