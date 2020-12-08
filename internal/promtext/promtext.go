@@ -127,6 +127,14 @@ func QueueMetrics(
 				}
 			case dto.MetricType_GAUGE:
 				if m.GetGauge().Value != nil {
+					if math.IsNaN(*m.GetGauge().Value) {
+						logger.Warn().
+							Str("metric", metricName).
+							Str("type", mf.GetType().String()).
+							Str("value", (*m).GetGauge().String()).
+							Msg("cannot coerce NaN")
+						continue
+					}
 					_ = check.QueueMetricSample(
 						metrics, metricName,
 						circonus.MetricTypeFloat64,
@@ -135,6 +143,14 @@ func QueueMetrics(
 				}
 			case dto.MetricType_COUNTER:
 				if m.GetCounter().Value != nil {
+					if math.IsNaN(*m.GetCounter().Value) {
+						logger.Warn().
+							Str("metric", metricName).
+							Str("type", mf.GetType().String()).
+							Str("value", (*m).GetCounter().String()).
+							Msg("cannot coerce NaN")
+						continue
+					}
 					_ = check.QueueMetricSample(
 						metrics, metricName,
 						circonus.MetricTypeFloat64,
@@ -143,6 +159,14 @@ func QueueMetrics(
 				}
 			case dto.MetricType_UNTYPED:
 				if m.GetUntyped().Value != nil {
+					if math.IsNaN(*m.GetUntyped().Value) {
+						logger.Warn().
+							Str("metric", metricName).
+							Str("type", mf.GetType().String()).
+							Str("value", (*m).GetUntyped().String()).
+							Msg("cannot coerce NaN")
+						continue
+					}
 					if *m.GetUntyped().Value == math.Inf(+1) {
 						logger.Warn().
 							Str("metric", metricName).

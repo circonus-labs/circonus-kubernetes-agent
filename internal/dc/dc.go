@@ -711,21 +711,21 @@ func (dc *DC) getSchema(collector Collector, labels map[string]string, annotatio
 func (dc *DC) getRollup(collector Collector, labels map[string]string, annotations map[string]string) (bool, error) {
 	v := ""
 
-	if collector.Schema.Value != "" {
-		v = collector.Schema.Value
+	if collector.Rollup.Value != "" {
+		v = collector.Rollup.Value
 	}
 
-	if v != "" && collector.Schema.Annotation != "" {
+	if v != "" && collector.Rollup.Annotation != "" {
 		for an, av := range annotations {
-			if an == collector.Schema.Annotation {
+			if an == collector.Rollup.Annotation {
 				v = av
 			}
 		}
 	}
 
-	if v != "" && collector.Schema.Label != "" {
+	if v != "" && collector.Rollup.Label != "" {
 		for ln, lv := range labels {
-			if ln == collector.Schema.Label {
+			if ln == collector.Rollup.Label {
 				v = lv
 			}
 		}

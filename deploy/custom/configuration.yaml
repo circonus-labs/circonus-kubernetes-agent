@@ -131,9 +131,14 @@
       ## Metric filters control which metrics are passed on by the broker
       ## NOTE: This list is applied to the check every time the agent pod starts.
       ##       Updates through any other method will be overwritten by this list.
+      ##
+      ## NOTE: By default, all dynamically collected metrics will all be submitted.
+      ##       To apply filters to them, remove the current 'NO_LOCAL_FILTER' rule, and
+      ##       add specific rules to control the flow of metrics.
       metric-filters.json: |
         {
           "metric_filters": [
+            ["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
             ["allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"],
             ["allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"],
             ["allow", "^usage(Milli|Nano)Cores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"],
