@@ -275,12 +275,11 @@ collectors:
     selectors:
       label: "appName=myapp"
     control:
-      annotation: "metricsCollect"
-      value: "true"
+      annotation: "example.io/metricsCollect"
     metric_port:
-      annotation: "metricsPort"
+      annotation: "example.io/metricsPort"
     metric_path:
-      annotation: "metricsPath"
+      annotation: "example.io/metricsPath"
     tags: "env:prod"
     label_tags: "appName,location"
 ```
