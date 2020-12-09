@@ -304,6 +304,20 @@ func (dc *DC) collectNodes(ctx context.Context, collector Collector) {
 
 	targets := make([]metricTarget, 0)
 	for _, item := range nodes.Items {
+		ok := false
+		for _, cond := range item.Status.Conditions {
+			if cond.Type == v1.NodeReady {
+				if cond.Status == v1.ConditionTrue {
+					ok = true
+					break
+				}
+			}
+		}
+
+		if !ok {
+			continue
+		}
+
 		collect, port, path, schema, rollup, err := dc.getSettings("node", item.Name, collector, item.Labels, item.Annotations)
 		if err != nil {
 			// note: already logged in getSettings
@@ -371,6 +385,20 @@ func (dc *DC) collectPods(ctx context.Context, collector Collector) {
 
 	targets := make([]metricTarget, 0)
 	for _, item := range pods.Items {
+		ok := false
+		for _, cond := range item.Status.Conditions {
+			if cond.Type == v1.PodReady {
+				if cond.Status == v1.ConditionTrue {
+					ok = true
+					break
+				}
+			}
+		}
+
+		if !ok {
+			continue
+		}
+
 		collect, port, path, schema, rollup, err := dc.getSettings("pod", item.Name, collector, item.Labels, item.Annotations)
 		if err != nil {
 			// note: already logged in getSettings
