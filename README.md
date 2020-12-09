@@ -229,26 +229,26 @@ collectors:
 | selectors || define what items of the type to collect ||
 | selectors.label | no | a [labelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) for the type | all for type |
 | selectors.field | no | a [fieldSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/) for the type | all for type |
-| control || controls collection of metrics at instance level ||
+| control || controls collection of metrics (string parsed as boolean) ||
 | control.annotation | no | annotation to use e.g. `"monitor"` ||
 | control.label | no | label to use  e.g. `"metricsCollect"` ||
-| control.value | no | static value (`1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, `False`) | `true`|
+| control.value | no | static value (`1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, `False`) | `"true"`|
 | metric_port || defines the port to use for the metric request ||
 | metric_port.annotation | no | annotation to use ||
 | metric_port.label | no | label to use ||
-| metric_port.value | no | static port for all instances ||
+| metric_port.value | no | static port for all instances (e.g. `"8080"`) ||
 | metric_path || defines the path to use for the metric request ||
 | metric_path.annotation | no | annotation to use ||
 | metric_path.label | no | label to use ||
-| metric_path.value | no | static path to use for all instances | `/metrics`|
+| metric_path.value | no | static path to use for all instances | `"/metrics"`|
 | schema | no | HTTP request schema `http` or `https` ||
 | schema.annotation | no | annotation to use ||
 | schema.label | no | label to use ||
-| schema.value | no | static schema for all instances | `http` |
-| rollup | no | control rolling up metrics (`1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, `False`) ||
+| schema.value | no | static schema for all instances | `"http"` |
+| rollup | no | control rolling up metrics (string parsed as boolean) ||
 | rollup.annotation | no | annotation to use ||
 | rollup.label | no | label to use ||
-| rollup.value | no | static schema for all instances | `false` |
+| rollup.value | no | static value (`1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, `False`) | `"false"` |
 | tags | no | comma separated list of static tags to add e.g. `"app:myapp,foo:bar"` ||
 | label_tags | no | comma separated list of labels to use as tags e.g. `"environment,location"` ||
 
