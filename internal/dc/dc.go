@@ -122,6 +122,10 @@ func New(cfg *config.Cluster, parentLogger zerolog.Logger, check *circonus.Check
 			dc.log.Warn().Int("position", idx).Msg("invalid collector, 'name' missing, skipping")
 			continue
 		}
+		// set defaults
+		if collector.Control.Value == "" && collector.Control.Annotation == "" && collector.Control.Label == "" {
+			collector.Control.Value = "true"
+		}
 		if collector.MetricPath.Value == "" && collector.MetricPath.Annotation == "" && collector.MetricPath.Label == "" {
 			collector.MetricPath.Value = "/metrics"
 		}
@@ -240,27 +244,12 @@ func (dc *DC) collectEndpoints(ctx context.Context, collector Collector) {
 
 	targets := make([]metricTarget, 0)
 	for _, item := range endpoints.Items {
-		if !dc.collectItem(collector, item.Labels, item.Annotations) {
-			continue
-		}
-		port := dc.getPort(collector, item.Labels, item.Annotations)
-		if port == "" {
-			logger.Warn().Str("endpoint", item.Name).Interface("collector", collector).Msg("unable to find metric port, skipping")
-			continue
-		}
-		path := dc.getPath(collector, item.Labels, item.Annotations)
-		if path == "" {
-			logger.Warn().Str("endpoint", item.Name).Interface("collector", collector).Msg("unable to find metric path, skipping")
-			continue
-		}
-		schema := dc.getSchema(collector, item.Labels, item.Annotations)
-		if schema == "" {
-			logger.Warn().Str("endpoint", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
-			continue
-		}
-		rollup, err := dc.getRollup(collector, item.Labels, item.Annotations)
+		collect, port, path, schema, rollup, err := dc.getSettings("endpoint", item.Name, collector, item.Labels, item.Annotations)
 		if err != nil {
-			logger.Warn().Err(err).Str("endpoint", item.Name).Interface("collector", collector).Msg("unable to set metric rollup, skipping")
+			// note: already logged in getSettings
+			continue
+		}
+		if !collect {
 			continue
 		}
 
@@ -315,27 +304,26 @@ func (dc *DC) collectNodes(ctx context.Context, collector Collector) {
 
 	targets := make([]metricTarget, 0)
 	for _, item := range nodes.Items {
-		if !dc.collectItem(collector, item.Labels, item.Annotations) {
+		ok := false
+		for _, cond := range item.Status.Conditions {
+			if cond.Type == v1.NodeReady {
+				if cond.Status == v1.ConditionTrue {
+					ok = true
+					break
+				}
+			}
+		}
+
+		if !ok {
 			continue
 		}
-		port := dc.getPort(collector, item.Labels, item.Annotations)
-		if port == "" {
-			logger.Warn().Str("node", item.Name).Interface("collector", collector).Msg("unable to find metric port, skipping")
-			continue
-		}
-		path := dc.getPath(collector, item.Labels, item.Annotations)
-		if path == "" {
-			logger.Warn().Str("node", item.Name).Interface("collector", collector).Msg("unable to find metric path, skipping")
-			continue
-		}
-		schema := dc.getSchema(collector, item.Labels, item.Annotations)
-		if schema == "" {
-			logger.Warn().Str("node", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
-			continue
-		}
-		rollup, err := dc.getRollup(collector, item.Labels, item.Annotations)
+
+		collect, port, path, schema, rollup, err := dc.getSettings("node", item.Name, collector, item.Labels, item.Annotations)
 		if err != nil {
-			logger.Warn().Err(err).Str("node", item.Name).Interface("collector", collector).Msg("unable to set metric rollup, skipping")
+			// note: already logged in getSettings
+			continue
+		}
+		if !collect {
 			continue
 		}
 
@@ -397,27 +385,26 @@ func (dc *DC) collectPods(ctx context.Context, collector Collector) {
 
 	targets := make([]metricTarget, 0)
 	for _, item := range pods.Items {
-		if !dc.collectItem(collector, item.Labels, item.Annotations) {
+		ok := false
+		for _, cond := range item.Status.Conditions {
+			if cond.Type == v1.PodReady {
+				if cond.Status == v1.ConditionTrue {
+					ok = true
+					break
+				}
+			}
+		}
+
+		if !ok {
 			continue
 		}
-		port := dc.getPort(collector, item.Labels, item.Annotations)
-		if port == "" {
-			logger.Warn().Str("pod", item.Name).Interface("collector", collector).Msg("unable to find metric port, skipping")
-			continue
-		}
-		path := dc.getPath(collector, item.Labels, item.Annotations)
-		if path == "" {
-			logger.Warn().Str("pod", item.Name).Interface("collector", collector).Msg("unable to find metric path, skipping")
-			continue
-		}
-		schema := dc.getSchema(collector, item.Labels, item.Annotations)
-		if schema == "" {
-			logger.Warn().Str("pod", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
-			continue
-		}
-		rollup, err := dc.getRollup(collector, item.Labels, item.Annotations)
+
+		collect, port, path, schema, rollup, err := dc.getSettings("pod", item.Name, collector, item.Labels, item.Annotations)
 		if err != nil {
-			logger.Warn().Err(err).Str("pod", item.Name).Interface("collector", collector).Msg("unable to set metric rollup, skipping")
+			// note: already logged in getSettings
+			continue
+		}
+		if !collect {
 			continue
 		}
 
@@ -474,27 +461,12 @@ func (dc *DC) collectServices(ctx context.Context, collector Collector) {
 
 	targets := make([]metricTarget, 0)
 	for _, item := range services.Items {
-		if !dc.collectItem(collector, item.Labels, item.Annotations) {
-			continue
-		}
-		port := dc.getPort(collector, item.Labels, item.Annotations)
-		if port == "" {
-			logger.Warn().Str("service", item.Name).Interface("collector", collector).Msg("unable to find metric port, skipping")
-			continue
-		}
-		path := dc.getPath(collector, item.Labels, item.Annotations)
-		if path == "" {
-			logger.Warn().Str("service", item.Name).Interface("collector", collector).Msg("unable to find metric path, skipping")
-			continue
-		}
-		schema := dc.getSchema(collector, item.Labels, item.Annotations)
-		if schema == "" {
-			logger.Warn().Str("service", item.Name).Interface("collector", collector).Msg("unable to find metric schema, skipping")
-			continue
-		}
-		rollup, err := dc.getRollup(collector, item.Labels, item.Annotations)
+		collect, port, path, schema, rollup, err := dc.getSettings("service", item.Name, collector, item.Labels, item.Annotations)
 		if err != nil {
-			logger.Warn().Err(err).Str("service", item.Name).Interface("collector", collector).Msg("unable to set metric rollup, skipping")
+			// note: already logged in getSettings
+			continue
+		}
+		if !collect {
 			continue
 		}
 
@@ -601,146 +573,190 @@ func (dc *DC) getMetrics(ctx context.Context, collector Collector, target metric
 	}
 }
 
+// getSettings parses the various settings and returns the user-controlled settings (from value, annotation, or label)
+func (dc *DC) getSettings(itemType, itemName string, collector Collector,
+	labels map[string]string, annotations map[string]string) (bool, string, string, string, bool, error) {
+
+	var err error
+	collect := false
+	port := ""
+	path := ""
+	schema := ""
+	rollup := false
+
+	collect, err = dc.collectItem(collector, labels, annotations)
+	if err != nil {
+		dc.log.Warn().
+			Err(err).
+			Str(itemType, itemName).
+			Interface("annotations", annotations).
+			Interface("labels", labels).
+			Interface("collector", collector).
+			Msg("unable to find collector control, skipping")
+		return false, port, path, schema, rollup, err
+	}
+	if !collect {
+		return false, port, path, schema, rollup, err
+	}
+
+	port, err = dc.getPort(collector, labels, annotations)
+	if err != nil {
+		dc.log.Warn().
+			Err(err).
+			Str(itemType, itemName).
+			Interface("annotations", annotations).
+			Interface("labels", labels).
+			Interface("collector", collector).
+			Msg("unable to find metric port, skipping")
+		return false, port, path, schema, rollup, err
+	}
+
+	path, err = dc.getPath(collector, labels, annotations)
+	if err != nil {
+		dc.log.Warn().
+			Err(err).
+			Str(itemType, itemName).
+			Interface("annotations", annotations).
+			Interface("labels", labels).
+			Interface("collector", collector).
+			Msg("unable to find metric path, skipping")
+		return false, port, path, schema, rollup, err
+	}
+
+	schema, err = dc.getSchema(collector, labels, annotations)
+	if err != nil {
+		dc.log.Warn().
+			Err(err).
+			Str(itemType, itemName).
+			Interface("collector", collector).
+			Interface("annotations", annotations).
+			Interface("labels", labels).
+			Msg("unable to find metric schema, skipping")
+		return false, port, path, schema, rollup, err
+	}
+
+	rollup, err = dc.getRollup(collector, labels, annotations)
+	if err != nil {
+		dc.log.Warn().
+			Err(err).
+			Str(itemType, itemName).
+			Interface("annotations", annotations).
+			Interface("labels", labels).
+			Interface("collector", collector).
+			Msg("unable to set metric rollup, skipping")
+		return false, port, path, schema, rollup, err
+	}
+
+	return collect, port, path, schema, rollup, nil
+}
+
 // collectItem uses the configuration's Control settings to determine if the specific item should be collected
-func (dc *DC) collectItem(collector Collector, labels map[string]string, annotations map[string]string) bool {
-	// no annotation or label
-	if collector.Control.Annotation == "" && collector.Control.Label == "" {
-		return true
-	}
-
-	// no value to compare the annotation/label against
-	if collector.Control.Value == "" {
-		return true
-	}
-
-	if collector.Control.Annotation != "" {
-		for an, av := range annotations {
-			if an == collector.Control.Annotation {
-				return av == collector.Control.Value
-			}
+func (dc *DC) collectItem(collector Collector, labels map[string]string, annotations map[string]string) (bool, error) {
+	switch {
+	case collector.Control.Value != "":
+		return strconv.ParseBool(collector.Control.Value)
+	case collector.Control.Annotation != "":
+		av, found := annotations[collector.Control.Annotation]
+		if found {
+			return strconv.ParseBool(av)
 		}
-	}
-
-	if collector.Control.Label != "" {
-		for ln, lv := range labels {
-			if ln == collector.Control.Label {
-				return lv == collector.Control.Value
-			}
+		return false, fmt.Errorf("unable to find annotation (%s)", collector.Control.Annotation)
+	case collector.Control.Label != "":
+		lv, found := labels[collector.Control.Label]
+		if found {
+			return strconv.ParseBool(lv)
 		}
+		return false, fmt.Errorf("unable to find label (%s)", collector.Control.Annotation)
 	}
 
-	return false
+	return true, nil
 }
 
 // getPort uses the configuration's MetricPort settings to determine what port to use for metric request
-func (dc *DC) getPort(collector Collector, labels map[string]string, annotations map[string]string) string {
-	if collector.MetricPort.Value != "" {
-		return collector.MetricPort.Value
-	}
-
-	if collector.MetricPort.Annotation != "" {
-		for an, av := range annotations {
-			if an == collector.MetricPort.Annotation {
-				return av
-			}
+func (dc *DC) getPort(collector Collector, labels map[string]string, annotations map[string]string) (string, error) {
+	switch {
+	case collector.MetricPort.Value != "":
+		return collector.MetricPort.Value, nil
+	case collector.MetricPort.Annotation != "":
+		av, found := annotations[collector.MetricPort.Annotation]
+		if found {
+			return av, nil
 		}
-	}
-
-	if collector.MetricPort.Label != "" {
-		for ln, lv := range labels {
-			if ln == collector.MetricPort.Label {
-				return lv
-			}
+		return "", fmt.Errorf("unable to find annotation (%s)", collector.MetricPort.Annotation)
+	case collector.MetricPort.Label != "":
+		lv, found := labels[collector.MetricPort.Label]
+		if found {
+			return lv, nil
 		}
+		return "", fmt.Errorf("unable to find label (%s)", collector.MetricPort.Label)
 	}
 
-	return ""
+	return "", nil
 }
 
 // getPath uses the configuration's MetricPath settings to determine what path to use for metric request
-func (dc *DC) getPath(collector Collector, labels map[string]string, annotations map[string]string) string {
-	if collector.MetricPath.Value != "" {
-		return collector.MetricPath.Value
-	}
-
-	if collector.MetricPath.Annotation != "" {
-		for an, av := range annotations {
-			if an == collector.MetricPath.Annotation {
-				return av
-			}
+func (dc *DC) getPath(collector Collector, labels map[string]string, annotations map[string]string) (string, error) {
+	switch {
+	case collector.MetricPath.Value != "":
+		return collector.MetricPath.Value, nil
+	case collector.MetricPath.Annotation != "":
+		av, found := annotations[collector.MetricPath.Annotation]
+		if found {
+			return av, nil
 		}
-	}
-
-	if collector.MetricPath.Label != "" {
-		for ln, lv := range labels {
-			if ln == collector.MetricPath.Label {
-				return lv
-			}
+		return "", fmt.Errorf("unable to find annotation (%s)", collector.MetricPath.Annotation)
+	case collector.MetricPath.Label != "":
+		lv, found := labels[collector.MetricPath.Label]
+		if found {
+			return lv, nil
 		}
+		return "", fmt.Errorf("unable to find label (%s)", collector.MetricPath.Label)
 	}
 
-	return ""
+	return "", nil
 }
 
 // getSchema uses the configuration's Schema settings to determine what schema to use for metric request
-func (dc *DC) getSchema(collector Collector, labels map[string]string, annotations map[string]string) string {
-	if collector.Schema.Value != "" {
-		return collector.Schema.Value
-	}
-
-	if collector.Schema.Annotation != "" {
-		for an, av := range annotations {
-			if an == collector.Schema.Annotation {
-				return av
-			}
+func (dc *DC) getSchema(collector Collector, labels map[string]string, annotations map[string]string) (string, error) {
+	switch {
+	case collector.Schema.Value != "":
+		return collector.Schema.Value, nil
+	case collector.Schema.Annotation != "":
+		av, found := annotations[collector.Schema.Annotation]
+		if found {
+			return av, nil
 		}
-	}
-
-	if collector.Schema.Label != "" {
-		for ln, lv := range labels {
-			if ln == collector.Schema.Label {
-				return lv
-			}
+		return "", fmt.Errorf("unable to find annotation (%s)", collector.Schema.Annotation)
+	case collector.Schema.Label != "":
+		lv, found := labels[collector.Schema.Label]
+		if found {
+			return lv, nil
 		}
+		return "", fmt.Errorf("unable to find annotation (%s)", collector.Schema.Annotation)
 	}
 
-	return ""
+	return "", nil
 }
 
 // getRollup uses the configuration's Rollup settings to determine what whether to set __rollup tag
 func (dc *DC) getRollup(collector Collector, labels map[string]string, annotations map[string]string) (bool, error) {
-	v := ""
-
-	if collector.Rollup.Value != "" {
-		v = collector.Rollup.Value
-	}
-
-	if v != "" && collector.Rollup.Annotation != "" {
-		for an, av := range annotations {
-			if an == collector.Rollup.Annotation {
-				v = av
-			}
+	switch {
+	case collector.Rollup.Value != "":
+		return strconv.ParseBool(collector.Rollup.Value)
+	case collector.Rollup.Annotation != "":
+		av, found := annotations[collector.Rollup.Annotation]
+		if found {
+			return strconv.ParseBool(av)
 		}
-	}
-
-	if v != "" && collector.Rollup.Label != "" {
-		for ln, lv := range labels {
-			if ln == collector.Rollup.Label {
-				v = lv
-			}
+		return false, fmt.Errorf("unable to find annotation (%s)", collector.Rollup.Annotation)
+	case collector.Rollup.Label != "":
+		lv, found := labels[collector.Rollup.Label]
+		if found {
+			return strconv.ParseBool(lv)
 		}
+		return false, fmt.Errorf("unable to find label (%s)", collector.Rollup.Annotation)
 	}
-
-	if v == "" {
-		return false, fmt.Errorf("unable to find specified label/annotation")
-	}
-
-	rollup, err := strconv.ParseBool(v)
-	if err != nil {
-		return false, err
-	}
-
-	return rollup, nil
+	return false, nil
 }
 
 // generateTags creates the initial streamtags for the metric based on configured tags and labels

@@ -1,3 +1,11 @@
+# 0.11.5
+
+* doc: update dynamic collector documentation
+* upd: centralize config parsing
+* upd: control setting, use label/annotation value as a boolean rather than comparisson
+* add: more logging on setting parse failures
+* add: node/pod status skip if not ready
+
 # v0.11.4
 
 * add: dynamic collector filter to allow all dc metrics by default

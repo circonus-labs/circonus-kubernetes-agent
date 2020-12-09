@@ -147,7 +147,7 @@ Flags:
       --k8s-api-url string                    [ENV: CKA_K8S_API_URL] Kubernetes API URL (default "https://kubernetes.default.svc")
       --k8s-bearer-token string               [ENV: CKA_K8S_BEARER_TOKEN] Kubernetes Bearer Token
       --k8s-bearer-token-file string          [ENV: CKA_K8S_BEARER_TOKEN_FILE] Kubernetes Bearer Token File (default "/var/run/secrets/kubernetes.io/serviceaccount/token")
-       --k8s-dynamic-collector-file string     [ENV: CKA_K8S_DYNAMIC_COLLECTOR_FILE] Kubernetes dynamic collectors configuration file (default "/ck8sa/dynamic-collectors.json")
+      --k8s-dynamic-collector-file string     [ENV: CKA_K8S_DYNAMIC_COLLECTOR_FILE] Kubernetes dynamic collectors configuration file (default "/ck8sa/dynamic-collectors.json")
       --k8s-enable-api-server                 [ENV: CKA_K8S_ENABLE_API_SERVER] Kubernetes enable collection from api-server (default true)
       --k8s-enable-cadvisor-metrics           [ENV: CKA_K8S_ENABLE_CADVISOR_METRICS] Kubernetes enable collection of kubelet cadvisor metrics
       --k8s-enable-events                     [ENV: CKA_K8S_ENABLE_EVENTS] Kubernetes enable collection of events (default true)
@@ -194,17 +194,13 @@ collectors:
   - name: ""           # required
     disable: false     # disable this collector
     type: ""           # required - endpoints, nodes, pods, services
-    schema:            # scema to use in metric request
-      annotation: ""   # use the value of an annotation
-      label: ""        # use the value of a label
-      value: ""        # use a static value ("http" or "https")
     selectors:         # defaults to all of the type
       label: ""        # labelSelector expression
       field: ""        # fieldSelector expression
     control:           # control whether to collect metrics from specific item
-      annotation: ""   # compare annotation setting against value
-      label: ""        # compare label setting against value
-      value: ""        # value to use in comparisson to annotation or label
+      annotation: ""   # use the value of an annotation
+      label: ""        # use the value of a label
+      value: ""        # use a static value ("1", "t", "T", "TRUE", "true", "True", "0", "f", "F", "FALSE", "false", "False")
     metric_port:       # define port to use in metric request
       annotation: ""   # use the value of an annotation
       label: ""        # use the value of a label
@@ -213,7 +209,11 @@ collectors:
       annotation: ""   # use the value of an annotation
       label: ""        # use the value of a label
       value: ""        # use a static value
-    rollup:            # rollup metrics
+    schema:            # scema to use in metric request, default "http"
+      annotation: ""   # use the value of an annotation
+      label: ""        # use the value of a label
+      value: ""        # use a static value ("http" or "https")
+    rollup:            # rollup metrics, default "false"
       annotation: ""   # use the value of an annotation
       label: ""        # use the value of a label
       value: ""        # use a static value ("1", "t", "T", "TRUE", "true", "True", "0", "f", "F", "FALSE", "false", "False")
@@ -226,29 +226,29 @@ collectors:
 | name | yes | name of this collector | n/a |
 | disable | no | disable a collector, but keep the configuration | false |
 | type | yes | type of the collector (`endpoints`, `nodes`, `pods`, `services`) | n/a |
-| schema | no | HTTP request schema `http` or `https` ||
-| schema.annotation | no | annotation to use ||
-| schema.label | no | label to use ||
-| schema.value | no | static schema for all instances | `http` |
 | selectors || define what items of the type to collect ||
 | selectors.label | no | a [labelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) for the type | all for type |
 | selectors.field | no | a [fieldSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/) for the type | all for type |
-| control || controls collection of metrics at instance level ||
+| control || controls collection of metrics (string parsed as boolean) ||
 | control.annotation | no | annotation to use e.g. `"monitor"` ||
 | control.label | no | label to use  e.g. `"metricsCollect"` ||
-| control.value | no | value the annotation or label should be for collection e.g. `"true"` ||
+| control.value | no | static value (`1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, `False`) | `"true"`|
 | metric_port || defines the port to use for the metric request ||
 | metric_port.annotation | no | annotation to use ||
 | metric_port.label | no | label to use ||
-| metric_port.value | no | static port for all instances ||
+| metric_port.value | no | static port for all instances (e.g. `"8080"`) ||
 | metric_path || defines the path to use for the metric request ||
 | metric_path.annotation | no | annotation to use ||
 | metric_path.label | no | label to use ||
-| metric_path.value | no | static path to use for all instances | `/metrics`|
-| rollup | no | control rolling up metrics (`1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, `False`) ||
+| metric_path.value | no | static path to use for all instances | `"/metrics"`|
+| schema | no | HTTP request schema `http` or `https` ||
+| schema.annotation | no | annotation to use ||
+| schema.label | no | label to use ||
+| schema.value | no | static schema for all instances | `"http"` |
+| rollup | no | control rolling up metrics (string parsed as boolean) ||
 | rollup.annotation | no | annotation to use ||
 | rollup.label | no | label to use ||
-| rollup.value | no | static schema for all instances | `false` |
+| rollup.value | no | static value (`1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, `False`) | `"false"` |
 | tags | no | comma separated list of static tags to add e.g. `"app:myapp,foo:bar"` ||
 | label_tags | no | comma separated list of labels to use as tags e.g. `"environment,location"` ||
 
@@ -275,12 +275,11 @@ collectors:
     selectors:
       label: "appName=myapp"
     control:
-      annotation: "metricsCollect"
-      value: "true"
+      annotation: "example.io/metricsCollect"
     metric_port:
-      annotation: "metricsPort"
+      annotation: "example.io/metricsPort"
     metric_path:
-      annotation: "metricsPath"
+      annotation: "example.io/metricsPath"
     tags: "env:prod"
     label_tags: "appName,location"
 ```
