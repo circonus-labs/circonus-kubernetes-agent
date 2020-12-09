@@ -147,7 +147,7 @@ Flags:
       --k8s-api-url string                    [ENV: CKA_K8S_API_URL] Kubernetes API URL (default "https://kubernetes.default.svc")
       --k8s-bearer-token string               [ENV: CKA_K8S_BEARER_TOKEN] Kubernetes Bearer Token
       --k8s-bearer-token-file string          [ENV: CKA_K8S_BEARER_TOKEN_FILE] Kubernetes Bearer Token File (default "/var/run/secrets/kubernetes.io/serviceaccount/token")
-      --k8s-dynamic-collector-file string     [ENV: CKA_K8S_DYNAMIC_COLLECTOR_FILE] Kubernetes dynamic collectors configuration file (default "/ck8sa/dynamic-collectors.json")
+      --k8s-dynamic-collector-file string     [ENV: CKA_K8S_DYNAMIC_COLLECTOR_FILE] Kubernetes dynamic collectors configuration file (default "/ck8sa/dynamic-collectors.yaml")
       --k8s-enable-api-server                 [ENV: CKA_K8S_ENABLE_API_SERVER] Kubernetes enable collection from api-server (default true)
       --k8s-enable-cadvisor-metrics           [ENV: CKA_K8S_ENABLE_CADVISOR_METRICS] Kubernetes enable collection of kubelet cadvisor metrics
       --k8s-enable-events                     [ENV: CKA_K8S_ENABLE_EVENTS] Kubernetes enable collection of events (default true)
