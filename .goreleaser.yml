@@ -38,8 +38,8 @@ dockers:
         binaries:
             - circonus-kubernetes-agentd
         image_templates:
-            - "circonuslabs/{{.ProjectName}}:{{.Tag}}"
-            - "circonuslabs/{{.ProjectName}}:latest"
+            - "circonus/{{.ProjectName}}:{{.Tag}}"
+            - "circonus/{{.ProjectName}}:latest"
         skip_push: false
         dockerfile: docker/x86_64/Dockerfile
         build_flag_templates:
@@ -53,8 +53,8 @@ dockers:
         binaries:
             - circonus-kubernetes-agentd
         image_templates:
-            - "circonuslabs/{{.ProjectName}}-arm64:{{.Tag}}"
-            - "circonuslabs/{{.ProjectName}}-arm64:latest"
+            - "circonus/{{.ProjectName}}-arm64:{{.Tag}}"
+            - "circonus/{{.ProjectName}}-arm64:latest"
         skip_push: false
         dockerfile: docker/arm64/Dockerfile
         build_flag_templates:
