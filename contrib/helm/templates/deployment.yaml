@@ -23,9 +23,9 @@ spec:
       serviceAccountName: circonus-kubernetes-agent
       containers:
         - name: circonus-kubernetes-agent
-          image: circonuslabs/circonus-kubernetes-agent:v0.6.6
+          image: circonus/circonus-kubernetes-agent:v0.6.6
           ## for ARM64, remove line above and uncomment line below
-          #image: circonuslabs/circonus-kubernetes-agent-arm64:v0.6.6
+          #image: circonus/circonus-kubernetes-agent-arm64:v0.6.6
           command: ["/circonus-kubernetes-agentd"]
           args: 
             #- --debug
