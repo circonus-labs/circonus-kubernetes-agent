@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"strings"
 	"time"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
@@ -24,7 +23,7 @@ const (
 	// NOTE: these will be enabled in a future release when we support cumulative histograms (type H)
 	//       flip emitHistogramBuckets to true and leave circCumulativeHistogram true. Once we're
 	//       happy with the support the gating flag logic can be removed and the code simplifed.
-	emitHistogramBuckets    = false
+	emitHistogramBuckets    = true
 	circCumulativeHistogram = true
 )
 
@@ -112,7 +111,7 @@ func QueueMetrics(
 								metrics, metricName,
 								circonus.MetricTypeCumulativeHistogram,
 								streamTags, parentMeasurementTags,
-								strings.Join(histo, ","), ts)
+								histo, ts)
 						}
 					} else {
 						for bn, bv := range getBuckets(m) {
