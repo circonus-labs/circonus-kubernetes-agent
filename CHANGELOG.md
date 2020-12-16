@@ -1,4 +1,9 @@
-# 0.11.5
+# v0.11.6
+
+* upd: enable cumulative histogram support
+* upd: change [dockerhub organization](https://hub.docker.com/repository/docker/circonus/circonus-kubernetes-agent) circonuslabs->circonus
+
+# v0.11.5
 
 * doc: update dynamic collector documentation
 * upd: centralize config parsing

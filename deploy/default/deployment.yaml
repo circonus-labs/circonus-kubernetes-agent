@@ -23,8 +23,6 @@
         containers:
           - name: circonus-kubernetes-agent
             image: circonus/circonus-kubernetes-agent:latest
-            ## for ARM64, remove line above and uncomment line below
-            #image: circonus/circonus-kubernetes-agent-arm64:latest
             command: ["/circonus-kubernetes-agentd"]
             #args: ["--debug"]
             env:

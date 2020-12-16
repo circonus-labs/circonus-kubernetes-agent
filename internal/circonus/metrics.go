@@ -223,7 +223,7 @@ func (c *Check) QueueMetricSample(
 		return fmt.Errorf("unrecognized circonus metric type (%s)", metricType)
 	}
 
-	if metricType == "n" && math.IsNaN(value.(float64)) {
+	if metricType == MetricTypeFloat64 && math.IsNaN(value.(float64)) {
 		c.log.Warn().
 			Str("metric_name", metricName).
 			Strs("stream_tags", streamTagList).
@@ -233,7 +233,7 @@ func (c *Check) QueueMetricSample(
 	}
 
 	val := value
-	if metricType == "s" {
+	if metricType == MetricTypeString {
 		val = value.(string)
 	}
 

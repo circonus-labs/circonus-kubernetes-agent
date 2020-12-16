@@ -11,9 +11,6 @@ builds:
         binary: sbin/circonus-kubernetes-agentd
         env:
             - CGO_ENABLED=0
-            # - GODEBUG=netdns=go
-        flags: 
-            # - -a
         goos:
             - linux
         goarch:
@@ -38,8 +35,8 @@ dockers:
         binaries:
             - circonus-kubernetes-agentd
         image_templates:
-            - "circonus/{{.ProjectName}}:{{.Tag}}"
-            - "circonus/{{.ProjectName}}:latest"
+            - "circonus/{{.ProjectName}}:{{.Tag}}-amd64"
+            - "circonus/{{.ProjectName}}:latest-amd64"
         skip_push: false
         dockerfile: docker/x86_64/Dockerfile
         build_flag_templates:
@@ -53,14 +50,24 @@ dockers:
         binaries:
             - circonus-kubernetes-agentd
         image_templates:
-            - "circonus/{{.ProjectName}}-arm64:{{.Tag}}"
-            - "circonus/{{.ProjectName}}-arm64:latest"
+            - "circonus/{{.ProjectName}}:{{.Tag}}-arm64"
+            - "circonus/{{.ProjectName}}:latest-arm64"
         skip_push: false
         dockerfile: docker/arm64/Dockerfile
         build_flag_templates:
             - "--label=org.label-schema.schema-version=1.0"
             - "--label=org.label-schema.version={{.Version}}"
             - "--label=org.label-schema.name={{.ProjectName}}"
+
+docker_manifests:
+    - name_template: "circonus/{{.ProjectName}}:latest"
+      image_templates:
+        - "circonus/{{.ProjectName}}:latest-amd64"
+        - "circonus/{{.ProjectName}}:latest-arm64"
+    - name_template: "circonus/{{.ProjectName}}:{{.Tag}}"
+      image_templates:
+        - "circonus/{{.ProjectName}}:{{.Tag}}-amd64"
+        - "circonus/{{.ProjectName}}:{{.Tag}}-arm64"
 
 archives:
     -   
