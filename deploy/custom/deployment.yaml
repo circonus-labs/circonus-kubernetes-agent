@@ -199,12 +199,12 @@
                   configMapKeyRef:
                     name: cka-config-v1
                     key: kubernetes-kube-dns-metrics-port
-              - name: CKA_K8S_INCLUDE_CONTAINER_METRICS
+              - name: CKA_K8S_INCLUDE_CONTAINERS
                 valueFrom:
                   configMapKeyRef:
                     name: cka-config-v1
                     key: kubernetes-include-container-metrics
-              - name: CKA_K8S_INCLUDE_POD_METRICS
+              - name: CKA_K8S_INCLUDE_PODS
                 valueFrom:
                   configMapKeyRef:
                     name: cka-config-v1
