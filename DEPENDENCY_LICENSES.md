@@ -6,7 +6,7 @@ When distributed in a binary form, circonus-kubernetes-agent may contain portion
 |[units](https://github.com/alecthomas/units)|direct|[MIT](https://github.com/alecthomas/units/blob/master/COPYING)|
 |[circonus-gometrics](https://github.com/circonus-labs/circonus-gometrics)|direct|[BSD 3-Clause](https://github.com/circonus-labs/circonus-gometrics/blob/master/LICENSE)|
 |[go-apiclient](https://github.com/circonus-labs/go-apiclient)|direct|[BSD 3-Clause](https://github.com/circonus-labs/go-apiclient/blob/master/LICENSE)|
-|[protobuf](https://github.com/gogo/protobuf)|indirect|[Go/Google/??](https://github.com/gogo/protobuf/blob/master/LICENSE)|
+|[protobuf](https://github.com/gogo/protobuf)|indirect|[custom](https://github.com/gogo/protobuf/blob/master/LICENSE)|
 |[gofuzz](https://github.com/google/gofuzz)|indirect|[Apache 2.0](https://github.com/google/gofuzz/blob/master/LICENSE)|
 |[uuid](https://github.com/google/uuid)|direct|[BSD 3-Clause](https://github.com/google/uuid/blob/master/LICENSE)|
 |[gnostic](https://github.com/googleapis/gnostic)|indirect|[Apache 2.0](https://github.com/google/gnostic/blob/master/LICENSE)|
@@ -23,8 +23,8 @@ When distributed in a binary form, circonus-kubernetes-agent may contain portion
 |[jwalterweatherman](https://github.com/spf13/jwalterweatherman)|indirect|[MIT](https://github.com/spf13/jwalterweatherman/blob/master/LICENSE)|
 |[viper](https://github.com/spf13/viper)|direct|[MIT](https://github.com/spf13/viper/blob/master/LICENSE)|
 |[oauth2](https://golang.org/x/oauth2)|indirect|[BSD 3-Clause](https://github.com/golang/oauth2/blob/master/LICENSE)|
-|[sync](https://golang.org/x/sync)|direct|[Go/Google/??](https://github.com/golang/sync/blob/master/LICENSE)|
-|[sys](https://golang.org/x/sys)|direct|[Go/Google/??](https://github.com/golang/sys/blob/master/LICENSE)|
+|[sync](https://golang.org/x/sync)|direct|[custom](https://github.com/golang/sync/blob/master/LICENSE)|
+|[sys](https://golang.org/x/sys)|direct|[custom](https://github.com/golang/sys/blob/master/LICENSE)|
 |[appengine](https://google.golang.org/appengine)|indirect|[Apache 2.0](https://github.com/golang/appengine/blob/master/LICENSE)|
 |[ini](https://gopkg.in/ini.v1)|indirect|[Apache 2.0](https://github.com/go-ini/ini/blob/v1.62.0/LICENSE)|
 |[yaml](https://github.com/go-yaml/yaml)|direct|[Apache 2.0](https://github.com/go-yaml/yaml/blob/v2/LICENSE)|
