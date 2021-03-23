@@ -7,6 +7,7 @@ before:
         
 builds:
     -
+        id: cka
         main: main.go
         binary: sbin/circonus-kubernetes-agentd
         env:
@@ -32,8 +33,7 @@ dockers:
         goos: linux
         goarch: amd64
         goarm: ''
-        binaries:
-            - circonus-kubernetes-agentd
+        ids: ['cka']
         image_templates:
             - "circonus/{{.ProjectName}}:{{.Tag}}-amd64"
             - "circonus/{{.ProjectName}}:latest-amd64"
@@ -47,8 +47,7 @@ dockers:
         goos: linux
         goarch: arm64
         goarm: ''
-        binaries:
-            - circonus-kubernetes-agentd
+        ids: ['cka']
         image_templates:
             - "circonus/{{.ProjectName}}:{{.Tag}}-arm64"
             - "circonus/{{.ProjectName}}:latest-arm64"
