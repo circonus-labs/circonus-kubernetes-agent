@@ -10,6 +10,7 @@ import (
 	"runtime/debug"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/cmd"
+	_ "go.uber.org/automaxprocs"
 )
 
 func main() {

@@ -32,4 +32,4 @@ When distributed in a binary form, circonus-kubernetes-agent may contain portion
 |k8s [apimachinery](https://k8s.io/apimachinery)|direct|[Apache 2.0](https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/LICENSE)|
 |k8s [client-go](https://k8s.io/client-go)|direct|[Apache 2.0](https://github.com/kubernetes/client-go/blob/master/LICENSE)|
 |k8s [utils](https://k8s.io/utils)|indirect|[Apache 2.0](https://github.com/kubernetes/utils/blob/master/LICENSE)|
-
+| [automaxprocs](https://github.com/uber-go/automaxprocs)|direct|[MIT](https://github.com/uber-go/automaxprocs/blob/master/LICENSE)|

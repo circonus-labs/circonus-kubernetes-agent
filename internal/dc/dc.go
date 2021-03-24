@@ -12,6 +12,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -510,9 +511,34 @@ func (dc *DC) getMetrics(ctx context.Context, collector Collector, target metric
 
 	logger.Debug().Str("url", target.URL).Msg("getting metrics")
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:       5 * time.Second,
+				KeepAlive:     3 * time.Second,
+				FallbackDelay: -1 * time.Millisecond,
+			}).DialContext,
+			DisableKeepAlives:   true,
+			DisableCompression:  false,
+			MaxIdleConns:        1,
+			MaxIdleConnsPerHost: 0,
+		},
+	}
 	if strings.HasPrefix(target.URL, "https:") {
-		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} //nolint:gosec
+		client.Transport = &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:       5 * time.Second,
+				KeepAlive:     3 * time.Second,
+				FallbackDelay: -1 * time.Millisecond,
+			}).DialContext,
+			DisableKeepAlives:   true,
+			DisableCompression:  false,
+			MaxIdleConns:        1,
+			MaxIdleConnsPerHost: 0,
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+		}
 	}
 	req, err := http.NewRequestWithContext(ctx, "GET", target.URL, nil)
 	if err != nil {

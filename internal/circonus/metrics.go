@@ -226,8 +226,9 @@ func (c *Check) QueueMetricSample(
 	if metricType == MetricTypeFloat64 && math.IsNaN(value.(float64)) {
 		c.log.Warn().
 			Str("metric_name", metricName).
+			Str("metric_type", metricType).
+			Interface("metric_value", value).
 			Strs("stream_tags", streamTagList).
-			Interface("value", value).
 			Msg("is NaN, skipping")
 		return fmt.Errorf("metric value is NaN")
 	}

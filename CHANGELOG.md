@@ -1,3 +1,15 @@
+# v0.11.7
+
+* upd: add metric type to nan detection err msg
+* upd: dc request timeouts
+* add: `collect_deadline_timeout` tracking metric
+* add: collection deadline tied to collection interval
+* upd: dependencies
+* add: automaxprocs
+* upd: syntax change for docker
+* upd: lint version 1.38
+* mrg: PR59 - custom/deployment.yaml mismatch with args_kubernetes.go
+
 # v0.11.6
 
 * upd: enable cumulative histogram support
