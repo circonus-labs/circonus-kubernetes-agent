@@ -512,10 +512,11 @@ func (dc *DC) getMetrics(ctx context.Context, collector Collector, target metric
 	logger.Debug().Str("url", target.URL).Msg("getting metrics")
 
 	client := &http.Client{
+		Timeout: 10 * time.Second,
 		Transport: &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{
-				Timeout:       10 * time.Second,
+				Timeout:       5 * time.Second,
 				KeepAlive:     3 * time.Second,
 				FallbackDelay: -1 * time.Millisecond,
 			}).DialContext,
@@ -528,7 +529,7 @@ func (dc *DC) getMetrics(ctx context.Context, collector Collector, target metric
 	if strings.HasPrefix(target.URL, "https:") {
 		client.Transport = &http.Transport{
 			DialContext: (&net.Dialer{
-				Timeout:       10 * time.Second,
+				Timeout:       5 * time.Second,
 				KeepAlive:     3 * time.Second,
 				FallbackDelay: -1 * time.Millisecond,
 			}).DialContext,
