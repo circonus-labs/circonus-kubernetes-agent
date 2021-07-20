@@ -7,6 +7,7 @@
 * upd: dependencies
 * add: dependabot
 * upd: lint ver
+* upd: dependencies (viper/cobra/zerolog/etc.)
 
 # v0.11.7
 
