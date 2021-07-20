@@ -5,13 +5,14 @@ go 1.13
 require (
 	code.cloudfoundry.org/bytefmt v0.0.0-20200131002437-cf55d5288a48
 	github.com/alecthomas/units v0.0.0-20201120081800-1786d5ef83d4
-	github.com/circonus-labs/circonus-gometrics/v3 v3.3.4
-	github.com/circonus-labs/go-apiclient v0.7.11
+	github.com/circonus-labs/circonus-gometrics/v3 v3.4.5
+	github.com/circonus-labs/go-apiclient v0.7.15
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/uuid v1.1.4
 	github.com/googleapis/gnostic v0.4.0 // indirect
-	github.com/hashicorp/go-retryablehttp v0.6.8
+	github.com/hashicorp/go-retryablehttp v0.7.0
+	github.com/hashicorp/go-version v1.3.0
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/klauspost/compress v1.11.4
 	github.com/pelletier/go-toml v1.8.1
