@@ -1,3 +1,11 @@
+# v0.12.0
+
+* add: configuration options for >v1.18 k8s node metrics
+* add: support v1.18+ deprecation of cadvisor endpoints
+* upd: min tls ver
+* upd: lint struct size
+* upd: dependencies
+
 # v0.11.7
 
 * upd: add metric type to nan detection err msg

@@ -5,24 +5,24 @@
     name: circonus-kubernetes-agent
     labels:
       app.kubernetes.io/name: circonus-kubernetes-agent
-      app.kubernetes.io/version: v0.11.7
+      app.kubernetes.io/version: v0.12.0
   spec:
     selector:
       matchLabels:
         app.kubernetes.io/name: circonus-kubernetes-agent
-        app.kubernetes.io/version: v0.11.7
+        app.kubernetes.io/version: v0.12.0
     replicas: 1
     template:
       metadata:
         name: circonus-kubernetes-agent
         labels:
           app.kubernetes.io/name: circonus-kubernetes-agent
-          app.kubernetes.io/version: v0.11.7
+          app.kubernetes.io/version: v0.12.0
       spec:
         serviceAccountName: circonus-kubernetes-agent
         containers:
           - name: circonus-kubernetes-agent
-            image: circonus/circonus-kubernetes-agent:v0.11.7
+            image: circonus/circonus-kubernetes-agent:v0.12.0
             command: ["/circonus-kubernetes-agentd"]
             args: 
               #- --debug
