@@ -145,7 +145,7 @@ const (
 	// K8SEnableNodes enable collection of metrics from nodes
 	// NOTE: include_pods and include_containers are levers to control volume of detail
 	K8SEnableNodes = "kubernetes.enable_nodes"
-	// K8SEnableNodeStats - kublet /stats/summary performance metrics (e.g. cpu, memory, fs) (k8s < 1.18.0)
+	// K8SEnableNodeStats - kublet /stats/summary performance metrics (e.g. cpu, memory, fs) (k8s < v1.18.0)
 	K8SEnableNodeStats = "kubernetes.enable_node_stats"
 	// K8SEnableNodeMetrics - kublet /metrics observation metrics (common)
 	K8SEnableNodeMetrics = "kubernetes.enable_node_metrics"

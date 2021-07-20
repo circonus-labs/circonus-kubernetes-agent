@@ -80,12 +80,16 @@
       kubernetes-enable-nodes: "true"
       ## expression to use for node labelSelector - blank = all nodes
       kubernetes-node-selector: ""
-      ## collect kublet /stats/summary performance metrics (e.g. cpu, memory, fs) - default is enabled for dashboard
+      ## collect kublet /stats/summary performance metrics (e.g. cpu, memory, fs) - default is enabled for dashboard (k8s <v1.18 only)
       kubernetes-enable-node-stats: "true"
       ## collect kublet /metrics observation metrics - default is enabled for dashboard
       kubernetes-enable-node-metrics: "true"
-      ## enable kubelet cadvisor metrics (note: being deprecated by k8s)
+      ## enable kubelet cadvisor metrics
       kubernetes-enable-cadvisor-metrics: "false"
+      ## enable kubelet node resource metrics (k8s v1.18+)
+      kubernetes-enable-node-resource-metrics: "true"
+      ## enable kubelet node probe metrics (k8s v1.18+)
+      kubernetes-enable-node-probe-metrics: "false"
       ## enable kube-dns metrics - default is enabled for dashboard
       kubernetes-enable-kube-dns-metrics: "true"
       ## port to request `/metrics` from if scrape/port annotations not defined on kube-dns service (e.g. GKE)

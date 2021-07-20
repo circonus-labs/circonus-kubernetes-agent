@@ -282,7 +282,7 @@ func init() {
 			key          = keys.K8SEnableNodeStats
 			longOpt      = "k8s-enable-node-stats"
 			envVar       = release.ENVPREFIX + "_K8S_ENABLE_NODE_STATS"
-			description  = "Kubernetes include summary stats for individual nodes (and pods)"
+			description  = "Kubernetes include summary stats for individual nodes (and pods) <v1.18"
 			defaultValue = defaults.K8SEnableNodeStats
 		)
 
