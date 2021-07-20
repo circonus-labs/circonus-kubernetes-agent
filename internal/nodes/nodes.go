@@ -26,13 +26,13 @@ import (
 )
 
 type Nodes struct {
-	check        *circonus.Check
+	sync.Mutex
 	config       *config.Cluster
+	check        *circonus.Check
 	log          zerolog.Logger
+	apiTimelimit time.Duration
 	nodeCC       bool
 	running      bool
-	apiTimelimit time.Duration
-	sync.Mutex
 }
 
 func New(cfg *config.Cluster, parentLog zerolog.Logger, check *circonus.Check, nodeCC bool) (*Nodes, error) {

@@ -34,10 +34,10 @@ import (
 
 type TrapResult struct {
 	CheckUUID  string
-	SubmitUUID uuid.UUID
+	Error      string `json:"error,omitempty"`
 	Filtered   uint64 `json:"filtered,omitempty"`
 	Stats      uint64 `json:"stats"`
-	Error      string `json:"error,omitempty"`
+	SubmitUUID uuid.UUID
 }
 
 const (

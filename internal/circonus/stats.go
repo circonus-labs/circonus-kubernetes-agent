@@ -9,12 +9,12 @@ import "code.cloudfoundry.org/bytefmt"
 
 // Stats defines the submission stats tracked across metric submissions to broker
 type Stats struct {
+	SentSize    string
 	LocFiltered uint64 // agent: filtered based on namerx
 	BkrFiltered uint64 // broker: filtered
 	RecvMetrics uint64 // broker: "stats" received
 	SentMetrics uint64 // agent: total "unique" metrics sent
 	SentBytes   uint64
-	SentSize    string
 }
 
 // SubmitStats returns copy of the submission stats
