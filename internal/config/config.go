@@ -21,43 +21,47 @@ import (
 
 // Config defines the running configuration options
 type Config struct {
-	Circonus   Circonus  `json:"circonus" toml:"circonus" yaml:"circonus"`       // circonus configuration options
-	Kubernetes Cluster   `json:"kubernetes" toml:"kubernetes" yaml:"kubernetes"` // single cluster (use kubernetes OR clusters, not both)
-	Clusters   []Cluster `json:"clusters" toml:"clusters" yaml:"clusters"`       // multiple clusters (use kubernetes OR clusters, not both)
-	Debug      bool      `json:"debug" toml:"debug" yaml:"debug"`                // global debugging
-	Log        Log       `json:"log" toml:"log" yaml:"log"`                      // logging options
+	Clusters   []Cluster `json:"clusters" toml:"clusters" yaml:"clusters"`
+	Log        Log       `json:"log" toml:"log" yaml:"log"`
+	Circonus   Circonus  `json:"circonus" toml:"circonus" yaml:"circonus"`
+	Kubernetes Cluster   `json:"kubernetes" toml:"kubernetes" yaml:"kubernetes"`
+	Debug      bool      `json:"debug" toml:"debug" yaml:"debug"`
 }
 
 // Cluster defines the kubernetes cluster configuration options
 type Cluster struct {
-	BearerToken            string `mapstructure:"bearer_token" json:"bearer_token" toml:"bearer_token" yaml:"bearer_token"`
-	BearerTokenFile        string `mapstructure:"bearer_token_file" json:"bearer_token_file" toml:"bearer_token_file" yaml:"bearer_token_file"`
-	EnableEvents           bool   `mapstructure:"enable_events" json:"enable_events" toml:"enable_events" yaml:"enable_events"`
-	EnableKubeStateMetrics bool   `mapstructure:"enable_kube_state_metrics" json:"enable_kube_state_metrics" toml:"enable_kube_state_metrics" yaml:"enable_kube_state_metrics"`
-	KSMMetricsPort         string `mapstructure:"ksm_metrics_port" json:"ksm_metrics_port" toml:"ksm_metrics_port" yaml:"ksm_metrics_port"`
-	KSMMetricsPortName     string `mapstructure:"ksm_metrics_port_name" json:"ksm_metrics_port_name" toml:"ksm_metrics_port_name" yaml:"ksm_metrics_port_name"`
-	KSMFieldSelectorQuery  string `mapstructure:"ksm_field_selector_query" json:"ksm_field_selector_query" toml:"ksm_field_selector_query" yaml:"ksm_field_selector_query"`
-	EnableAPIServer        bool   `mapstructure:"enable_api_server" json:"enable_api_server" toml:"enable_api_server" yaml:"enable_metrics_server"`
-	EnableNodes            bool   `mapstructure:"enable_nodes" json:"enable_nodes" toml:"enable_nodes" yaml:"enable_nodes"`
-	NodeSelector           string `mapstructure:"node_selector" json:"node_selector" toml:"node_selector" yaml:"node_selector"`
-	EnableNodeStats        bool   `mapstructure:"enable_node_stats" json:"enable_node_stats" toml:"enable_node_stats" yaml:"enable_node_stats"`
-	EnableNodeMetrics      bool   `mapstructure:"enable_node_metrics" json:"enable_node_metrics" toml:"enable_node_metrics" yaml:"enable_node_metrics"`
-	EnableCadvisorMetrics  bool   `mapstructure:"enable_cadvisor_metrics" json:"enable_cadvisor_metrics" toml:"enable_cadvisor_metrics" yaml:"enable_cadvisor_metrics"`
-	EnableKubeDNSMetrics   bool   `mapstructure:"enable_kube_dns_metrics" json:"enable_kube_dns_metrics" toml:"enable_kube_dns_metrics" yaml:"enable_kube_dns_metrics"`
-	IncludeContainers      bool   `mapstructure:"include_container_metrics" json:"include_container_metrics" toml:"include_container_metrics" yaml:"include_container_metrics"`
-	IncludePods            bool   `mapstructure:"include_pod_metrics" json:"include_pod_metrics" toml:"include_pod_metrics" yaml:"include_pod_metrics"`
-	PodLabelKey            string `mapstructure:"pod_label_key" json:"pod_label_key" toml:"pod_label" yaml:"pod_label_key"`
-	PodLabelVal            string `mapstructure:"pod_label_val" json:"pod_label_val" toml:"pod_label" yaml:"pod_label_val"`
-	Name                   string `json:"name" toml:"name" yaml:"name"`
-	Interval               string `json:"interval" toml:"interval" yaml:"interval"`
-	NodePoolSize           uint   `mapstructure:"node_pool_size" json:"node_pool_size" toml:"node_pool_size" yaml:"node_pool_size"`
-	URL                    string `mapstructure:"api_url" json:"api_url" toml:"api_url" yaml:"api_url"`
-	CAFile                 string `mapstructure:"api_ca_file" json:"api_ca_file" toml:"api_ca_file" yaml:"api_ca_file"`
-	APITimelimit           string `mapstructure:"api_timelimit" json:"api_timelimit" toml:"api_timelimit" yaml:"api_timelimit"`
-	DynamicCollectorFile   string `mapstructure:"dynamic_collector_file" json:"dynamic_collector_file" yaml:"dynamic_collector_file"`
+	PodLabelKey           string `mapstructure:"pod_label_key" json:"pod_label_key" toml:"pod_label" yaml:"pod_label_key"`
+	BearerTokenFile       string `mapstructure:"bearer_token_file" json:"bearer_token_file" toml:"bearer_token_file" yaml:"bearer_token_file"`
+	APITimelimit          string `mapstructure:"api_timelimit" json:"api_timelimit" toml:"api_timelimit" yaml:"api_timelimit"`
+	CAFile                string `mapstructure:"api_ca_file" json:"api_ca_file" toml:"api_ca_file" yaml:"api_ca_file"`
+	KSMMetricsPort        string `mapstructure:"ksm_metrics_port" json:"ksm_metrics_port" toml:"ksm_metrics_port" yaml:"ksm_metrics_port"`
+	KSMMetricsPortName    string `mapstructure:"ksm_metrics_port_name" json:"ksm_metrics_port_name" toml:"ksm_metrics_port_name" yaml:"ksm_metrics_port_name"`
+	KSMFieldSelectorQuery string `mapstructure:"ksm_field_selector_query" json:"ksm_field_selector_query" toml:"ksm_field_selector_query" yaml:"ksm_field_selector_query"`
+	URL                   string `mapstructure:"api_url" json:"api_url" toml:"api_url" yaml:"api_url"`
+	Interval              string `json:"interval" toml:"interval" yaml:"interval"`
+	NodeSelector          string `mapstructure:"node_selector" json:"node_selector" toml:"node_selector" yaml:"node_selector"`
+	Name                  string `json:"name" toml:"name" yaml:"name"`
+	PodLabelVal           string `mapstructure:"pod_label_val" json:"pod_label_val" toml:"pod_label" yaml:"pod_label_val"`
+	BearerToken           string `mapstructure:"bearer_token" json:"bearer_token" toml:"bearer_token" yaml:"bearer_token"`
+	DynamicCollectorFile  string `mapstructure:"dynamic_collector_file" json:"dynamic_collector_file" yaml:"dynamic_collector_file"`
 	// DEPRECATED
-	KSMRequestMode       string `mapstructure:"ksm_request_mode" json:"ksm_request_mode" toml:"ksm_request_mode" yaml:"ksm_request_mode"`
-	KSMTelemetryPortName string `mapstructure:"ksm_telemetry_port_name" json:"ksm_telemetry_port_name" toml:"ksm_telemetry_port_name" yaml:"ksm_telemetry_port_name"`
+	KSMRequestMode string `mapstructure:"ksm_request_mode" json:"ksm_request_mode" toml:"ksm_request_mode" yaml:"ksm_request_mode"`
+	// DEPRECATED
+	KSMTelemetryPortName      string `mapstructure:"ksm_telemetry_port_name" json:"ksm_telemetry_port_name" toml:"ksm_telemetry_port_name" yaml:"ksm_telemetry_port_name"`
+	NodeKubletVersion         string `mapstructure:"node_kublet_version" json:"node_kublet_version" toml:"node_kublet_version" yaml:"node_kublet_version"`
+	NodePoolSize              uint   `mapstructure:"node_pool_size" json:"node_pool_size" toml:"node_pool_size" yaml:"node_pool_size"`
+	IncludePods               bool   `mapstructure:"include_pod_metrics" json:"include_pod_metrics" toml:"include_pod_metrics" yaml:"include_pod_metrics"`
+	EnableKubeDNSMetrics      bool   `mapstructure:"enable_kube_dns_metrics" json:"enable_kube_dns_metrics" toml:"enable_kube_dns_metrics" yaml:"enable_kube_dns_metrics"`
+	EnableNodeResourceMetrics bool   `mapstructure:"enable_node_resource_metrics" json:"enable_node_resource_metrics" toml:"enable_node_resource_metrics" yaml:"enable_node_resource_metrics"`
+	EnableNodeProbeMetrics    bool   `mapstructure:"enable_node_probe_metrics" json:"enable_node_probe_metrics" toml:"enable_node_probe_metrics" yaml:"enable_node_probe_metrics"`
+	EnableNodeMetrics         bool   `mapstructure:"enable_node_metrics" json:"enable_node_metrics" toml:"enable_node_metrics" yaml:"enable_node_metrics"`
+	EnableNodeStats           bool   `mapstructure:"enable_node_stats" json:"enable_node_stats" toml:"enable_node_stats" yaml:"enable_node_stats"`
+	EnableNodes               bool   `mapstructure:"enable_nodes" json:"enable_nodes" toml:"enable_nodes" yaml:"enable_nodes"`
+	IncludeContainers         bool   `mapstructure:"include_container_metrics" json:"include_container_metrics" toml:"include_container_metrics" yaml:"include_container_metrics"`
+	EnableAPIServer           bool   `mapstructure:"enable_api_server" json:"enable_api_server" toml:"enable_api_server" yaml:"enable_api_server"`
+	EnableKubeStateMetrics    bool   `mapstructure:"enable_kube_state_metrics" json:"enable_kube_state_metrics" toml:"enable_kube_state_metrics" yaml:"enable_kube_state_metrics"`
+	EnableEvents              bool   `mapstructure:"enable_events" json:"enable_events" toml:"enable_events" yaml:"enable_events"`
+	EnableCadvisorMetrics     bool   `mapstructure:"enable_cadvisor_metrics" json:"enable_cadvisor_metrics" toml:"enable_cadvisor_metrics" yaml:"enable_cadvisor_metrics"`
 }
 
 // LabelFilters defines labels to include and exclude
@@ -68,17 +72,17 @@ type LabelFilters struct {
 
 // Circonus defines the circonus specific configuration options
 type Circonus struct {
-	API               API    `json:"api" toml:"api" yaml:"api"`
-	Check             Check  `json:"check" toml:"check" yaml:"check"`
-	TraceSubmits      string `mapstructure:"trace_submits" json:"trace_submits" toml:"trace_submits" yaml:"trace_submits"` // trace metrics being sent to circonus
+	CustomRulesFile   string `mapstructure:"custom_rules_file" json:"custom_rules_file" toml:"custom_rules_file" yaml:"custom_rules_file"`
+	TraceSubmits      string `mapstructure:"trace_submits" json:"trace_submits" toml:"trace_submits" yaml:"trace_submits"`
 	DefaultStreamtags string `mapstructure:"default_streamtags" json:"default_streamtags" toml:"default_streamtags" yaml:"default_streamtags"`
 	MetricFiltersFile string `mapstructure:"metric_filters_file" json:"metric_filters_file" toml:"metric_filters_file" yaml:"metric_filters_file"`
 	DefaultAlertsFile string `mapstructure:"default_alerts_file" json:"default_alerts_file" toml:"default_alerts_file" yaml:"default_alerts_file"`
-	CustomRulesFile   string `mapstructure:"custom_rules_file" json:"custom_rules_file" toml:"custom_rules_file" yaml:"custom_rules_file"`
+	Check             Check  `json:"check" toml:"check" yaml:"check"`
+	API               API    `json:"api" toml:"api" yaml:"api"`
 	// hidden circonus settings for development and debugging
-	Base64Tags      bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"base64_tags" json:"base64_tags" toml:"base64_tags" yaml:"base64_tags"`
-	DryRun          bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"dry_run" json:"dry_run" toml:"dry_run" yaml:"dry_run"`                             // simulate sending metrics, print them to stdout
-	UseGZIP         bool `json:"-" toml:"-" yaml:"-"` //`mapstructure:"use_gzip" json:"use_gzip" toml:"use_gzip" yaml:"use_gzip"`                         // compress metrics using gzip when submitting (broker may not support)
+	Base64Tags      bool `json:"-" toml:"-" yaml:"-"`
+	DryRun          bool `json:"-" toml:"-" yaml:"-"`
+	UseGZIP         bool `json:"-" toml:"-" yaml:"-"`
 	LogAgentMetrics bool `json:"-" toml:"-" yaml:"-"`
 	NodeCC          bool `json:"-" toml:"-" yaml:"-"`
 }
@@ -87,9 +91,9 @@ type Circonus struct {
 type API struct {
 	App    string `json:"app" toml:"app" yaml:"app"`
 	CAFile string `mapstructure:"ca_file" json:"ca_file" toml:"ca_file" yaml:"ca_file"`
-	Debug  bool   `json:"debug" toml:"debug" yaml:"debug"`
 	Key    string `json:"key" toml:"key" yaml:"key"`
 	URL    string `json:"url" toml:"url" yaml:"url"`
+	Debug  bool   `json:"debug" toml:"debug" yaml:"debug"`
 }
 
 // Check defines the circonus check configuration options
@@ -97,11 +101,11 @@ type Check struct {
 	BrokerCID     string `mapstructure:"broker_cid" json:"broker_cid" toml:"broker_cid" yaml:"broker_cid"`
 	BrokerCAFile  string `mapstructure:"broker_ca_file" json:"broker_ca_file" toml:"broker_ca_file" yaml:"broker_ca_file"`
 	BundleCID     string `mapstructure:"bundle_cid" json:"bundle_cid" toml:"bundle_cid" yaml:"bundle_cid"`
-	Create        bool   `mapstructure:"create" json:"create" toml:"create" yaml:"create" `
-	MetricFilters string `mapstructure:"metric_filters" json:"metric_filters" toml:"metric_filters" yaml:"metric_filters"` // needs to be json embedded in a string because rules are positional
+	MetricFilters string `mapstructure:"metric_filters" json:"metric_filters" toml:"metric_filters" yaml:"metric_filters"`
 	Tags          string `json:"tags" toml:"tags" yaml:"tags"`
 	Target        string `mapstructure:"target" json:"target" toml:"target" yaml:"target"`
 	Title         string `json:"title" toml:"title" yaml:"title"`
+	Create        bool   `mapstructure:"create" json:"create" toml:"create" yaml:"create" `
 }
 
 // Log defines the logging configuration options

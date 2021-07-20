@@ -139,6 +139,10 @@
         {
           "metric_filters": [
             ["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
+            ["allow", "^kubelet_.*$", "node metrics k8s v1.18+"],
+            ["allow", "^machine_.*$", "node metrics k8s v1.18+"],
+            ["allow", "^(container|node|pod)_.*$", "node metrics k8s v1.18+"],
+            ["allow", "^prober_.*$", "node metrics/probes k8s v1.18+"],
             ["allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"],
             ["allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"],
             ["allow", "^usage(Milli|Nano)Cores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"],
