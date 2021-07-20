@@ -5,6 +5,8 @@
 * upd: min tls ver
 * upd: lint struct size
 * upd: dependencies
+* add: dependabot
+* upd: lint ver
 
 # v0.11.7
 
