@@ -36,16 +36,16 @@ import (
 )
 
 type Cluster struct {
-	tlsConfig  *tls.Config
-	cfg        config.Cluster
-	check      *circonus.Check
-	circCfg    config.Circonus
-	logger     zerolog.Logger
-	interval   time.Duration
-	lastStart  *time.Time
-	collectors []string
-	running    bool
 	sync.Mutex
+	tlsConfig  *tls.Config
+	check      *circonus.Check
+	lastStart  *time.Time
+	logger     zerolog.Logger
+	collectors []string
+	circCfg    config.Circonus
+	cfg        config.Cluster
+	interval   time.Duration
+	running    bool
 }
 type Collector interface {
 	ID() string

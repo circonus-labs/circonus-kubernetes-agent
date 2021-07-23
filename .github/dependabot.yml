@@ -1,0 +1,21 @@
+version: 2
+updates:
+
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    allow:
+      - dependency-name: "github.com/circonus-labs/go-apiclient"
+      - dependency-name: "github.com/circonus-labs/circonus-gometrics/v3"
+      - dependency-name: "github.com/pelletier/go-toml"
+      - dependency-name: "github.com/rs/zerolog"
+      - dependency-name: "github.com/spf13/cobra"
+      - dependency-name: "github.com/spf13/viper"
+      - dependency-name: "go.uber.org/automaxprocs"
+      - dependency-name: "gopkg.in/yaml.v2"
+      
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"

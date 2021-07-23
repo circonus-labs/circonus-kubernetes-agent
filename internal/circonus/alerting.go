@@ -23,8 +23,8 @@ import (
 )
 
 type DefaultAlerts struct {
-	Contact      AlertContact            `json:"contact"`
 	RuleSettings map[string]RuleSettings `json:"rule_settings"`
+	Contact      AlertContact            `json:"contact"`
 }
 
 type AlertContact struct {
@@ -33,13 +33,13 @@ type AlertContact struct {
 }
 
 type RuleSettings struct {
-	Disabled     bool   `json:"disabled"`
 	Threshold    string `json:"threshold"`
-	Window       uint   `json:"window"`
 	MinThreshold string `json:"min_threshold"`
-	MinWindow    uint   `json:"min_window"`
 	MaxThreshold string `json:"max_threshold"`
 	MaxWindow    uint   `json:"max_window"`
+	Window       uint   `json:"window"`
+	MinWindow    uint   `json:"min_window"`
+	Disabled     bool   `json:"disabled"`
 }
 
 type CustomRules struct {

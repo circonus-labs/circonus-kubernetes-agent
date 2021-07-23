@@ -12,9 +12,9 @@ import (
 )
 
 type NodeStat struct {
+	Conditions         map[v1.NodeConditionType]v1.ConditionStatus
 	CPUCapacity        uint64
 	LastCPUNanoSeconds uint64
-	Conditions         map[v1.NodeConditionType]v1.ConditionStatus
 }
 
 var (

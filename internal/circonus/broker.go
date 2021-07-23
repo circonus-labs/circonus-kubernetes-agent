@@ -84,6 +84,7 @@ func (c *Check) initializeBroker(client *apiclient.API, bundle *apiclient.CheckB
 	c.brokerTLSConfig = &tls.Config{
 		RootCAs:    cp,
 		ServerName: cn,
+		MinVersion: tls.VersionTLS12,
 	}
 
 	return nil

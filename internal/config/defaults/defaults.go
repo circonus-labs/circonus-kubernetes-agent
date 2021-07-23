@@ -66,34 +66,37 @@ const (
 		namespace of ck8sa: /var/run/secrets/kubernetes.io/serviceaccount/namespace
 	*/
 
-	K8SName                   = ""
-	K8SInterval               = "1m"
-	K8SAPIURL                 = "https://kubernetes.default.svc"                       // https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod
-	K8SAPICAFile              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt" // https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod
-	K8SBearerToken            = ""
-	K8SBearerTokenFile        = "/var/run/secrets/kubernetes.io/serviceaccount/token" //nolint:gosec // https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod
-	K8SEnableEvents           = true                                                  // dashboard
-	K8SEnableKubeStateMetrics = true                                                  // dashobard
-	K8SKSMFieldSelectorQuery  = "metadata.name=kube-state-metrics"                    // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L19
-	K8SKSMMetricsPort         = ""                                                    // no default, pulled from endpoint for service
-	K8SKSMMetricsPortName     = "http-metrics"                                        // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
-	K8SKSMRequestMode         = "direct"                                              // DEPRECATED - 'direct' or 'proxy' modes supported
-	K8SKSMTelemetryPortName   = "telemetry"                                           // DEPRECATED - default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
-	K8SEnableAPIServer        = true                                                  // dashboard
-	K8SEnableMetricsServer    = false                                                 // deprecated
-	K8SEnableNodes            = true                                                  // dashboard
-	K8SEnableNodeStats        = true                                                  // dashboard
-	K8SEnableNodeMetrics      = true                                                  // dashboard
-	K8SEnableCadvisorMetrics  = false                                                 // not needed by dashboard and is deprecated by k8s
-	K8SEnableKubeDNSMetrics   = true                                                  // dashboard
-	K8SKubeDNSMetricsPort     = "10054"                                               // ONLY used if the kube-dns service does not have scrape and port annotations (e.g. GKE)
-	K8SNodeSelector           = ""                                                    // blank=all
-	K8SIncludePods            = true                                                  // dashboard
-	K8SPodLabelKey            = ""                                                    // blank=all
-	K8SPodLabelVal            = ""                                                    // blank=all
-	K8SIncludeContainers      = false                                                 // not needed by dashboard
-	K8SAPITimelimit           = "10s"                                                 // default timeout
-	K8SDynamicCollectorFile   = "/ck8sa/dynamic-collectors.yaml"                      // assumes running in a pod, ConfigMap mounted volume
+	K8SName                      = ""
+	K8SInterval                  = "1m"
+	K8SAPIURL                    = "https://kubernetes.default.svc"                       // https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod
+	K8SAPICAFile                 = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt" // https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod
+	K8SBearerToken               = ""
+	K8SBearerTokenFile           = "/var/run/secrets/kubernetes.io/serviceaccount/token" //nolint:gosec // https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod
+	K8SEnableEvents              = true                                                  // dashboard
+	K8SEnableKubeStateMetrics    = true                                                  // dashobard
+	K8SKSMFieldSelectorQuery     = "metadata.name=kube-state-metrics"                    // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L19
+	K8SKSMMetricsPort            = ""                                                    // no default, pulled from endpoint for service
+	K8SKSMMetricsPortName        = "http-metrics"                                        // default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
+	K8SKSMRequestMode            = "direct"                                              // DEPRECATED - 'direct' or 'proxy' modes supported
+	K8SKSMTelemetryPortName      = "telemetry"                                           // DEPRECATED - default from 'standard' service deployment, https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml#L11
+	K8SEnableAPIServer           = true                                                  // dashboard
+	K8SEnableMetricsServer       = false                                                 // deprecated
+	K8SNodeKubeletVersion        = "v1.18.0"                                             // kubelet version to switch to alternate /metrics/... urls
+	K8SEnableNodes               = true                                                  // dashboard
+	K8SEnableNodeStats           = true                                                  // dashboard (only available in k8s<v1.18 - /stats/summary)
+	K8SEnableNodeMetrics         = true                                                  // dashboard /metrics
+	K8SEnableCadvisorMetrics     = false                                                 // not needed by dashboard (k8s<v1.18, may be needed for k8s>=v1.18) /metrics/cadvisor
+	K8SEnableNodeResourceMetrics = true                                                  // dashboard (k8s >= 1.18) /metrics/resources
+	K8SEnableNodeProbeMetrics    = false                                                 // dashboard (k8s >= 1.18) /metrics/probes
+	K8SEnableKubeDNSMetrics      = true                                                  // dashboard
+	K8SKubeDNSMetricsPort        = "10054"                                               // ONLY used if the kube-dns service does not have scrape and port annotations (e.g. GKE)
+	K8SNodeSelector              = ""                                                    // blank=all
+	K8SIncludePods               = true                                                  // dashboard
+	K8SPodLabelKey               = ""                                                    // blank=all
+	K8SPodLabelVal               = ""                                                    // blank=all
+	K8SIncludeContainers         = false                                                 // not needed by dashboard
+	K8SAPITimelimit              = "10s"                                                 // default timeout
+	K8SDynamicCollectorFile      = "/ck8sa/dynamic-collectors.yaml"                      // assumes running in a pod, ConfigMap mounted volume
 )
 
 var (

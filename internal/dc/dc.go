@@ -34,13 +34,13 @@ import (
 )
 
 type DC struct {
+	sync.Mutex
 	config     *config.Cluster
 	check      *circonus.Check
-	collectors []Collector `yaml:"collectors"`
+	ts         *time.Time
 	log        zerolog.Logger
+	collectors []Collector `yaml:"collectors"`
 	running    bool
-	sync.Mutex
-	ts *time.Time
 }
 
 type Collectors struct {
@@ -48,17 +48,17 @@ type Collectors struct {
 }
 
 type Collector struct {
-	Name       string     `yaml:"name"`
-	Disable    bool       `yaml:"disable"`
-	Type       string     `yaml:"type"`
-	Schema     Schema     `yaml:"schema"`
-	Selectors  Selectors  `yaml:"selectors"`
-	Control    Control    `yaml:"control"`
 	MetricPort MetricPort `yaml:"metric_port"`
 	MetricPath MetricPath `yaml:"metric_path"`
+	Schema     Schema     `yaml:"schema"`
+	Rollup     Rollup     `yaml:"rollup"`
+	Control    Control    `yaml:"control"`
+	Selectors  Selectors  `yaml:"selectors"`
+	Type       string     `yaml:"type"`
+	Name       string     `yaml:"name"`
 	Tags       string     `yaml:"tags"`
 	LabelTags  string     `yaml:"label_tags"`
-	Rollup     Rollup     `yaml:"rollup"`
+	Disable    bool       `yaml:"disable"`
 }
 
 type Selectors struct {

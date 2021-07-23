@@ -140,16 +140,21 @@ const (
 	// K8SBearerTokenFile bearer token file (one or the other, bearer token takes precedence)
 	K8SBearerTokenFile = "kubernetes.bearer_token_file" //nolint:gosec
 
+	// K8SNodeKubeletVersion - min version to trigger using alternate /metrics/... urls
+	K8SNodeKubeletVersion = "kubernetes.node_kublet_version"
 	// K8SEnableNodes enable collection of metrics from nodes
 	// NOTE: include_pods and include_containers are levers to control volume of detail
 	K8SEnableNodes = "kubernetes.enable_nodes"
-	// K8SEnableNodeStats - kublet /stats/summary performance metrics (e.g. cpu, memory, fs)
+	// K8SEnableNodeStats - kublet /stats/summary performance metrics (e.g. cpu, memory, fs) (k8s < v1.18.0)
 	K8SEnableNodeStats = "kubernetes.enable_node_stats"
-	// K8SEnableNodeMetrics - kublet /metrics observation metrics
+	// K8SEnableNodeMetrics - kublet /metrics observation metrics (common)
 	K8SEnableNodeMetrics = "kubernetes.enable_node_metrics"
-
-	// K8SEnableCadvisorMetrics - kublet /metrics/cadvisor metrics
+	// K8SEnableCadvisorMetrics - kublet /metrics/cadvisor metrics (common)
 	K8SEnableCadvisorMetrics = "kubernetes.enable_cadvisor_metrics"
+	// K8SEnableNodeResourceMetrics - kubelet /metrics/resources (k8s >= v1.18.0)
+	K8SEnableNodeResourceMetrics = "kubernetes.enable_node_resource_metrics"
+	// K8SEnableNodeProbeMetrics - kubelet /metrics/probes (k8s v1.18.0+)
+	K8SEnableNodeProbeMetrics = "kubernetes.enable_node_probe_metrics"
 
 	// K8SEnableKubeDNSMetrics - collect kube-dns metrics
 	K8SEnableKubeDNSMetrics = "kubernetes.enable_kube_dns_metrics"

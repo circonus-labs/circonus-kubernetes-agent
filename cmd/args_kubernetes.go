@@ -282,7 +282,7 @@ func init() {
 			key          = keys.K8SEnableNodeStats
 			longOpt      = "k8s-enable-node-stats"
 			envVar       = release.ENVPREFIX + "_K8S_ENABLE_NODE_STATS"
-			description  = "Kubernetes include summary stats for individual nodes (and pods)"
+			description  = "Kubernetes include summary stats for individual nodes (and pods) <v1.18"
 			defaultValue = defaults.K8SEnableNodeStats
 		)
 
@@ -318,6 +318,53 @@ func init() {
 
 		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
 		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		const (
+			key          = keys.K8SEnableNodeResourceMetrics
+			longOpt      = "k8s-enable-node-resource-metrics"
+			envVar       = release.ENVPREFIX + "_K8S_ENABLE_NODE_RESOURCE_METRICS"
+			description  = "Kubernetes enable collection of node resource metrics v1.18+"
+			defaultValue = defaults.K8SEnableNodeResourceMetrics
+		)
+
+		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		const (
+			key          = keys.K8SEnableNodeProbeMetrics
+			longOpt      = "k8s-enable-node-probe-metrics"
+			envVar       = release.ENVPREFIX + "_K8S_ENABLE_NODE_PROBE_METRICS"
+			description  = "Kubernetes enable collection of node probe metrics v1.18+"
+			defaultValue = defaults.K8SEnableNodeProbeMetrics
+		)
+
+		rootCmd.PersistentFlags().Bool(longOpt, defaultValue, envDescription(description, envVar))
+		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		const (
+			key          = keys.K8SNodeKubeletVersion
+			longOpt      = "k8s-node-kublet-version"
+			envVar       = release.ENVPREFIX + "_K8S_NODE_KUBLET_VERSION"
+			description  = "Minimum kublet version to switch to alternate URLs"
+			defaultValue = defaults.K8SNodeKubeletVersion
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		flag := rootCmd.PersistentFlags().Lookup(longOpt)
+		flag.Hidden = true
+		bindFlagError(longOpt, viper.BindPFlag(key, flag))
 		bindEnvError(envVar, viper.BindEnv(key, envVar))
 		viper.SetDefault(key, defaultValue)
 	}
