@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: circonus-kubernetes-agent
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: circonus-kubernetes-agent
     app.kubernetes.io/version: latest

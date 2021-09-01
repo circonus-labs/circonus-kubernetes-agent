@@ -3,6 +3,7 @@ kind: ConfigMap
 metadata:
     # versioned, cadence independent of app version
     name: cka-config-v1
+    namespace: {{ .Release.Namespace }}
     labels:
         app.kubernetes.io/name: circonus-kubernetes-agent
 data:
