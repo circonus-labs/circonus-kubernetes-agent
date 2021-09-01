@@ -2,44 +2,24 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: cka-readonly
+  namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: circonus-kubernetes-agent
 rules:
-  - apiGroups:
-      - ""
-    resources:
-      - componentstatuses
-      - events
-      - endpoints
-      - namespaces
-      - nodes
-      - pods
-      - services
-    verbs:
-      - get
-      - list
-      - watch
-  - nonResourceURLs:
-      - "/metrics"
-      - "/version"
-      - "/healthz"
-    verbs:
-      - get
-  - apiGroups:
-      - ""
-    resources:
-      - nodes/metrics
-      - nodes/spec
-      - nodes/proxy
-      - services/proxy
-    verbs:
-      - get
-  - apiGroups:
-      - "metrics.k8s.io"
-    resources:
-      - pods
-      - nodes
-    verbs:
-      - get
-      - list
-      - watch
+  - apiGroups: [""]
+    resources: ["componentstatuses","events","endpoints","namespaces","nodes","pods","services"]
+    verbs: ["get","list","watch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get","list"]
+  - apiGroups: ["extensions","apps"]
+    resources: ["deployments","statefulsets","daemonsets"]
+    verbs: ["get","list","watch"]
+  - nonResourceURLs: ["/metrics","/version","/healthz"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["nodes/metrics","nodes/spec","nodes/proxy","services/proxy"]
+    verbs: ["get"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods","nodes"]
+    verbs: ["get","list","watch"]

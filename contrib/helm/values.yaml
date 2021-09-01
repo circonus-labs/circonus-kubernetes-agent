@@ -1,3 +1,4 @@
 circonus_api_key: ""
 kubernetes_name: ""
-circonus_check_target: ""
+contact_email: ""
+broker_cid: "/broker/35"
