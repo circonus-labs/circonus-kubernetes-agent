@@ -1,3 +1,9 @@
+# v0.12.1
+
+* fix: broker cluster support for CA/CN validation
+* upd: struct align
+* upd: contributed helm chart
+
 # v0.12.0
 
 * add: configuration options for >v1.18 k8s node metrics
