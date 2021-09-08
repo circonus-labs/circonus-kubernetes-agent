@@ -120,9 +120,9 @@ func (e *Events) Start(ctx context.Context, tlsConfig *tls.Config) {
 type abridgedEvent struct {
 	Namespace         string `json:"namespace"`
 	SelfLink          string `json:"selfLink"`
-	CreationTimestamp int64  `json:"creationTimestamp"`
 	Reason            string `json:"reason"`
 	Message           string `json:"message"`
+	CreationTimestamp int64  `json:"creationTimestamp"`
 }
 
 func (e *Events) submitEvent(ctx context.Context, event *corev1.Event) {
