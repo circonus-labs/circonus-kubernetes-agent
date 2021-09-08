@@ -9,25 +9,25 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/url"
 	"strings"
 
 	apiclient "github.com/circonus-labs/go-apiclient"
-	"github.com/pkg/errors"
 )
 
 // initializeBroker fetches broker from circonus api and sets up broker tls config
 func (c *Check) initializeBroker(client *apiclient.API, bundle *apiclient.CheckBundle) error {
 	if client == nil {
-		return errors.New("invalid state (nil api client)")
+		return fmt.Errorf("invalid state (nil api client)")
 	}
 	if bundle == nil {
-		return errors.New("invalid state (nil bundle)")
+		return fmt.Errorf("invalid state (nil bundle)")
 	}
 	if len(bundle.Brokers) == 0 {
-		return errors.New("invalid bundle, 0 brokers")
+		return fmt.Errorf("invalid bundle, 0 brokers")
 	}
 
 	if strings.Contains(c.submissionURL, "api.circonus.com") {
@@ -37,29 +37,66 @@ func (c *Check) initializeBroker(client *apiclient.API, bundle *apiclient.CheckB
 	cid := bundle.Brokers[0]
 	broker, err := client.FetchBroker(apiclient.CIDType(&cid))
 	if err != nil {
-		return errors.Wrap(err, "fetching broker")
+		return fmt.Errorf("fetching broker: %w", err)
 	}
 
-	cn, err := brokerCN(broker, c.submissionURL)
+	cn, cnList, err := getBrokerCNList(broker, c.submissionURL)
 	if err != nil {
-		return errors.New("unable to determine broker CN")
+		return err
 	}
 
-	if c.config.Check.BrokerCAFile != "" {
-		cert, e := ioutil.ReadFile(c.config.Check.BrokerCAFile)
-		if e != nil {
-			return errors.Wrap(e, "configuring broker tls")
+	data, err := getCACert(c.config.Check.BrokerCAFile, client)
+	if err != nil {
+		return err
+	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(data) {
+		return fmt.Errorf("unable to add Broker CA Certificate to x509 cert pool")
+	}
+	c.brokerTLSConfig = &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		ServerName: cn,
+		// go1.15+ see VerifyConnection below - until CN added to SAN in broker certs
+		// NOTE: InsecureSkipVerify:true does NOT disable VerifyConnection()
+		InsecureSkipVerify: true, //nolint:gosec
+		VerifyConnection: func(cs tls.ConnectionState) error {
+			commonName := cs.PeerCertificates[0].Subject.CommonName
+			// if commonName != cs.ServerName {
+			if !strings.Contains(cnList, commonName) {
+				return x509.CertificateInvalidError{
+					Cert:   cs.PeerCertificates[0],
+					Reason: x509.NameMismatch,
+					Detail: fmt.Sprintf("cn: %q, acceptable: %q", commonName, cnList),
+				}
+			}
+			opts := x509.VerifyOptions{
+				Roots:         certPool,
+				Intermediates: x509.NewCertPool(),
+			}
+			for _, cert := range cs.PeerCertificates[1:] {
+				opts.Intermediates.AddCert(cert)
+			}
+			_, err := cs.PeerCertificates[0].Verify(opts)
+			if err != nil {
+				return fmt.Errorf("peer cert verify: %w", err)
+			}
+			return nil
+		},
+	}
+
+	return nil
+}
+
+// getCACert will read from a file or fetch from API
+func getCACert(fn string, client *apiclient.API) ([]byte, error) {
+	if fn != "" {
+		data, err := ioutil.ReadFile(fn)
+		if err != nil {
+			return nil, fmt.Errorf("configuring broker tls: %w", err)
 		}
-		cp := x509.NewCertPool()
-		if !cp.AppendCertsFromPEM(cert) {
-			return errors.New("unable to add Broker CA Certificate to x509 cert pool")
-		}
-		c.brokerTLSConfig = &tls.Config{
-			RootCAs:    cp,
-			ServerName: cn,
-			MinVersion: tls.VersionTLS12,
-		}
-		return nil
+
+		return data, nil
 	}
 
 	type cacert struct {
@@ -68,61 +105,51 @@ func (c *Check) initializeBroker(client *apiclient.API, bundle *apiclient.CheckB
 
 	jsoncert, err := client.Get("/pki/ca.crt")
 	if err != nil {
-		return errors.Wrap(err, "fetching broker ca cert from api")
+		return nil, fmt.Errorf("fetching broker ca cert from api: %w", err)
 	}
 	var cadata cacert
 	if err := json.Unmarshal(jsoncert, &cadata); err != nil {
-		return errors.Wrap(err, "parsing broker ca cert from api")
+		return nil, fmt.Errorf("parsing broker ca cert from api: %w", err)
 	}
 	if cadata.Contents == "" {
-		return errors.Errorf("unable to find ca cert 'Contents' attribute in api response (%+v)", cadata)
-	}
-	cp := x509.NewCertPool()
-	if !cp.AppendCertsFromPEM([]byte(cadata.Contents)) {
-		return errors.New("unable to add Broker CA Certificate to x509 cert pool")
-	}
-	c.brokerTLSConfig = &tls.Config{
-		RootCAs:    cp,
-		ServerName: cn,
-		MinVersion: tls.VersionTLS12,
+		return nil, fmt.Errorf("unable to find ca cert 'Contents' attribute in api response (%+v)", cadata)
 	}
 
-	return nil
+	return []byte(cadata.Contents), nil
 }
 
-// brokerCN returns broker cn based on broker object
-func brokerCN(broker *apiclient.Broker, submissionURL string) (string, error) {
+// getBrokerCNList returns broker cn based on broker object
+func getBrokerCNList(broker *apiclient.Broker, submissionURL string) (string, string, error) {
 	if broker == nil {
-		return "", errors.New("invalid state (nil broker)")
+		return "", "", fmt.Errorf("invalid state (nil broker)")
 	}
 	u, err := url.Parse(submissionURL)
 	if err != nil {
-		return "", errors.Wrap(err, "determining broker cn")
+		return "", "", fmt.Errorf("determining broker cn: %w", err)
 	}
 
 	hostParts := strings.Split(u.Host, ":")
 	host := hostParts[0]
 
 	if net.ParseIP(host) == nil { // it's a non-ip string
-		return u.Host, nil
+		return u.Host, u.Host, nil
 	}
 
 	cn := ""
-
+	cnList := make([]string, 0, len(broker.Details))
 	for _, detail := range broker.Details {
 		if detail.IP != nil && *detail.IP == host {
 			cn = detail.CN
-			break
-		}
-		if detail.ExternalHost != nil && *detail.ExternalHost == host {
+			cnList = append(cnList, detail.CN)
+		} else if detail.ExternalHost != nil && *detail.ExternalHost == host {
 			cn = detail.CN
-			break
+			cnList = append(cnList, detail.CN)
 		}
 	}
 
-	if cn == "" {
-		return "", errors.Errorf("error, unable to match URL host (%s) to Broker", u.Host)
+	if len(cnList) == 0 {
+		return "", "", fmt.Errorf("unable to match URL host (%s) to broker instance", u.Host)
 	}
 
-	return cn, nil
+	return cn, strings.Join(cnList, ","), nil
 }
