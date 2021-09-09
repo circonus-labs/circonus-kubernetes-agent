@@ -5,7 +5,7 @@ go 1.13
 require (
 	code.cloudfoundry.org/bytefmt v0.0.0-20210608160410-67692ebc98de
 	github.com/alecthomas/units v0.0.0-20210208195552-ff826a37aa15
-	github.com/circonus-labs/circonus-gometrics/v3 v3.4.5
+	github.com/circonus-labs/circonus-gometrics/v3 v3.4.6
 	github.com/circonus-labs/go-apiclient v0.7.15
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/uuid v1.3.0
