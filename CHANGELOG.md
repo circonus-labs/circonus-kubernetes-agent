@@ -1,3 +1,13 @@
+# v0.12.2
+
+* upd: disable rule sets by default
+* upd: cgm v3.4.6
+* upd: ignore test/
+* upd: tighten tag limit enforcement
+* upd: struct align
+* build(deps): bump github.com/rs/zerolog from 1.23.0 to 1.24.0
+* build(deps): bump github.com/pelletier/go-toml from 1.9.3 to 1.9.4
+
 # v0.12.1
 
 * fix: broker cluster support for CA/CN validation
