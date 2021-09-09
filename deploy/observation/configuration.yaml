@@ -35,13 +35,6 @@
       metric-filters.json: |
         {
           "metric_filters": [
-            ["allow", "^collect_.*$", "agent collection stats"],
-            ["deny", "^.+$", "all other metrics"]
+            ["allow", "^collect_.*$", "agent collection stats"]
           ]
-        }
-      default-alerts.json: |
-        {
-          "contact": {
-            "email": ""
-          }
         }
