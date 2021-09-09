@@ -47,14 +47,14 @@ const (
 	// without details on exactly which metric(s) caused the error.
 	// All metrics sent with the offending metric(s) are also rejected.
 
-	MaxTagLen = 256
-	MaxTagCat = 254
+	MaxTagLen = 256 // sync w/NOIT_TAG_MAX_PAIR_LEN https://github.com/circonus-labs/reconnoiter/blob/master/src/noit_metric.h#L102
+	MaxTagCat = 254 // sync w/NOIT_TAG_MAX_CAT_LEN https://github.com/circonus-labs/reconnoiter/blob/master/src/noit_metric.h#L104
 
 	// MaxTags reconnoiter will accept in stream tagged metric name
-	MaxTags = 256 // sync w/MAX_TAGS https://github.com/circonus-labs/reconnoiter/blob/master/src/noit_metric.h#L41
+	MaxTags = 256 // sync w/MAX_TAGS https://github.com/circonus-labs/reconnoiter/blob/master/src/noit_metric.h#L46
 
 	// MaxMetricNameLen reconnoiter will accept (name+stream tags)
-	MaxMetricNameLen = 4096 // sync w/MAX_METRIC_TAGGED_NAME https://github.com/circonus-labs/reconnoiter/blob/master/src/noit_metric.h#L40
+	MaxMetricNameLen = 4096 // sync w/MAX_METRIC_TAGGED_NAME https://github.com/circonus-labs/reconnoiter/blob/master/src/noit_metric.h#L45
 )
 
 type Metric struct {
