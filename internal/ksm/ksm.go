@@ -30,14 +30,14 @@ import (
 )
 
 type KSM struct {
-	config       *config.Cluster
+	sync.Mutex
 	check        *circonus.Check
+	cgmMetrics   *cgm.CirconusMetrics
+	config       *config.Cluster
+	ts           *time.Time
 	log          zerolog.Logger
 	apiTimelimit time.Duration
 	running      bool
-	cgmMetrics   *cgm.CirconusMetrics
-	sync.Mutex
-	ts *time.Time
 }
 
 type Address struct {
