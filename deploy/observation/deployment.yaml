@@ -51,5 +51,5 @@
             configMap:
               name: cka-config-v1
               items:
-                - key: default-alerts.json
-                  path: default-alerts.json
+                - key: metric-filters.json
+                  path: metric-filters.json

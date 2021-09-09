@@ -26,7 +26,7 @@ type Tag struct {
 type Tags []Tag
 
 func (c *Check) TagListToCGM(tags []string) cgm.Tags {
-	tagList := make(cgm.Tags, len(tags))
+	tagList := make(cgm.Tags, 0, len(tags))
 
 	for i, tag := range tags {
 		if i >= MaxTags {
@@ -37,18 +37,30 @@ func (c *Check) TagListToCGM(tags []string) cgm.Tags {
 			continue
 		}
 
-		if !strings.Contains(tag, ":") {
-			tagList[i] = cgm.Tag{Category: tag, Value: ""}
+		tc := ""
+		tv := ""
+
+		if strings.Contains(tag, ":") {
+			tagParts := strings.SplitN(tag, ":", 2)
+			if len(tagParts) != 2 {
+				log.Warn().Str("tag", tag).Msg("stream tags must have a category and value, ignoring tag")
+				continue // invalid tag, skip it
+			}
+			tc = tagParts[0]
+			tv = tagParts[1]
+		} else {
+			tc = tag
+		}
+
+		if len(tc) > MaxTagCat {
+			log.Warn().Str("tag", tag).Msgf("tag category longer than %d", MaxTagCat)
+			continue
+		} else if len(tc)+len(tv) > MaxTagLen {
+			log.Warn().Str("tag", tag).Msgf("tag length longer than %d", MaxTagLen)
 			continue
 		}
 
-		tagParts := strings.SplitN(tag, ":", 2)
-		if len(tagParts) != 2 {
-			tagList[i] = cgm.Tag{Category: tag, Value: ""}
-			continue
-		}
-
-		tagList[i] = cgm.Tag{Category: tagParts[0], Value: tagParts[1]}
+		tagList = append(tagList, cgm.Tag{Category: tc, Value: tv})
 	}
 
 	return tagList
