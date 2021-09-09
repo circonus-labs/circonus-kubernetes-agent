@@ -27,3 +27,6 @@ dist/
 # binaries
 ckatest
 *.elf
+
+# test configs etc
+test/
