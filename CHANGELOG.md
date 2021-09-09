@@ -1,5 +1,6 @@
 # v0.12.2
 
+* upd: bump github.com/rs/zerolog from 1.24.0 to 1.25.0
 * upd: disable rule sets by default
 * upd: cgm v3.4.6
 * upd: ignore test/
