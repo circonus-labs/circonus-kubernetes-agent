@@ -1,3 +1,8 @@
+# v0.12.3
+
+* add: metric_filter configuration to helm chart files
+* build(deps): bump github.com/spf13/viper from 1.8.1 to 1.9.0
+
 # v0.12.2
 
 * upd: bump github.com/rs/zerolog from 1.24.0 to 1.25.0
