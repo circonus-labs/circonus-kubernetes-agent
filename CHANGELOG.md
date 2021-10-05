@@ -1,3 +1,7 @@
+# v0.12.4
+
+* add: namespace tag to all dc targets
+
 # v0.12.3
 
 * add: metric_filter configuration to helm chart files
