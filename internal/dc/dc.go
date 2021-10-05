@@ -263,6 +263,9 @@ func (dc *DC) collectEndpoints(ctx context.Context, collector Collector) {
 				}
 				tags := generateTags(collector.Tags, collector.LabelTags, item.Labels)
 				tags = append(tags, "collector_target:"+addr.TargetRef.Name)
+				if item.Namespace != "" {
+					tags = append(tags, "namespace:"+item.Namespace)
+				}
 				targets = append(targets, metricTarget{URL: u.String(), Tags: tags, Rollup: rollup})
 			}
 		}
@@ -346,6 +349,9 @@ func (dc *DC) collectNodes(ctx context.Context, collector Collector) {
 		}
 		tags := generateTags(collector.Tags, collector.LabelTags, item.Labels)
 		tags = append(tags, "collector_target:"+item.Name)
+		if item.Namespace != "" {
+			tags = append(tags, "namespace:"+item.Namespace)
+		}
 		targets = append(targets, metricTarget{URL: u.String(), Tags: tags, Rollup: rollup})
 
 		if done(ctx) {
@@ -422,6 +428,9 @@ func (dc *DC) collectPods(ctx context.Context, collector Collector) {
 		}
 		tags := generateTags(collector.Tags, collector.LabelTags, item.Labels)
 		tags = append(tags, "collector_target:"+item.Name)
+		if item.Namespace != "" {
+			tags = append(tags, "namespace:"+item.Namespace)
+		}
 		targets = append(targets, metricTarget{URL: u.String(), Tags: tags, Rollup: rollup})
 
 		if done(ctx) {
@@ -484,6 +493,9 @@ func (dc *DC) collectServices(ctx context.Context, collector Collector) {
 		}
 		tags := generateTags(collector.Tags, collector.LabelTags, item.Labels)
 		tags = append(tags, "collector_target:"+item.Name)
+		if item.Namespace != "" {
+			tags = append(tags, "namespace:"+item.Namespace)
+		}
 		targets = append(targets, metricTarget{URL: u.String(), Tags: tags, Rollup: rollup})
 
 		if done(ctx) {
