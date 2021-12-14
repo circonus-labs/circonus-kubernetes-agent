@@ -12,18 +12,17 @@ require (
 	github.com/googleapis/gnostic v0.4.0 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-version v1.3.0
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/klauspost/compress v1.11.4
 	github.com/pelletier/go-toml v1.9.4
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.29.0
 	github.com/rs/zerolog v1.26.0
-	github.com/spf13/cobra v1.2.1
-	github.com/spf13/viper v1.9.0
+	github.com/spf13/cobra v1.3.0
+	github.com/spf13/viper v1.10.0
 	go.uber.org/automaxprocs v1.4.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf
+	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.17.2
 	k8s.io/apimachinery v0.17.2
