@@ -1,3 +1,7 @@
+# v0.12.5
+
+* upd: update dependencies to latest versions
+
 # v0.12.4
 
 * add: namespace tag to all dc targets
