@@ -188,7 +188,7 @@ func init() {
 			longOpt      = "k8s-ksm-telemetry-port-name"
 			envVar       = release.ENVPREFIX + "_K8S_KSM_TELEMETRY_PORT_NAME"
 			description  = "Kube-state-metrics telemetry port name"
-			defaultValue = "" //don't collect by default, we don't use them. defaults.K8SKSMTelemetryPortName
+			defaultValue = "" // don't collect by default, we don't use them. defaults.K8SKSMTelemetryPortName
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
