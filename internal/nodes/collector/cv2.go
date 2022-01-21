@@ -27,7 +27,7 @@ func (nc *Collector) resources(parentStreamTags []string, parentMeasurementTags 
 	}
 
 	start := time.Now()
-	clientset, err := k8s.GetClient(nc.cfg)
+	clientset, err := k8s.GetClient(&nc.cfg)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("initializing client set for node resource metrics, abandoning collection")
 		return
@@ -69,7 +69,7 @@ func (nc *Collector) probes(parentStreamTags []string, parentMeasurementTags []s
 	}
 
 	start := time.Now()
-	clientset, err := k8s.GetClient(nc.cfg)
+	clientset, err := k8s.GetClient(&nc.cfg)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("initializing client set for node probe metrics, abandoning collection")
 		return

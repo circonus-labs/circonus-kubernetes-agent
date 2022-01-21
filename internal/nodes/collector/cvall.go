@@ -163,7 +163,7 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 	}
 
 	start := time.Now()
-	clientset, err := k8s.GetClient(nc.cfg)
+	clientset, err := k8s.GetClient(&nc.cfg)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("initializing client set for node metrics, abandoning collection")
 		return
@@ -205,7 +205,7 @@ func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags [
 
 	start := time.Now()
 
-	clientset, err := k8s.GetClient(nc.cfg)
+	clientset, err := k8s.GetClient(&nc.cfg)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("initializing client set for cadvisor metrics, abandoning collection")
 		return

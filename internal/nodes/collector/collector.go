@@ -37,16 +37,16 @@ import (
 
 type Collector struct {
 	ctx           context.Context
-	cfg           *config.Cluster
 	tlsConfig     *tls.Config
 	check         *circonus.Check
 	node          *v1.Node
-	baseURI       string
 	kubeletVer    *version.Version
-	verConstraint version.Constraints
 	ts            *time.Time
+	baseURI       string
 	baseLogger    zerolog.Logger
 	log           zerolog.Logger
+	verConstraint version.Constraints
+	cfg           config.Cluster
 	apiTimelimit  time.Duration
 }
 
@@ -61,31 +61,36 @@ func New(cfg *config.Cluster, node *v1.Node, logger zerolog.Logger, check *circo
 		return nil, fmt.Errorf("invalid check (nil)")
 	}
 
+	c := &Collector{
+		cfg:          *cfg, // make sure it's a copy
+		check:        check,
+		node:         node,
+		apiTimelimit: apiTimeout,
+		baseLogger:   logger.With().Str("node", node.Name).Logger(),
+	}
+
 	v, err := version.NewVersion(node.Status.NodeInfo.KubeletVersion)
 	if err != nil {
 		return nil, fmt.Errorf("parsing version (%s): %w", node.Status.NodeInfo.KubeletVersion, err)
 	}
+
 	minVer := viper.GetString(keys.K8SNodeKubeletVersion)
 	vc, err := version.NewConstraint(">= " + minVer)
 	if err != nil {
 		return nil, fmt.Errorf("parsing ver constraint: %w", err)
 	}
 
+	c.verConstraint = vc
+	c.kubeletVer = v
+
 	sl := "/api/v1/nodes/" + node.Name
 	if node.SelfLink != "" {
 		sl = node.SelfLink
 	}
 
-	return &Collector{
-		cfg:           cfg,
-		check:         check,
-		node:          node,
-		kubeletVer:    v,
-		verConstraint: vc,
-		baseURI:       sl,
-		apiTimelimit:  apiTimeout,
-		baseLogger:    logger.With().Str("node", node.Name).Logger(),
-	}, nil
+	c.baseURI = sl
+
+	return c, nil
 }
 
 func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.Config, ts *time.Time, concurrent bool) {
@@ -161,11 +166,14 @@ func (nc *Collector) collectV2(concurrent bool, baseStreamTags []string, baseMea
 		wg.Wait()
 	} else {
 		nc.meta(baseStreamTags, baseMeasurementTags) // from node list
-		// if nc.cfg.EnableNodeStats {
-		// 	nc.summary(baseStreamTags, baseMeasurementTags) // from /stats/summary
-		// }
 		if nc.cfg.EnableNodeMetrics {
 			nc.nmetrics(baseStreamTags, baseMeasurementTags) // from /metrics
+		}
+		if nc.cfg.EnableNodeResourceMetrics {
+			nc.resources(baseStreamTags, baseMeasurementTags) // from /metrics/resources
+		}
+		if nc.cfg.EnableNodeProbeMetrics {
+			nc.probes(baseStreamTags, baseMeasurementTags) // from /metrics/probes
 		}
 		if nc.cfg.EnableCadvisorMetrics {
 			nc.cadvisor(baseStreamTags, baseMeasurementTags) // from /metrics/cadvisor
