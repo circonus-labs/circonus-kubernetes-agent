@@ -224,22 +224,23 @@ func (ksm *KSM) getEndpointTargets() ([]Address, error) {
 	addresses := make([]Address, 0)
 
 	for _, subset := range endpoints.Items[0].Subsets {
-		if cfgPort != "" { // use static port from configuration for all addresses
+		switch {
+		case cfgPort != "": // use static port from configuration for all addresses
 			for _, addr := range subset.Addresses {
 				addresses = append(addresses, Address{Name: "static", Target: addr.IP + ":" + cfgPort})
 			}
-		} else if len(subset.Ports) == 1 && len(subset.Addresses) > 1 { // only one port, use it for all addresses
+		case len(subset.Ports) == 1 && len(subset.Addresses) > 1: // only one port, use it for all addresses
 			port := subset.Ports[0].Port
 			for _, addr := range subset.Addresses {
 				addresses = append(addresses, Address{Name: subset.Ports[0].Name, Target: fmt.Sprintf("%s:%d", addr.IP, port)})
 			}
-		} else if len(subset.Addresses) == len(subset.Ports) { // it's 1:1 addr[0] goes with port[0], addr[1] with port[1], etc.
+		case len(subset.Addresses) == len(subset.Ports): // it's 1:1 addr[0] goes with port[0], addr[1] with port[1], etc.
 			for idx, addr := range subset.Addresses {
 				if subset.Ports[idx].Name == cfgPortName || strings.HasPrefix(strings.ToLower(subset.Ports[idx].Name), "http") {
 					addresses = append(addresses, Address{Name: subset.Ports[idx].Name, Target: fmt.Sprintf("%s:%d", addr.IP, subset.Ports[idx].Port)})
 				}
 			}
-		} else if len(subset.Addresses) == 1 && len(subset.Ports) > 1 { // all ports go with the one address
+		case len(subset.Addresses) == 1 && len(subset.Ports) > 1: // all ports go with the one address
 			ip := subset.Addresses[0].IP
 			for _, port := range subset.Ports {
 				if port.Name == cfgPortName || strings.HasPrefix(strings.ToLower(port.Name), "http") {

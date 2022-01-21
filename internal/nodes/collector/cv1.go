@@ -26,7 +26,7 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 
 	start := time.Now()
 
-	clientset, err := k8s.GetClient(nc.cfg)
+	clientset, err := k8s.GetClient(&nc.cfg)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("initializing client set for stats/summary, abandoning collection")
 		return
@@ -143,7 +143,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 	metrics := make(map[string]circonus.MetricSample)
 
 	// clientset
-	clientset, err := k8s.GetClient(nc.cfg)
+	clientset, err := k8s.GetClient(&nc.cfg)
 	if err != nil {
 		nc.log.Error().Err(err).Msg("initializing client set for pods, abandoning collection")
 		return

@@ -106,7 +106,7 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 	}
 
 	if circCfg.Check.Target == "" {
-		circCfg.Check.Target = strings.Replace(cfg.Name, " ", "_", -1)
+		circCfg.Check.Target = strings.ReplaceAll(cfg.Name, " ", "_")
 	}
 	check, err := circonus.NewCheck(c.logger, &circCfg, &cfg)
 	if err != nil {

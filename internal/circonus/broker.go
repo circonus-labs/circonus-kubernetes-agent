@@ -64,6 +64,7 @@ func (c *Check) initializeBroker(client *apiclient.API, bundle *apiclient.CheckB
 			commonName := cs.PeerCertificates[0].Subject.CommonName
 			// if commonName != cs.ServerName {
 			if !strings.Contains(cnList, commonName) {
+				c.log.Error().Str("cn", commonName).Str("cn-list", cnList).Msg("unable to match cert subject cn to broker cn-list")
 				return x509.CertificateInvalidError{
 					Cert:   cs.PeerCertificates[0],
 					Reason: x509.NameMismatch,
