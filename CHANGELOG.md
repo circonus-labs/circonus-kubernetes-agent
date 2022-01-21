@@ -1,3 +1,14 @@
+# v0.12.6
+
+* upd: log error message on cn mismatch in tls verify
+* upd: lint issues
+* upd: add pre-build lint back in
+* add: build_lint.sh script
+* upd: lint config
+* fix: ensure probe and resource metrics collected in sequential mode
+* build(deps): bump github.com/spf13/viper from 1.10.0 to 1.10.1
+* build(deps): bump github.com/rs/zerolog from 1.26.0 to 1.26.1
+
 # v0.12.5
 
 * upd: update dependencies to latest versions
