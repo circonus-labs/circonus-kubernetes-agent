@@ -1,22 +1,20 @@
 name: Run golangci-lint
-uses: golangci/golangci-lint-action@v3.0.0
-
-# name: golangci-lint
-# on:
-#   push:
-#     tags:
-#       - v*
-#     branches:
-#       - master
-#   pull_request:
-# jobs:
-#   golangci:
-#     name: lint
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v2
-#       - name: golangci-lint
-#         uses: golangci/golangci-lint-action@v2
-#         with:
-#           version: v1.41
-#           args: --timeout=5m
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - master
+  pull_request:
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: golangci/golangci-lint-action@v3.0.0
+      # - uses: actions/checkout@v2
+      # - name: golangci-lint
+      #   uses: golangci/golangci-lint-action@v2
+      #   with:
+      #     version: v1.41
+      #     args: --timeout=5m
