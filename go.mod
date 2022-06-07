@@ -17,10 +17,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.29.0
-	github.com/rs/zerolog v1.26.1
+	github.com/rs/zerolog v1.27.0
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.10.1
 	go.uber.org/automaxprocs v1.4.0
+	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20211210111614-af8b64212486
 	gopkg.in/yaml.v2 v2.4.0
