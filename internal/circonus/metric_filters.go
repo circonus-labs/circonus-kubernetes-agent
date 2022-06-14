@@ -85,6 +85,7 @@ func (c *Check) defaultFilters() [][]string {
     ["allow", "^events$", "events"],
     ["allow", "^collect_.*$", "agent collection stats"],
     ["allow", "^authentication_attempts$", "api auth health"],
+    ["allow", "^cadvisor.*$", "cadvisor metrics"],
     ["deny", "^.+$", "all other metrics"]
     ]
 }
