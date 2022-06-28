@@ -15,32 +15,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-type metricFilters struct {
-	Filters [][]string `json:"metric_filters"`
-}
-
-func (c *Check) loadMetricFilters() [][]string {
-	mfConfigFile := viper.GetString(keys.MetricFiltersFile)
-	data, err := ioutil.ReadFile(mfConfigFile)
-	if err != nil {
-		c.log.Warn().Err(err).Str("metric_filter_config", mfConfigFile).Msg("using defaults")
-		return c.defaultFilters()
-	}
-
-	var mf metricFilters
-	if err := json.Unmarshal(data, &mf); err != nil {
-		c.log.Warn().Err(err).Str("metric_filter_config", mfConfigFile).Msg("using defaults")
-		return c.defaultFilters()
-	}
-
-	return mf.Filters
-}
-
-func (c *Check) defaultFilters() [][]string {
-
-	var defaultMetricFiltersData []byte
-
-	defaultMetricFiltersData117 := []byte(`
+const (
+	defaultMetricFiltersStr117 = `
 {
     "metric_filters": [
 	["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
@@ -94,8 +70,8 @@ func (c *Check) defaultFilters() [][]string {
     ["deny", "^.+$", "all other metrics"]
     ]
 }
-`)
-	defaultMetricFiltersData118 := []byte(`
+`
+	defaultMetricFiltersStr118 = `
 {
     "metric_filters": [
 	["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
@@ -135,7 +111,34 @@ func (c *Check) defaultFilters() [][]string {
     ["deny", "^.+$", "all other metrics"]
     ]
 }
-`)
+`
+)
+
+type metricFilters struct {
+	Filters [][]string `json:"metric_filters"`
+}
+
+func (c *Check) loadMetricFilters() [][]string {
+	mfConfigFile := viper.GetString(keys.MetricFiltersFile)
+	data, err := ioutil.ReadFile(mfConfigFile)
+	if err != nil {
+		c.log.Warn().Err(err).Str("metric_filter_config", mfConfigFile).Msg("using defaults")
+		return c.defaultFilters()
+	}
+
+	var mf metricFilters
+	if err := json.Unmarshal(data, &mf); err != nil {
+		c.log.Warn().Err(err).Str("metric_filter_config", mfConfigFile).Msg("using defaults")
+		return c.defaultFilters()
+	}
+
+	return mf.Filters
+}
+
+func (c *Check) defaultFilters() [][]string {
+
+	var defaultMetricFiltersData []byte
+
 	currversion, err := version.NewVersion(c.clusterVers)
 	if err != nil {
 		c.log.Warn().Err(err).Msg("parsing api version")
@@ -155,9 +158,9 @@ func (c *Check) defaultFilters() [][]string {
 	}
 
 	if currversion.LessThan(v118) {
-		defaultMetricFiltersData = defaultMetricFiltersData118
+		defaultMetricFiltersData = []byte(defaultMetricFiltersStr117)
 	} else {
-		defaultMetricFiltersData = defaultMetricFiltersData117
+		defaultMetricFiltersData = []byte(defaultMetricFiltersStr118)
 	}
 
 	var mf metricFilters
