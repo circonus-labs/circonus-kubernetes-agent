@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const defaultRuleSetsStr117 = `
+const defaultRuleSetsStr119 = `
 {
     "crashloops_container": {
         "filter": "and(reason:CrashLoopBackOff)",
@@ -380,7 +380,7 @@ const defaultRuleSetsStr117 = `
 }
 `
 
-const defaultRuleSetsStr118 = `
+const defaultRuleSetsStr120 = `
 {
     "crashloops_container": {
         "filter": "and(reason:CrashLoopBackOff)",
@@ -1146,15 +1146,15 @@ func defaultRules(clusterVers string) (map[string]apiclient.RuleSet, error) {
 		return nil, err
 	}
 
-	v118, err := version.NewVersion("v1.18")
+	v120, err := version.NewVersion("v1.20")
 	if err != nil {
 		return nil, err
 	}
 
-	if currversion.LessThan(v118) {
-		defaultRuleSetsData = []byte(defaultRuleSetsStr117)
+	if currversion.LessThan(v120) {
+		defaultRuleSetsData = []byte(defaultRuleSetsStr119)
 	} else {
-		defaultRuleSetsData = []byte(defaultRuleSetsStr118)
+		defaultRuleSetsData = []byte(defaultRuleSetsStr120)
 	}
 
 	var rules map[string]apiclient.RuleSet

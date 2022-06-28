@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	defaultMetricFiltersStr117 = `
+	defaultMetricFiltersStr119 = `
 {
     "metric_filters": [
 	["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
@@ -71,7 +71,7 @@ const (
     ]
 }
 `
-	defaultMetricFiltersStr118 = `
+	defaultMetricFiltersStr120 = `
 {
     "metric_filters": [
 	["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
@@ -81,9 +81,9 @@ const (
     ["allow", "^(kube_)?pod_container_status_(terminated|waiting)_reason(_count)?$", "containers health"],
     ["allow", "^(kube_)?pod_init_container_status_(terminated|waiting)_reason(_count)?$", "init containers health"],
     ["allow", "^kube_deployment_(created|spec_replicas)$", "deployments"],
+    ["allow", "^kube_deployment_status_(replicas|replicas_updated|replicas_available|replicas_unavailable)$", "deployments"],
     ["allow", "^kube_job_status_failed$", "health"],
     ["allow", "^kube_persistentvolume_status_phase$", "health"],
-	["allow", "^kube_deployment_status_replicas_unavailable$", "deployments"],
     ["allow", "^kube_hpa_(spec_max|status_current)_replicas$", "scale"],
     ["allow", "^kube_pod_start_time$", "pods"],
     ["allow", "^(kube_)?pod_status_phase(_count)?$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"],
@@ -148,19 +148,19 @@ func (c *Check) defaultFilters() [][]string {
 		}
 	}
 
-	v118, err := version.NewVersion("v1.18")
+	v120, err := version.NewVersion("v1.20")
 	if err != nil {
-		c.log.Warn().Err(err).Msg("parsing v1.18")
+		c.log.Warn().Err(err).Msg("parsing v1.20")
 		return [][]string{
 			{"deny", "^$", "empty"},
 			{"allow", "^.+$", "all"},
 		}
 	}
 
-	if currversion.LessThan(v118) {
-		defaultMetricFiltersData = []byte(defaultMetricFiltersStr117)
+	if currversion.LessThan(v120) {
+		defaultMetricFiltersData = []byte(defaultMetricFiltersStr119)
 	} else {
-		defaultMetricFiltersData = []byte(defaultMetricFiltersStr118)
+		defaultMetricFiltersData = []byte(defaultMetricFiltersStr120)
 	}
 
 	var mf metricFilters
