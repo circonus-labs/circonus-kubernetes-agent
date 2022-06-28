@@ -23,7 +23,9 @@ import (
 	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
+	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
+
 	apiclient "github.com/circonus-labs/go-apiclient"
 	apiclicfg "github.com/circonus-labs/go-apiclient/config"
 	"github.com/pkg/errors"
@@ -54,6 +56,7 @@ type Check struct {
 	checkUUID            string
 	checkBundleCID       string
 	clusterTag           string
+	clusterVers          string
 	submissionURL        string
 	log                  zerolog.Logger
 	metricFilters        []MetricFilter
@@ -74,6 +77,13 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterCfg *con
 		clusterName: clusterCfg.Name,
 		clusterTag:  "cluster:" + clusterCfg.Name,
 		log:         parentLogger.With().Str("pkg", "circonus.check").Logger(),
+	}
+
+	var err error
+	c.clusterVers, err = k8s.GetVersion(clusterCfg)
+	if err != nil {
+		c.log.Warn().Msg("couldn't get k8s version")
+		return nil, err
 	}
 
 	// output debug messages for hidden settings which are not DEFAULT

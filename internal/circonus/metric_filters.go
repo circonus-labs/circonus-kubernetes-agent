@@ -10,6 +10,8 @@ import (
 	"io/ioutil"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
+
+	"github.com/hashicorp/go-version"
 	"github.com/spf13/viper"
 )
 
@@ -35,7 +37,10 @@ func (c *Check) loadMetricFilters() [][]string {
 }
 
 func (c *Check) defaultFilters() [][]string {
-	defaultMetricFiltersData := []byte(`
+
+	var defaultMetricFiltersData []byte
+
+	defaultMetricFiltersData117 := []byte(`
 {
     "metric_filters": [
 	["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
@@ -85,11 +90,76 @@ func (c *Check) defaultFilters() [][]string {
     ["allow", "^events$", "events"],
     ["allow", "^collect_.*$", "agent collection stats"],
     ["allow", "^authentication_attempts$", "api auth health"],
-    ["allow", "^cadvisor.*$", "cadvisor metrics"],
+    ["allow", "^cadvisor.*$", "cadvisor"],
     ["deny", "^.+$", "all other metrics"]
     ]
 }
 `)
+	defaultMetricFiltersData118 := []byte(`
+{
+    "metric_filters": [
+	["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
+    ["allow", "^(pod|node)_cpu_usage_seconds_total$", "utilization"],
+    ["allow", "^(pod|node)_memory_working_set_bytes$", utilization"],
+    ["allow", "^(kube_)?pod_container_status_(running|terminated|waiting|ready)(_count)?$", "containers"],
+    ["allow", "^(kube_)?pod_container_status_(terminated|waiting)_reason(_count)?$", "containers health"],
+    ["allow", "^(kube_)?pod_init_container_status_(terminated|waiting)_reason(_count)?$", "init containers health"],
+    ["allow", "^kube_deployment_(created|spec_replicas)$", "deployments"],
+    ["allow", "^kube_job_status_failed$", "health"],
+    ["allow", "^kube_persistentvolume_status_phase$", "health"],
+	["allow", "^kube_deployment_status_replicas_unavailable$", "deployments"],
+    ["allow", "^kube_hpa_(spec_max|status_current)_replicas$", "scale"],
+    ["allow", "^kube_pod_start_time$", "pods"],
+    ["allow", "^(kube_)?pod_status_phase(_count)?$", "tags", "and(or(phase:Running,phase:Pending,phase:Failed,phase:Succeeded))", "pods"],
+    ["allow", "^pod_status_phase$", "pods"],
+    ["allow", "^kube_pod_info$", "pods"],
+    ["allow", "^kube_(service|deployment)_labels$", "ksm inventory"],
+    ["allow", "^kube_node_spec_unschedulable$", "node status"],
+    ["allow", "^kube_node_status_allocatable$", "node status"],
+    ["allow", "^kube_node_status_condition$", "node status health"],
+    ["allow", "^kube_namespace_status_phase$", "tags", "namespaces"],
+    ["allow", "^utilization$", "utilization health"],
+    ["allow", "^kube_deployment_(metadata|status_observed)_generation$", "health"],
+    ["allow", "^kube_daemonset_status_(current|desired)_number_scheduled$", "health"],
+    ["allow", "^kube_statefulset_status_(replicas|replicas_ready)$", "health"],
+    ["allow", "^deployment_generation_delta$", "health"],
+    ["allow", "^daemonset_scheduled_delta$", "health"],
+    ["allow", "^statefulset_replica_delta$", "health"],
+    ["allow", "^coredns_(dns|forward)_request_(count_total|duration_seconds_avg)$", "dns health"],
+    ["allow", "^coredns_(dns|forward)_response_rcode_count_total$", "dns health"],
+    ["allow", "^kubedns*","dns health"],
+    ["allow", "^events$", "events"],
+    ["allow", "^collect_.*$", "agent collection stats"],
+    ["allow", "^authentication_attempts$", "api auth health"],
+    ["allow", "^cadvisor.*$", "cadvisor"],
+    ["deny", "^.+$", "all other metrics"]
+    ]
+}
+`)
+	currversion, err := version.NewVersion(c.clusterVers)
+	if err != nil {
+		c.log.Warn().Err(err).Msg("parsing api version")
+		return [][]string{
+			{"deny", "^$", "empty"},
+			{"allow", "^.+$", "all"},
+		}
+	}
+
+	v118, err := version.NewVersion("v1.18")
+	if err != nil {
+		c.log.Warn().Err(err).Msg("parsing v1.18")
+		return [][]string{
+			{"deny", "^$", "empty"},
+			{"allow", "^.+$", "all"},
+		}
+	}
+
+	if currversion.LessThan(v118) {
+		defaultMetricFiltersData = defaultMetricFiltersData118
+	} else {
+		defaultMetricFiltersData = defaultMetricFiltersData117
+	}
+
 	var mf metricFilters
 	if err := json.Unmarshal(defaultMetricFiltersData, &mf); err != nil {
 		c.log.Warn().Err(err).Msg("parsing default metric filters")
