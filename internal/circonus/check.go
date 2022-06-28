@@ -131,7 +131,7 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterCfg *con
 		return nil, err
 	}
 
-	initializeAlerting(client, c.log, c.clusterName, c.clusterTag, c.checkCID, c.checkUUID)
+	initializeAlerting(client, c.log, c.clusterName, c.clusterTag, c.clusterVers, c.checkCID, c.checkUUID)
 
 	{
 		cfg := &cgm.Config{
