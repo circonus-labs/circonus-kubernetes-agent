@@ -9,6 +9,7 @@
     metadata:
       # versioned, cadence independent of app version
       name: cka-secrets-v1
+      namespace: circonus-kubernetes-agent
       labels:
           app.kubernetes.io/name: circonus-kubernetes-agent
     stringData:
@@ -21,6 +22,7 @@
   metadata:
       # versioned, cadence independent of app version
       name: cka-config-v1
+      namespace: circonus-kubernetes-agent
       labels:
           app.kubernetes.io/name: circonus-kubernetes-agent
   data:
