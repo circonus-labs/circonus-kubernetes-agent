@@ -3,6 +3,7 @@
   kind: Deployment
   metadata:
     name: circonus-kubernetes-agent
+    namespace: circonus-kubernetes-agent
     labels:
       app.kubernetes.io/name: circonus-kubernetes-agent
       app.kubernetes.io/version: latest
@@ -19,10 +20,13 @@
           app.kubernetes.io/name: circonus-kubernetes-agent
           app.kubernetes.io/version: latest
       spec:
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
         serviceAccountName: circonus-kubernetes-agent
         containers:
           - name: circonus-kubernetes-agent
-            image: circonus/circonus-kubernetes-agent:latest
+            image: index.docker.io/circonus/circonus-kubernetes-agent:latest
             command: ["/circonus-kubernetes-agentd"]
             #args: ["--debug"]
             env:
