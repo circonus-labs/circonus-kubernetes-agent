@@ -140,19 +140,15 @@ func (c *Check) defaultFilters() [][]string {
 
 	var defaultMetricFiltersData []byte
 
+	v120, err := version.NewVersion(v120str)
+	if err != nil {
+		c.log.Warn().Err(err).Msg("parsing " + v120str)
+	}
+
 	currversion, err := version.NewVersion(c.clusterVers)
 	if err != nil {
 		c.log.Warn().Err(err).Msg("parsing api version")
-		currversion, _ = version.NewVersion(v120str)
-	}
-
-	v120, err := version.NewVersion(v120str)
-	if err != nil {
-		c.log.Warn().Err(err).Msg("parsing" + v120str)
-		return [][]string{
-			{"deny", "^$", "empty"},
-			{"allow", "^.+$", "all"},
-		}
+		currversion = v120
 	}
 
 	if currversion.LessThan(v120) {
