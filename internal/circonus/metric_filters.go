@@ -16,18 +16,19 @@ import (
 )
 
 const (
+	v120str                    = "v1.20"
 	defaultMetricFiltersStr119 = `
 {
     "metric_filters": [
-	["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
+    ["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
     ["allow", "^kubelet_.*$", "node metrics k8s v1.18+"],
     ["allow", "^machine_.*$", "node metrics k8s v1.18+"],
     ["allow", "^(container|node|pod)_.*$", "node metrics k8s v1.18+"],
     ["allow", "^prober_.*$", "node metrics/probes k8s v1.18+"],
     ["allow", "^[rt]x$", "tags", "and(resource:network,or(units:bytes,units:errors),not(container_name:*),not(sys_container:*))", "utilization"],
     ["allow", "^(used|capacity)$", "tags", "and(or(units:bytes,units:percent),or(resource:memory,resource:fs,volume_name:*),not(container_name:*),not(sys_container:*))", "utilization"],
-	["allow", "^usage(Milli|Nano)Cores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"],
-	["allow", "^resource_(request|limit)$", "resources"],
+    ["allow", "^usage(Milli|Nano)Cores$", "tags", "and(not(container_name:*),not(sys_container:*))", "utilization"],
+    ["allow", "^resource_(request|limit)$", "resources"],
     ["allow", "^apiserver_request_total$", "tags", "and(or(code:5*,code:4*))", "api req errors"],
     ["allow", "^authenticated_user_requests$", "api auth"],
     ["allow", "^(kube_)?pod_container_status_(running|terminated|waiting|ready)(_count)?$", "containers"],
@@ -38,7 +39,7 @@ const (
     ["allow", "^kube_deployment_status_(replicas|replicas_updated|replicas_available|replicas_unavailable)$", "deployments"],
     ["allow", "^kube_job_status_failed$", "health"],
     ["allow", "^kube_persistentvolume_status_phase$", "health"],
-	["allow", "^kube_deployment_status_replicas_unavailable$", "deployments"],
+    ["allow", "^kube_deployment_status_replicas_unavailable$", "deployments"],
     ["allow", "^kube_hpa_(spec_max|status_current)_replicas$", "scale"],
     ["allow", "^kube_pod_start_time$", "pods"],
     ["allow", "^kube_pod_status_condition$", "pods"],
@@ -74,7 +75,7 @@ const (
 	defaultMetricFiltersStr120 = `
 {
     "metric_filters": [
-	["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
+    ["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
     ["allow", "^(pod|node)_cpu_usage_seconds_total$", "utilization"],
     ["allow", "^(pod|node)_memory_working_set_bytes$", utilization"],
     ["allow", "^(kube_)?pod_container_status_(running|terminated|waiting|ready)(_count)?$", "containers"],
@@ -142,15 +143,12 @@ func (c *Check) defaultFilters() [][]string {
 	currversion, err := version.NewVersion(c.clusterVers)
 	if err != nil {
 		c.log.Warn().Err(err).Msg("parsing api version")
-		return [][]string{
-			{"deny", "^$", "empty"},
-			{"allow", "^.+$", "all"},
-		}
+		currversion, _ = version.NewVersion(v120str)
 	}
 
-	v120, err := version.NewVersion("v1.20")
+	v120, err := version.NewVersion(v120str)
 	if err != nil {
-		c.log.Warn().Err(err).Msg("parsing v1.20")
+		c.log.Warn().Err(err).Msg("parsing" + v120str)
 		return [][]string{
 			{"deny", "^$", "empty"},
 			{"allow", "^.+$", "all"},

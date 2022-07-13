@@ -82,7 +82,6 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterCfg *con
 	var err error
 	c.clusterVers, err = k8s.GetVersion(clusterCfg)
 	if err != nil {
-		c.log.Warn().Msg("couldn't get k8s version")
 		return nil, err
 	}
 
