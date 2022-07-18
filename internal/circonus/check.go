@@ -57,6 +57,7 @@ type Check struct {
 	checkBundleCID       string
 	clusterTag           string
 	clusterVers          string
+	clusterPlatform      string
 	submissionURL        string
 	log                  zerolog.Logger
 	metricFilters        []MetricFilter
@@ -81,6 +82,10 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterCfg *con
 
 	var err error
 	c.clusterVers, err = k8s.GetVersion(clusterCfg)
+	if err != nil {
+		return nil, err
+	}
+	c.clusterPlatform, err = k8s.GetPlatform(clusterCfg)
 	if err != nil {
 		return nil, err
 	}
