@@ -41,6 +41,7 @@ func GetClient(clusterConfig *config.Cluster) (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
+// GetVersion gets the cluster version
 func GetVersion(clusterConfig *config.Cluster) (string, error) {
 	clientset, err := GetClient(clusterConfig)
 	if err != nil {
@@ -59,5 +60,27 @@ func GetVersion(clusterConfig *config.Cluster) (string, error) {
 		return "", err
 	}
 
-	return ver.GitVersion + " " + ver.Platform, nil
+	return ver.GitVersion, nil
+}
+
+// GetPlatform gets the cluster platform
+func GetPlatform(clusterConfig *config.Cluster) (string, error) {
+	clientset, err := GetClient(clusterConfig)
+	if err != nil {
+		return "", err
+	}
+	req := clientset.CoreV1().RESTClient().Get().RequestURI("/version")
+	res := req.Do()
+
+	data, err := res.Raw()
+	if err != nil {
+		return "", err
+	}
+
+	var ver apimachineryversion.Info
+	if err := json.Unmarshal(data, &ver); err != nil {
+		return "", err
+	}
+
+	return ver.Platform, nil
 }
