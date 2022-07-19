@@ -77,7 +77,7 @@ const (
     "metric_filters": [
     ["allow", "^.+$", "tags", "and(collector:dynamic)", "NO_LOCAL_FILTER dynamically collected metrics"],
     ["allow", "^(pod|node)_cpu_usage_seconds_total$", "utilization"],
-    ["allow", "^(pod|node)_memory_working_set_bytes$", utilization"],
+    ["allow", "^(pod|node)_memory_working_set_bytes$", "utilization"],
     ["allow", "^(kube_)?pod_container_status_(running|terminated|waiting|ready)(_count)?$", "containers"],
     ["allow", "^pod_container_status_(terminated|waiting)_reason(_count)?$", "containers health"],
     ["allow", "^pod_init_container_status_(terminated|waiting)_reason(_count)?$", "init containers health"],
