@@ -94,7 +94,7 @@ const (
     ["allow", "^kube_node_spec_unschedulable$", "node status"],
     ["allow", "^kube_node_status_allocatable$", "node status"],
     ["allow", "^kube_node_status_condition$", "node status health"],
-    ["allow", "^kube_namespace_status_phase$", "tags", "namespaces"],
+    ["allow", "^kube_namespace_status_phase$", "namespaces"],
     ["allow", "^utilization$", "utilization health"],
     ["allow", "^kube_deployment_(metadata|status_observed)_generation$", "health"],
     ["allow", "^kube_daemonset_status_(current|desired)_number_scheduled$", "health"],
