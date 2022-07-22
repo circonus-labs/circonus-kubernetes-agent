@@ -280,7 +280,7 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 			go func() {
 				collector, err := dns.New(&c.cfg, c.logger, c.check)
 				if err != nil {
-					c.logger.Error().Err(err).Msg("initializing kube-dns collector")
+					c.logger.Error().Err(err).Msg("initializing kube-dns/coredns collector")
 				} else {
 					collector.Collect(collectCtx, c.tlsConfig, &start)
 				}
