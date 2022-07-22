@@ -151,13 +151,15 @@ const (
 	K8SEnableNodeMetrics = "kubernetes.enable_node_metrics"
 	// K8SEnableCadvisorMetrics - kublet /metrics/cadvisor metrics (common)
 	K8SEnableCadvisorMetrics = "kubernetes.enable_cadvisor_metrics"
-	// K8SEnableNodeResourceMetrics - kubelet /metrics/resources (k8s >= v1.18.0)
+	// K8SEnableNodeResourceMetrics - kubelet /metrics/resource (k8s >= v1.18.0)
 	K8SEnableNodeResourceMetrics = "kubernetes.enable_node_resource_metrics"
 	// K8SEnableNodeProbeMetrics - kubelet /metrics/probes (k8s v1.18.0+)
 	K8SEnableNodeProbeMetrics = "kubernetes.enable_node_probe_metrics"
 
-	// K8SEnableKubeDNSMetrics - collect kube-dns metrics
-	K8SEnableKubeDNSMetrics = "kubernetes.enable_kube_dns_metrics"
+	// K8SEnableDNSMetrics - collect kube-dns/coredns metrics
+	K8SEnableDNSMetrics = "kubernetes.enable_dns_metrics"
+	// K8SCoreDNSMetricsPort - define when scrape/port annotations are not applied on the service
+	K8SCoreDNSMetricsPort = "kubernetes.coredns_metrics_port"
 	// K8SKubeDNSMetricsPort - define when scrape/port annotations are not applied on the service
 	K8SKubeDNSMetricsPort = "kubernetes.kube_dns_metrics_port"
 

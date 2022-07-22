@@ -86,9 +86,10 @@ const (
 	K8SEnableNodeStats           = true                                                  // dashboard (only available in k8s<v1.18 - /stats/summary)
 	K8SEnableNodeMetrics         = true                                                  // dashboard /metrics
 	K8SEnableCadvisorMetrics     = false                                                 // not needed by dashboard (k8s<v1.18, may be needed for k8s>=v1.18) /metrics/cadvisor
-	K8SEnableNodeResourceMetrics = true                                                  // dashboard (k8s >= 1.18) /metrics/resources
+	K8SEnableNodeResourceMetrics = true                                                  // dashboard (k8s >= 1.18) /metrics/resource
 	K8SEnableNodeProbeMetrics    = false                                                 // dashboard (k8s >= 1.18) /metrics/probes
-	K8SEnableKubeDNSMetrics      = true                                                  // dashboard
+	K8SEnableDNSMetrics          = true                                                  // dashboard
+	K8SCoreDNSMetricsPort        = "9153"                                                // ONLY used if the coredns service does not have scrape and port annotations
 	K8SKubeDNSMetricsPort        = "10054"                                               // ONLY used if the kube-dns service does not have scrape and port annotations (e.g. GKE)
 	K8SNodeSelector              = ""                                                    // blank=all
 	K8SIncludePods               = true                                                  // dashboard

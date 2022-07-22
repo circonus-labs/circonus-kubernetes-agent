@@ -100,7 +100,7 @@ const defaultRuleSetsStr119 = `
 				"windowing_min_duration": 900,
                 "value": "75"
             }
-        ]    
+        ]
     },
     "disk_pressure": {
         "filter": "and(condition:DiskPressure,status:true)",
@@ -227,7 +227,7 @@ const defaultRuleSetsStr119 = `
                 "windowing_duration": 300,
                 "value": "0"
             }
-        ]        
+        ]
     },
     "persistent_volume_failures": {
         "filter": "and(phase:Failed)",
@@ -252,7 +252,7 @@ const defaultRuleSetsStr119 = `
                 "windowing_duration": 300,
                 "value": "0"
             }
-        ]        
+        ]
     },
     "pod_pending_delays": {
         "filter": "and(phase:Pending)",
@@ -279,7 +279,7 @@ const defaultRuleSetsStr119 = `
 				"windowing_min_duration": 900,
                 "value": "0.99"
             }
-        ]        
+        ]
     },
     "deployment_glitches": {
         "filter": "and(deployment:*)",
@@ -311,7 +311,7 @@ const defaultRuleSetsStr119 = `
                 "windowing_duration": 300,
                 "value": "0"
             }
-        ]        
+        ]
     },
     "daemonsets_not_ready": {
         "filter": "and(daemonset:*)",
@@ -457,7 +457,7 @@ const defaultRuleSetsStr120 = `
                 	"windowing_min_duration": 900,
                 	"value": "0.75"
 		}
-        ],
+        ]
     },
     "disk_pressure": {
         "filter": "and(condition:DiskPressure,status:true)",
@@ -584,7 +584,7 @@ const defaultRuleSetsStr120 = `
                 "windowing_duration": 300,
                 "value": "0"
             }
-        ]        
+        ]
     },
     "persistent_volume_failures": {
         "filter": "and(phase:Failed)",
