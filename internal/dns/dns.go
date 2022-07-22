@@ -151,13 +151,17 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 	svc, err := clientset.CoreV1().Services("kube-system").Get("kube-dns", metav1.GetOptions{})
 	dns.service = "kube-dns"
 	if err != nil {
-		svc, err = clientset.CoreV1().Services("kube-system").Get("coredns", metav1.GetOptions{})
+		dns.log.Warn().Str("get kube-dns service failed", err.Error()).Msg("service not found, checking coredns")
 		dns.service = "coredns"
+		svc, err = clientset.CoreV1().Services("kube-system").Get("coredns", metav1.GetOptions{})
 		if err != nil {
 			dns.service = ""
+			dns.log.Warn().Str("get all dns services failed", err.Error()).Msg("service not found, nothing to do")
 			return nil, err
 		}
 	}
+
+	dns.log.Warn().Str("service", svc.Name).Msg("found kubernetes DNS service" + dns.service)
 
 	scrape := false
 	port := ""
