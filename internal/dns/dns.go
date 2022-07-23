@@ -129,6 +129,7 @@ func (dns *DNS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	dns.check.AddText("collect_dns_state", cgm.Tags{
 		cgm.Tag{Category: "cluster", Value: dns.config.Name},
 		cgm.Tag{Category: "source", Value: release.NAME},
+		cgm.Tag{Category: "service", Value: dns.service},
 	}, fmt.Sprintf("OK:%d,ERR:%d", pods, podsErr))
 
 	dns.check.AddHistSample("collect_latency", cgm.Tags{
@@ -151,7 +152,7 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 	svc, err := clientset.CoreV1().Services("kube-system").Get("kube-dns", metav1.GetOptions{})
 	dns.service = "kube-dns"
 	if err != nil {
-		dns.log.Warn().Str("get kube-dns service failed", err.Error()).Msg("service not found, checking coredns")
+		dns.log.Info().Str("get kube-dns service failed", err.Error()).Msg("service not found, checking coredns")
 		dns.service = "coredns"
 		svc, err = clientset.CoreV1().Services("kube-system").Get("coredns", metav1.GetOptions{})
 		if err != nil {
@@ -160,8 +161,6 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 			return nil, err
 		}
 	}
-
-	dns.log.Warn().Str("service", svc.Name).Msg("found kubernetes DNS service" + dns.service)
 
 	scrape := false
 	port := ""
