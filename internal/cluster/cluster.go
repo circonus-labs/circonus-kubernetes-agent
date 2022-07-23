@@ -122,7 +122,7 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 		c.collectors = append(c.collectors, "api")
 	}
 
-	if c.cfg.EnableKubeDNSMetrics {
+	if c.cfg.EnableDNSMetrics {
 		c.collectors = append(c.collectors, "dns")
 	}
 
