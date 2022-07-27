@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 //
 
-// Package dns is the kube-dns collector
+// Package dns is the kube-dns/coredns collector
 package dns
 
 import (
@@ -33,6 +33,7 @@ import (
 )
 
 type DNS struct {
+	service      string
 	config       *config.Cluster
 	check        *circonus.Check
 	log          zerolog.Logger
@@ -53,7 +54,7 @@ func New(cfg *config.Cluster, parentLog zerolog.Logger, check *circonus.Check) (
 	dns := &DNS{
 		config: cfg,
 		check:  check,
-		log:    parentLog.With().Str("collector", "kube-dns").Logger(),
+		log:    parentLog.With().Str("collector", "dns").Logger(),
 	}
 
 	if cfg.APITimelimit != "" {
@@ -77,7 +78,7 @@ func New(cfg *config.Cluster, parentLog zerolog.Logger, check *circonus.Check) (
 }
 
 func (dns *DNS) ID() string {
-	return "kube-dns"
+	return dns.service
 }
 
 func (dns *DNS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time) {
@@ -120,7 +121,7 @@ func (dns *DNS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	for podName, metricURL := range urls {
 		pods++
 		if err := dns.getMetrics(ctx, podName, metricURL); err != nil {
-			dns.log.Error().Err(err).Str("url", metricURL).Msg("kube-dns metrics")
+			dns.log.Error().Err(err).Str("url", metricURL).Msg("dns metrics")
 			podsErr++
 		}
 	}
@@ -128,6 +129,7 @@ func (dns *DNS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	dns.check.AddText("collect_dns_state", cgm.Tags{
 		cgm.Tag{Category: "cluster", Value: dns.config.Name},
 		cgm.Tag{Category: "source", Value: release.NAME},
+		cgm.Tag{Category: "service", Value: dns.service},
 	}, fmt.Sprintf("OK:%d,ERR:%d", pods, podsErr))
 
 	dns.check.AddHistSample("collect_latency", cgm.Tags{
@@ -135,7 +137,7 @@ func (dns *DNS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 		cgm.Tag{Category: "opt", Value: "collect_kube-dns"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(collectStart).Milliseconds()))
-	dns.log.Debug().Str("duration", time.Since(collectStart).String()).Msg("kube-dns collect end")
+	dns.log.Debug().Str("duration", time.Since(collectStart).String()).Msg("dns collect end")
 	dns.Lock()
 	dns.running = false
 	dns.Unlock()
@@ -148,21 +150,26 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 	}
 
 	svc, err := clientset.CoreV1().Services("kube-system").Get("kube-dns", metav1.GetOptions{})
+	dns.service = "kube-dns"
 	if err != nil {
-		return nil, err
+		dns.log.Info().Str("get kube-dns service failed", err.Error()).Msg("service not found, checking coredns")
+		dns.service = "coredns"
+		svc, err = clientset.CoreV1().Services("kube-system").Get("coredns", metav1.GetOptions{})
+		if err != nil {
+			dns.service = ""
+			dns.log.Warn().Str("get all dns services failed", err.Error()).Msg("service not found, nothing to do")
+			return nil, err
+		}
 	}
 
-	foundAnnotations := 0
 	scrape := false
 	port := ""
 
 	for name, value := range svc.Annotations {
 		switch name {
 		case "prometheus.io/port":
-			foundAnnotations++
 			port = value
 		case "prometheus.io/scrape":
-			foundAnnotations++
 			s, err := strconv.ParseBool(value)
 			if err != nil {
 				return nil, errors.Wrap(err, "parsing service confing annotation")
@@ -171,13 +178,16 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 		}
 	}
 
-	if foundAnnotations != 2 {
-		port = viper.GetString(keys.K8SKubeDNSMetricsPort)
-		if port == "" {
-			return nil, errors.New("service annotations not found, kube-dns-metrics-port not set")
+	if port == "" {
+		dns.log.Warn().Str("port", port).Msg("service annotations not found, checking supplied service ports")
+		switch dns.service {
+		case "kube-dns":
+			port = viper.GetString(keys.K8SKubeDNSMetricsPort)
+		case "coredns":
+			port = viper.GetString(keys.K8SCoreDNSMetricsPort)
+		default:
+			return nil, errors.New("dns service not found, no ports supplied")
 		}
-		dns.log.Warn().Str("port", port).Msg("service annotations not found, checking kube-dns-metrics-port")
-		scrape = true
 	}
 
 	if !scrape {
@@ -185,7 +195,7 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 	}
 
 	if len(svc.Spec.Selector) == 0 {
-		return nil, errors.New("no selectors found in kube-dns service")
+		return nil, errors.New("no selectors found in dns service")
 	}
 
 	selectors := make([]string, len(svc.Spec.Selector))
@@ -197,7 +207,7 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 
 	pods, err := clientset.CoreV1().Pods(svc.Namespace).List(metav1.ListOptions{LabelSelector: strings.Join(selectors, ",")})
 	if err != nil {
-		return nil, errors.Wrap(err, "getting list of kube-dns pods")
+		return nil, errors.Wrap(err, "getting list of dns pods")
 	}
 	if len(pods.Items) == 0 {
 		return nil, errors.Errorf("no pods found matching selector (%s)", strings.Join(selectors, ","))
@@ -227,7 +237,7 @@ func (dns *DNS) getMetrics(ctx context.Context, podName, metricURL string) error
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "metrics"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "kube-dns"},
+			cgm.Tag{Category: "target", Value: dns.service},
 		})
 		return err
 	}
@@ -236,7 +246,7 @@ func (dns *DNS) getMetrics(ctx context.Context, podName, metricURL string) error
 		cgm.Tag{Category: "source", Value: release.NAME},
 		cgm.Tag{Category: "request", Value: "metrics"},
 		cgm.Tag{Category: "proxy", Value: "api-server"},
-		cgm.Tag{Category: "target", Value: "kube-dns"},
+		cgm.Tag{Category: "target", Value: dns.service},
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
@@ -245,7 +255,7 @@ func (dns *DNS) getMetrics(ctx context.Context, podName, metricURL string) error
 			cgm.Tag{Category: "source", Value: release.NAME},
 			cgm.Tag{Category: "request", Value: "metrics"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
-			cgm.Tag{Category: "target", Value: "kube-dns"},
+			cgm.Tag{Category: "target", Value: dns.service},
 			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
 		})
 		data, err := ioutil.ReadAll(resp.Body)
@@ -258,7 +268,7 @@ func (dns *DNS) getMetrics(ctx context.Context, podName, metricURL string) error
 	}
 
 	streamTags := []string{
-		"source:kube-dns",
+		"source:" + dns.service,
 		"source_type:metrics",
 		"pod:" + podName,
 		"__rollup:false", // prevent high cardinality metrics from rolling up

@@ -122,7 +122,7 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 		c.collectors = append(c.collectors, "api")
 	}
 
-	if c.cfg.EnableKubeDNSMetrics {
+	if c.cfg.EnableDNSMetrics {
 		c.collectors = append(c.collectors, "dns")
 	}
 
@@ -280,7 +280,7 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 			go func() {
 				collector, err := dns.New(&c.cfg, c.logger, c.check)
 				if err != nil {
-					c.logger.Error().Err(err).Msg("initializing kube-dns collector")
+					c.logger.Error().Err(err).Msg("initializing kube-dns/coredns collector")
 				} else {
 					collector.Collect(collectCtx, c.tlsConfig, &start)
 				}
@@ -302,11 +302,12 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 	}
 
 	{ // get api/cluster version/platform
-		ver, err := k8s.GetVersion(&c.cfg)
+
+		verplat, err := k8s.GetVersionPlatform(&c.cfg)
 		if err != nil {
-			c.logger.Warn().Err(err).Msg("getting version api/cluster information")
+			c.logger.Warn().Err(err).Msg("getting api/cluster version + platform information")
 		} else {
-			c.check.AddText("collect_k8s_ver", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, ver)
+			c.check.AddText("collect_k8s_ver", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, verplat)
 		}
 	}
 

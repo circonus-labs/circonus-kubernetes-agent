@@ -90,8 +90,8 @@
       kubernetes-enable-node-resource-metrics: "true"
       ## enable kubelet node probe metrics (k8s v1.18+)
       kubernetes-enable-node-probe-metrics: "false"
-      ## enable kube-dns metrics - default is enabled for dashboard
-      kubernetes-enable-kube-dns-metrics: "true"
+      ## enable kube-dns/coredns metrics - default is enabled for dashboard
+      kubernetes-enable-dns-metrics: "true"
       ## port to request `/metrics` from if scrape/port annotations not defined on kube-dns service (e.g. GKE)
       kubernetes-kube-dns-metrics-port: "10054"
       ## include pod metrics, requires nodes to be enabled - - default is enabled for dashboard

@@ -33,23 +33,23 @@ func (nc *Collector) resources(parentStreamTags []string, parentMeasurementTags 
 		return
 	}
 
-	req := clientset.CoreV1().RESTClient().Get().RequestURI(nc.baseURI + "/proxy/metrics/resources")
+	req := clientset.CoreV1().RESTClient().Get().RequestURI(nc.baseURI + "/proxy/metrics/resource")
 	res := req.Do()
 	data, err := res.Raw()
 	if err != nil {
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},
-			cgm.Tag{Category: "request", Value: "metrics/resources"},
+			cgm.Tag{Category: "request", Value: "metrics/resource"},
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kubelet"},
 		})
-		nc.log.Error().Err(err).Str("url", req.URL().String()).Msg("fetching /metrics/resources")
+		nc.log.Error().Err(err).Str("url", req.URL().String()).Msg("fetching /metrics/resource")
 		return
 	}
 
 	nc.check.AddHistSample("collect_latency", cgm.Tags{
 		cgm.Tag{Category: "source", Value: release.NAME},
-		cgm.Tag{Category: "request", Value: "metrics/resources"},
+		cgm.Tag{Category: "request", Value: "metrics/resource"},
 		cgm.Tag{Category: "proxy", Value: "api-server"},
 		cgm.Tag{Category: "target", Value: "kubelet"},
 		cgm.Tag{Category: "units", Value: "milliseconds"},

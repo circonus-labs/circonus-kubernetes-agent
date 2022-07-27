@@ -144,7 +144,7 @@ func (nc *Collector) collectV2(concurrent bool, baseStreamTags []string, baseMea
 		if nc.cfg.EnableNodeResourceMetrics {
 			wg.Add(1)
 			go func() {
-				nc.resources(baseStreamTags, baseMeasurementTags) // from /metrics/resources
+				nc.resources(baseStreamTags, baseMeasurementTags) // from /metrics/resource
 				wg.Done()
 			}()
 		}
@@ -170,7 +170,7 @@ func (nc *Collector) collectV2(concurrent bool, baseStreamTags []string, baseMea
 			nc.nmetrics(baseStreamTags, baseMeasurementTags) // from /metrics
 		}
 		if nc.cfg.EnableNodeResourceMetrics {
-			nc.resources(baseStreamTags, baseMeasurementTags) // from /metrics/resources
+			nc.resources(baseStreamTags, baseMeasurementTags) // from /metrics/resource
 		}
 		if nc.cfg.EnableNodeProbeMetrics {
 			nc.probes(baseStreamTags, baseMeasurementTags) // from /metrics/probes
