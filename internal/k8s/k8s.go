@@ -63,8 +63,8 @@ func GetVersion(clusterConfig *config.Cluster) (string, error) {
 	return ver.GitVersion, nil
 }
 
-// GetPlatform gets the cluster platform
-func GetPlatform(clusterConfig *config.Cluster) (string, error) {
+// GetVersionPlatform gets the cluster version + " " + platform
+func GetVersionPlatform(clusterConfig *config.Cluster) (string, error) {
 	clientset, err := GetClient(clusterConfig)
 	if err != nil {
 		return "", err
@@ -82,5 +82,5 @@ func GetPlatform(clusterConfig *config.Cluster) (string, error) {
 		return "", err
 	}
 
-	return ver.Platform, nil
+	return ver.GitVersion + " " + ver.Platform, nil
 }
