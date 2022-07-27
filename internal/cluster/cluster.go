@@ -306,8 +306,9 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 		verplat, err := k8s.GetVersionPlatform(&c.cfg)
 		if err != nil {
 			c.logger.Warn().Err(err).Msg("getting api/cluster version + platform information")
+		} else {
+			c.check.AddText("collect_k8s_ver", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, verplat)
 		}
-		c.check.AddText("collect_k8s_ver", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}}, verplat)
 	}
 
 	cstats := c.check.SubmitStats()
