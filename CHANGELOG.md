@@ -1,3 +1,28 @@
+# v0.13.0
+2022-08-01
+
+(ea5236bb)  Add support for CoreDNS.
+            Add auto-detection of CoreDNS if detection of kube-dns fails.
+            Add configuration key to enable users to set the default CoreDNS
+            metrics scrape port.
+(34650875)  Fix agent trying to add an erroneous tag to the check bundle.
+(3c1bb387)  Revert change to move metric creation into conditional in cluster
+            collector.
+(328f105d)  Fix logic in creating default rulesets and metric filters to return
+            required vals and determine cluster version before creating them.
+(36652400)  Refactor code to be more easily readable and and check all errors.
+(19fbcc25)  Fix whitespace issues in self-contained metricfilters.
+            Fix error wrapping in k8s api call.
+            Add k8s version const for comparison usage.
+(3a0637ae)  Fix default metric filters for k8s v1.20+ to search for the correct
+            metric names.
+(1d64029c)  dependency-name: github.com/spf13/cobra
+              dependency-type: direct:production
+              update-type: version-update:semver-minor
+(f7aa1308)  dependency-name: actions/checkout
+              dependency-type: direct:production
+              update-type: version-update:semver-major
+
 # v0.12.6
 
 * upd: log error message on cn mismatch in tls verify

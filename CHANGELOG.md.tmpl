@@ -1,0 +1,25 @@
+{{- range .Entries }}
+# v{{ .Semver }}
+{{ date_in_zone "2006-01-02" .Date "UTC" }}
+{{ range .Changes }}
+{{- $commit := substr 0 8 .Commit }}
+{{- range .ConventionalCommit.Footer }}
+{{- $line := splitList "\n" . }}
+{{- $first := "false" }}
+{{- $todo := "false" }}
+{{- range $line }}
+{{- if hasPrefix "issue #" . }}{{ else if hasPrefix "TODO: " . }}{{ $todo = "true" }}{{ else if hasPrefix "* Tags: " . }}{{ else if eq "" . }}{{ $todo = "false" }}{{ else if eq "..." .}}{{ else }}
+{{- if eq $todo "false" }}
+{{- if eq $first "true" }}
+{{ indent 12 . }}
+{{- else }}
+({{ $commit }})  {{ . }}
+{{- $first = "true" }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{ end }}
