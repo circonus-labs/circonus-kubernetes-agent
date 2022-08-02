@@ -30,3 +30,5 @@ ckatest
 
 # test configs etc
 test/
+
+changelog.yml
