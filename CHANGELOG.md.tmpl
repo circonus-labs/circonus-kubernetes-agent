@@ -1,7 +1,6 @@
 {{- range .Entries }}
 # v{{ .Semver }}
 {{ date_in_zone "2006-01-02" .Date "UTC" }}
-
 {{ range .Changes }}
 {{- $commit := substr 0 8 .Commit }}
 {{- range .ConventionalCommit.Footer }}

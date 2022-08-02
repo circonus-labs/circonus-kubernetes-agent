@@ -1,31 +1,36 @@
 - semver: 0.13.0
-  date: 2022-07-28T22:22:07.779314-04:00
+  date: 2022-08-01T16:24:57.400829-04:00
   packager: Antonio Escalera <antonio.escalera@circonus.com>
   changes:
-    - commit: 48c517fe8e280f36335e5a1a9ffed2a1cd920fd0
+    - commit: eda5a5113bd2881d50a013d3dd6236530da85ed9
       note: |-
-        Merge pull request #94 from circonus-labs/CIRC-8497
+        feat(ci/changelog): Automated changelog generation from Conventional Commit summaries
 
-        fix(internal/circonus): Add GetPlatform func remove platform info from GetVersion
+        Add script to automate changelog additions using conventional commits
+
+        issue #CIRC-8847
+
+        * Tags: changelog ci conventional-commit summary
       author:
-        name: aesca1er
-        email: 102527302+aesca1er@users.noreply.github.com
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
       committer:
-        name: GitHub
-        email: noreply@github.com
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
       conventional_commit:
-        category: |-
-            Merge pull request #94 from circonus-labs/CIRC-8497
+        category: feat
+        scope: ci/changelog
+        description: Automated changelog generation from Conventional Commit summaries
+        body: Add script to automate changelog additions using conventional commits
+        footer:
+            - |-
+              issue #CIRC-8847
 
-            fix
-        scope: internal/circonus
-        description: Add GetPlatform func remove platform info from GetVersion
-        body: ""
-        footer: []
+              * Tags: changelog ci conventional-commit summary
         major: false
-        minor: false
+        minor: true
         patch: false
-    - commit: 23d3e40df91b762c63ab2271a998b7c5e60217a8
+    - commit: edba91ee2b4d8f11f6299566b0fa20394d217713
       note: |-
         fix(internal/cluster): Fix k8s version/platform metric to be set only when returned
 
@@ -56,7 +61,7 @@
         major: false
         minor: false
         patch: true
-    - commit: 583b8b3ee9c59f15857310f6a803cd6a3f0f112f
+    - commit: 58ad4e59bea84c750351234d39daadb8cc6a65b8
       note: |-
         fix(internal/k8s): Simplify GetPlaform calls
 
@@ -93,7 +98,7 @@
         major: false
         minor: false
         patch: true
-    - commit: fd36730db2a2337a0eae51ae3e63fcac0be18bf5
+    - commit: 69924602c749a931b1487d2c2e5483db10f1d221
       note: |-
         fix(v1.20+): Rename config key from kube-dns to dns
 
@@ -126,7 +131,7 @@
         major: false
         minor: false
         patch: true
-    - commit: d00a914dfee46de072d9072cf7f01d482388d97c
+    - commit: 6b5b7acd1b664702b2690eff0c1e73ce49b99835
       note: |-
         fix(v1.20+/coredns): Fix CoreDNS metric filters to capture new metrics
 
@@ -154,7 +159,7 @@
         major: false
         minor: false
         patch: true
-    - commit: 45bf26f5eaae5730a60aa0df56081dc226d2e062
+    - commit: 8ce45925bb4862d59c2477557b93e55e1545f5dd
       note: dns testing
       author:
         name: Antonio Escalera
@@ -171,7 +176,7 @@
         major: false
         minor: false
         patch: false
-    - commit: 4f532ab50af10f2056433802856d212bb5f06f8a
+    - commit: ea5236bbfb0884340deb69b0515713baddea72fb
       note: |-
         feat(v1.20+/coredns): Add CoreDNS support to existing Kube-DNS collector
 
@@ -182,11 +187,10 @@
 
         issue #CIRC-8497
 
-        This update adds support for CoreDNS, which is automatically detected
-        if kube-dns does not exist.
-        It also adds a configuration key to enable users to set the default
-        CoreDNS metrics scrape port.
-        We can expect that users will run kube-dns OR coredns, but not both.
+        Add support for CoreDNS.
+        Add auto-detection of CoreDNS if detection of kube-dns fails.
+        Add configuration key to enable users to set the default CoreDNS
+        metrics scrape port.
 
         * Tags: v1.20+ coredns kube-dns collector key
       author:
@@ -208,17 +212,16 @@
             - |-
               issue #CIRC-8497
 
-              This update adds support for CoreDNS, which is automatically detected
-              if kube-dns does not exist.
-              It also adds a configuration key to enable users to set the default
-              CoreDNS metrics scrape port.
-              We can expect that users will run kube-dns OR coredns, but not both.
+              Add support for CoreDNS.
+              Add auto-detection of CoreDNS if detection of kube-dns fails.
+              Add configuration key to enable users to set the default CoreDNS
+              metrics scrape port.
 
               * Tags: v1.20+ coredns kube-dns collector key
         major: false
         minor: true
         patch: false
-    - commit: 5576f42e242734b07194d15ce36e26654158ff7b
+    - commit: 34650875e3da20e3f431885b80fd4638b15b70f3
       note: |-
         fix(internal/circonus): Resolve erroneous metric filter update
 
@@ -227,8 +230,7 @@
 
         issue #CIRC-8497
 
-        This change will resolve the agent trying to add an erroneous tag to
-        the check bundle.
+        Fix agent trying to add an erroneous tag to the check bundle.
 
         * Tags: check bundle v1.20+ metric filter
       author:
@@ -248,286 +250,13 @@
             - |-
               issue #CIRC-8497
 
-              This change will resolve the agent trying to add an erroneous tag to
-              the check bundle.
+              Fix agent trying to add an erroneous tag to the check bundle.
 
               * Tags: check bundle v1.20+ metric filter
         major: false
         minor: false
         patch: true
-    - commit: 680246481ed54eff659147703b23c5da34538bd3
-      note: Merge branch 'master' into CIRC-8497
-      author:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      committer:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      conventional_commit:
-        category: chore
-        scope: ""
-        description: Merge branch 'master' into CIRC-8497
-        body: ""
-        footer: []
-        major: false
-        minor: false
-        patch: false
-    - commit: 766c933d1512cc5ba9185b994fbd75a8232b7c6e
-      note: |-
-        fix(internal/circonus): Add missing double-quote to v1.20+ default metric filters
-
-        Fix default metric filters for k8s v1.20+ missing double quote
-
-        issue #CIRC-8497
-
-        * Tags: v1.20+ default metric filters
-      author:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      committer:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      conventional_commit:
-        category: fix
-        scope: internal/circonus
-        description: Add missing double-quote to v1.20+ default metric filters
-        body: Fix default metric filters for k8s v1.20+ missing double quote
-        footer:
-            - |-
-              issue #CIRC-8497
-
-              * Tags: v1.20+ default metric filters
-        major: false
-        minor: false
-        patch: true
-    - commit: 619f99733256082abcba242f5a0a2fe936ad2a2f
-      note: |-
-        fix(internal/cluster): Move c.check.AddText call out of conditionals
-
-        Fix call to c.check.AddText out of conditionals in collect()
-
-        issue #CIRC-8497
-
-        This just moves a call to AddText out of a conditional
-
-        * Tags: addtext collect cluster check
-      author:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      committer:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      conventional_commit:
-        category: fix
-        scope: internal/cluster
-        description: Move c.check.AddText call out of conditionals
-        body: Fix call to c.check.AddText out of conditionals in collect()
-        footer:
-            - |-
-              issue #CIRC-8497
-
-              This just moves a call to AddText out of a conditional
-
-              * Tags: addtext collect cluster check
-        major: false
-        minor: false
-        patch: true
-    - commit: 6820aa34fe1d43f225831efe3a37691c896f4591
-      note: |-
-        fix(internal/circonus): Add GetPlatform func, remove platform info from GetVersion
-
-        Fix GetVersion to only return cluster version
-        Add new function to return cluster platform (GetPlatform)
-        Fix all references to GetVersion and (Check).clusterVers to properly
-        use GetVersion and GetPlatform where needed
-
-        issue #CIRC-8497
-
-        This change will fix the logic to return the values required and
-        correctly determine the cluster version for creating the default rules
-        and filters.
-
-        * Tags: platform version clusterVers check
-      author:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      committer:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      conventional_commit:
-        category: fix
-        scope: internal/circonus
-        description: Add GetPlatform func, remove platform info from GetVersion
-        body: |-
-            Fix GetVersion to only return cluster version
-            Add new function to return cluster platform (GetPlatform)
-            Fix all references to GetVersion and (Check).clusterVers to properly
-            use GetVersion and GetPlatform where needed
-        footer:
-            - |-
-              issue #CIRC-8497
-
-              This change will fix the logic to return the values required and
-              correctly determine the cluster version for creating the default rules
-              and filters.
-
-              * Tags: platform version clusterVers check
-        major: false
-        minor: false
-        patch: true
-    - commit: c9ad8f0909f97bdf4ebc567bbda1174e81abea8c
-      note: |-
-        Merge pull request #91 from circonus-labs/CIRC-8497
-
-        CIRC-8497: Update the metrics collected & default rulesets of the Kubernetes Agent
-      author:
-        name: aesca1er
-        email: 102527302+aesca1er@users.noreply.github.com
-      committer:
-        name: GitHub
-        email: noreply@github.com
-      conventional_commit:
-        category: |-
-            Merge pull request #91 from circonus-labs/CIRC-8497
-
-            CIRC-8497
-        scope: ""
-        description: Update the metrics collected & default rulesets of the Kubernetes Agent
-        body: ""
-        footer: []
-        major: false
-        minor: false
-        patch: false
-    - commit: 70216e560a925e41af8c915ad200224e737f5e31
-      note: |-
-        refactor(internal/circonus): Metric filters parsing defaults to v1.20+, checks errors
-
-        Refactor metric filters parsing to be simpler and check all errors
-
-        issue #CIRC-8497
-
-        This change refactors code to be simpler (more easily readable) and
-        check all errors
-
-        * Tags: errors metric filters v1.20+ parse
-      author:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      committer:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      conventional_commit:
-        category: refactor
-        scope: internal/circonus
-        description: Metric filters parsing defaults to v1.20+, checks errors
-        body: Refactor metric filters parsing to be simpler and check all errors
-        footer:
-            - |-
-              issue #CIRC-8497
-
-              This change refactors code to be simpler (more easily readable) and
-              check all errors
-
-              * Tags: errors metric filters v1.20+ parse
-        major: false
-        minor: false
-        patch: true
-    - commit: 8b8935a84bc9dcf544e3b3553e5f9a86bb6dc320
-      note: |-
-        fix(internal/circonus): Address MetricFilters spacing, error wrapping, consts
-
-        Fix whitespacing in MetricFilters to be consistent spaces
-        Fix error wrapping for k8s API call to not include redundant info
-        Fix k8s version comparison to use const as version string
-
-        issue #CIRC-8497
-
-        This change is mostly for code quality reasons and will likely have
-        minimal visibility to our users (aside from the ones who decide to
-        audit the k8s agent).
-
-        * Tags: quality tech debt metric filter
-      author:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      committer:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      conventional_commit:
-        category: fix
-        scope: internal/circonus
-        description: Address MetricFilters spacing, error wrapping, consts
-        body: |-
-            Fix whitespacing in MetricFilters to be consistent spaces
-            Fix error wrapping for k8s API call to not include redundant info
-            Fix k8s version comparison to use const as version string
-        footer:
-            - |-
-              issue #CIRC-8497
-
-              This change is mostly for code quality reasons and will likely have
-              minimal visibility to our users (aside from the ones who decide to
-              audit the k8s agent).
-
-              * Tags: quality tech debt metric filter
-        major: false
-        minor: false
-        patch: true
-    - commit: af4bcb01af7b8c4c2633df2e94848157f7e19035
-      note: |-
-        fix(internal/circonus): Init/Container status MetricFilters are modified for k8s v1.20+
-
-        Fix MetricFilters for v1.20+ to not have ^(kube)?
-
-        issue #CIRC-8497
-
-        This change will fix the v1.20+ MetricFilters to search for the correct
-        metric names.
-
-        * Tags: v1.20+ init container metricfilter
-      author:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      committer:
-        name: Antonio Escalera
-        email: antonio.escalera@circonus.com
-      conventional_commit:
-        category: fix
-        scope: internal/circonus
-        description: Init/Container status MetricFilters are modified for k8s v1.20+
-        body: Fix MetricFilters for v1.20+ to not have ^(kube)?
-        footer:
-            - |-
-              issue #CIRC-8497
-
-              This change will fix the v1.20+ MetricFilters to search for the correct
-              metric names.
-
-              * Tags: v1.20+ init container metricfilter
-        major: false
-        minor: false
-        patch: true
-    - commit: 529c058f164e35d509fafebb4b0bfedad7c061c8
-      note: |-
-        Merge pull request #92 from circonus-labs/CIRC-8161
-
-        [CIRC-8161] Improve default deployment user experience for recent k8s versions
-      author:
-        name: aesca1er
-        email: 102527302+aesca1er@users.noreply.github.com
-      committer:
-        name: GitHub
-        email: noreply@github.com
-      conventional_commit:
-        category: chore
-        scope: ""
-        description: 'Merge pull request #92 from circonus-labs/CIRC-8161'
-        body: '[CIRC-8161] Improve default deployment user experience for recent k8s versions'
-        footer: []
-        major: false
-        minor: false
-        patch: false
-    - commit: b0d08cf6c8ed24d95c166b3c44e7ad9dc10fe29a
+    - commit: 8c978597ec3906f8ffd40e92ccf48a913c9053ee
       note: |-
         fix(compat/v1.20+): Improve default deployment user experience for recent k8s versions
 
@@ -559,6 +288,216 @@
               issue #CIRC-8161
 
               * Tags: v1.20 namespace securitycontext
+        major: false
+        minor: false
+        patch: true
+    - commit: 7da1e127d18c43fb0bbe30143ce9acf0fd5042da
+      note: |-
+        fix(internal/circonus): Add missing double-quote to v1.20+ default metric filters
+
+        Fix default metric filters for k8s v1.20+ missing double quote
+
+        issue #CIRC-8497
+
+        * Tags: v1.20+ default metric filters
+      author:
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
+      committer:
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
+      conventional_commit:
+        category: fix
+        scope: internal/circonus
+        description: Add missing double-quote to v1.20+ default metric filters
+        body: Fix default metric filters for k8s v1.20+ missing double quote
+        footer:
+            - |-
+              issue #CIRC-8497
+
+              * Tags: v1.20+ default metric filters
+        major: false
+        minor: false
+        patch: true
+    - commit: 3c1bb387f3396482f864b767f4c31d7cdd4e9e79
+      note: |-
+        fix(internal/cluster): Move c.check.AddText call out of conditionals
+
+        Fix call to c.check.AddText out of conditionals in collect()
+
+        issue #CIRC-8497
+
+        Revert change to move metric creation into conditional in cluster
+        collector.
+
+        * Tags: addtext collect cluster check
+      author:
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
+      committer:
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
+      conventional_commit:
+        category: fix
+        scope: internal/cluster
+        description: Move c.check.AddText call out of conditionals
+        body: Fix call to c.check.AddText out of conditionals in collect()
+        footer:
+            - |-
+              issue #CIRC-8497
+
+              Revert change to move metric creation into conditional in cluster
+              collector.
+
+              * Tags: addtext collect cluster check
+        major: false
+        minor: false
+        patch: true
+    - commit: 328f105d74c08c748f0f1993b3073ada3c287869
+      note: |-
+        fix(internal/circonus): Add GetPlatform func, remove platform info from GetVersion
+
+        Fix GetVersion to only return cluster version
+        Add new function to return cluster platform (GetPlatform)
+        Fix all references to GetVersion and (Check).clusterVers to properly
+        use GetVersion and GetPlatform where needed
+
+        issue #CIRC-8497
+
+        Fix logic in creating default rulesets and metric filters to return
+        required vals and determine cluster version before creating them.
+
+        * Tags: platform version clusterVers check
+      author:
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
+      committer:
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
+      conventional_commit:
+        category: fix
+        scope: internal/circonus
+        description: Add GetPlatform func, remove platform info from GetVersion
+        body: |-
+            Fix GetVersion to only return cluster version
+            Add new function to return cluster platform (GetPlatform)
+            Fix all references to GetVersion and (Check).clusterVers to properly
+            use GetVersion and GetPlatform where needed
+        footer:
+            - |-
+              issue #CIRC-8497
+
+              Fix logic in creating default rulesets and metric filters to return
+              required vals and determine cluster version before creating them.
+
+              * Tags: platform version clusterVers check
+        major: false
+        minor: false
+        patch: true
+    - commit: 366524007144e68d69f9f4c925187f7412e41359
+      note: |-
+        refactor(internal/circonus): Metric filters parsing defaults to v1.20+, checks errors
+
+        Refactor metric filters parsing to be simpler and check all errors
+
+        issue #CIRC-8497
+
+        Refactor code to be more easily readable and and check all errors.
+
+        * Tags: errors metric filters v1.20+ parse
+      author:
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
+      committer:
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
+      conventional_commit:
+        category: refactor
+        scope: internal/circonus
+        description: Metric filters parsing defaults to v1.20+, checks errors
+        body: Refactor metric filters parsing to be simpler and check all errors
+        footer:
+            - |-
+              issue #CIRC-8497
+
+              Refactor code to be more easily readable and and check all errors.
+
+              * Tags: errors metric filters v1.20+ parse
+        major: false
+        minor: false
+        patch: true
+    - commit: 19fbcc25b6dec7b7fce41f5fe4acae38c2fc230a
+      note: |-
+        fix(internal/circonus): Address MetricFilters spacing, error wrapping, consts
+
+        Fix whitespacing in MetricFilters to be consistent spaces
+        Fix error wrapping for k8s API call to not include redundant info
+        Fix k8s version comparison to use const as version string
+
+        issue #CIRC-8497
+
+        Fix whitespace issues in self-contained metricfilters.
+        Fix error wrapping in k8s api call.
+        Add k8s version const for comparison usage.
+
+        * Tags: quality tech debt metric filter
+      author:
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
+      committer:
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
+      conventional_commit:
+        category: fix
+        scope: internal/circonus
+        description: Address MetricFilters spacing, error wrapping, consts
+        body: |-
+            Fix whitespacing in MetricFilters to be consistent spaces
+            Fix error wrapping for k8s API call to not include redundant info
+            Fix k8s version comparison to use const as version string
+        footer:
+            - |-
+              issue #CIRC-8497
+
+              Fix whitespace issues in self-contained metricfilters.
+              Fix error wrapping in k8s api call.
+              Add k8s version const for comparison usage.
+
+              * Tags: quality tech debt metric filter
+        major: false
+        minor: false
+        patch: true
+    - commit: 3a0637ae2f39e67de882ad3e62426768ccb152ae
+      note: |-
+        fix(internal/circonus): Init/Container status MetricFilters are modified for k8s v1.20+
+
+        Fix MetricFilters for v1.20+ to not have ^(kube)?
+
+        issue #CIRC-8497
+
+        Fix default metric filters for k8s v1.20+ to search for the correct
+        metric names.
+
+        * Tags: v1.20+ init container metricfilter
+      author:
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
+      committer:
+        name: Antonio Escalera
+        email: antonio.escalera@circonus.com
+      conventional_commit:
+        category: fix
+        scope: internal/circonus
+        description: Init/Container status MetricFilters are modified for k8s v1.20+
+        body: Fix MetricFilters for v1.20+ to not have ^(kube)?
+        footer:
+            - |-
+              issue #CIRC-8497
+
+              Fix default metric filters for k8s v1.20+ to search for the correct
+              metric names.
+
+              * Tags: v1.20+ init container metricfilter
         major: false
         minor: false
         patch: true

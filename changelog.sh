@@ -143,6 +143,7 @@ fi
 if [ -z "${TO_VERSION}" ]; then
   if [ -f "${CHANGELOG_DATA_FILE}" ]; then
     TO_VERSION=$(yq '.[0].semver' "${CHANGELOG_DATA_FILE}")
+    TO_VERSION="v${TO_VERSION}"
   else
     echo "ERROR: to version unset and no CHANGELOG_DATA_FILE found."
     echo "Exiting..."
@@ -152,6 +153,7 @@ fi
 
 # if TO_VERSION doesn't exist in the CHANGELOG_DATA_FILE, add it
 CHANGELOG_DATA_FILE_LATEST_TAG=$(yq '.[0].semver' "${CHANGELOG_DATA_FILE}")
+CHANGELOG_DATA_FILE_LATEST_TAG="v${CHANGELOG_DATA_FILE_LATEST_TAG}"
 if [ "${CHANGELOG_DATA_FILE_LATEST_TAG}" != "${TO_VERSION}" ] ; then
   if [ "${DEBUG}" = "false" ]; then
     if [ -f "${CHANGELOG_DATA_FILE}" ]; then
@@ -173,6 +175,11 @@ if [ "${FROM_VERSION}" = "${TO_VERSION}" ]; then
   exit 1
 fi
 
+# if not debug, check for and remove old entries in the changelog between TO_VERSION and FROM_VERSION.
+if [ "${DEBUG}" != "false" ]; then
+  sed -n -i '' -e '/'"${TO_VERSION}"'/{' -e ':a' -e 'N' -e '/'"${FROM_VERSION}"'/!ba' -e 's/.*\n//' -e '}' -e 'p' "${OUTPUT_FILE}"
+fi
+
 # create copy of old changelog for writing
 if [ "${DEBUG}" = "false" ]; then
   cp "${OUTPUT_FILE}" ".${OUTPUT_FILE}"
@@ -187,25 +194,29 @@ if [ "${DEBUG}" = "false" ]; then
 else
   chglog format \
     --input "${CHANGELOG_DATA_FILE}" \
-    --template-file "${OUTPUT_TEMPLATE_FILE}"
+    --template-file "${OUTPUT_TEMPLATE_FILE}" | \
+    tee ".${OUTPUT_FILE}-chglog"
 fi
 
 # grab new changes from formatted changelog, add to the top of copy of old changelog
-# shellcheck disable=2016 # code is irrelevant because ${p is a sed command and shouldn't be expanded
-CHANGES=$(sed -i'' -n '/^'"${TO_VERSION}"'/,${p;/^'"${FROM_VERSION}"'/q}' "${OUTPUT_FILE}-chglog")
+CHANGES=$(sed -n '/^# '"${TO_VERSION}"'$/,/^# '"${FROM_VERSION}"'$/p' ".${OUTPUT_FILE}-chglog" | sed '$d')
 
 # grab CHANGES and add to OUTPUT_FILE, then add old OUTPUT_FILE 
 if [ "${DEBUG}" = "false" ]; then
   echo "${CHANGES}" > "${OUTPUT_FILE}"
+  echo "" >> "${OUTPUT_FILE}"
   cat ".${OUTPUT_FILE}" >> "${OUTPUT_FILE}"
 else
+  echo "### CHANGES ###"
   echo "${CHANGES}"
+  echo "### END CHANGES ###"
 fi
 
 # remove temporary files
 if [ "${DEBUG}" = "false" ]; then
-  rm ".${OUTPUT_FILE}" "${OUTPUT_FILE}-chglog"
+  rm ".${OUTPUT_FILE}" 
 fi
+rm ".${OUTPUT_FILE}-chglog"
 
 # output variables for debug
 if [ "${DEBUG}" = "true" ]; then
