@@ -385,25 +385,11 @@ func init() {
 	}
 	{
 		const (
-			key          = keys.K8SCoreDNSMetricsPort
-			longOpt      = "k8s-core-dns-metrics-port"
-			envVar       = release.ENVPREFIX + "_K8S_CORE_DNS_METRICS_PORT"
-			description  = "CoreDNS metrics port if annotations not on service definition"
-			defaultValue = defaults.K8SCoreDNSMetricsPort
-		)
-
-		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
-		bindFlagError(longOpt, viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(longOpt)))
-		bindEnvError(envVar, viper.BindEnv(key, envVar))
-		viper.SetDefault(key, defaultValue)
-	}
-	{
-		const (
-			key          = keys.K8SKubeDNSMetricsPort
-			longOpt      = "k8s-kube-dns-metrics-port"
-			envVar       = release.ENVPREFIX + "_K8S_KUBE_DNS_METRICS_PORT"
-			description  = "Kube dns metrics port if annotations not on service definition"
-			defaultValue = defaults.K8SKubeDNSMetricsPort
+			key          = keys.K8SDNSMetricsPort
+			longOpt      = "k8s-dns-metrics-port"
+			envVar       = release.ENVPREFIX + "_K8S_DNS_METRICS_PORT"
+			description  = "Kubernetes kube-dns/coredns metrics port"
+			defaultValue = defaults.K8SDNSMetricsPort
 		)
 
 		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
