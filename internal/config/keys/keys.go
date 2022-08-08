@@ -6,12 +6,11 @@
 // Package keys defines the configuration keys used to access viper
 package keys
 
-//
 // NOTE: adding a key MUST be reflected in the structs defined in config package.
-//       the keys must be the same as the encoding tags
-//       e.g. `XFiles = "x_files"` here, corresponds to
-//            `json:"x_files"` on a struct member
 //
+//	the keys must be the same as the encoding tags
+//	e.g. `XFiles = "x_files"` here, corresponds to
+//	     `json:"x_files"` on a struct member
 const (
 	//
 	// Circonus
