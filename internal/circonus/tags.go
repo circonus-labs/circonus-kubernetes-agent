@@ -90,10 +90,12 @@ func (c *Check) NewTagList(tagSets ...[]string) []string {
 }
 
 // TaggedName takes a string name and 0, 1, or 2 sets of tags.
-//   * The first set of tags are the stream tags.
-//   * The second set of tags are the measurement tags.
+//   - The first set of tags are the stream tags.
+//   - The second set of tags are the measurement tags.
+//
 // NOTE: if there are no stream tags, but there are measurement
-//       tags send an EMPTY set `[]string{}` for stream tags.
+//
+//	tags send an EMPTY set `[]string{}` for stream tags.
 func (c *Check) taggedName(name string, tagSets ...[]string) string {
 	metricName := name
 

@@ -163,31 +163,28 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 	}
 
 	scrape := false
-	port := ""
+	port := 0
 
 	for name, value := range svc.Annotations {
 		switch name {
 		case "prometheus.io/port":
-			port = value
+			p, err := strconv.Atoi(value)
+			if err != nil {
+				return nil, errors.Wrap(err, "parsing service port annotation")
+			}
+			port = p
 		case "prometheus.io/scrape":
 			s, err := strconv.ParseBool(value)
 			if err != nil {
-				return nil, errors.Wrap(err, "parsing service confing annotation")
+				return nil, errors.Wrap(err, "parsing service scrape annotation")
 			}
 			scrape = s
 		}
 	}
 
-	if port == "" {
-		dns.log.Warn().Str("port", port).Msg("service annotations not found, checking supplied service ports")
-		switch dns.service {
-		case "kube-dns":
-			port = viper.GetString(keys.K8SKubeDNSMetricsPort)
-		case "coredns":
-			port = viper.GetString(keys.K8SCoreDNSMetricsPort)
-		default:
-			return nil, errors.New("dns service not found, no ports supplied")
-		}
+	if port == 0 {
+		dns.log.Warn().Int("port", port).Msg("service annotations not found, checking supplied service ports")
+		port = viper.GetInt(keys.K8SDNSMetricsPort)
 	}
 
 	if !scrape {
@@ -216,7 +213,7 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 	urls := make(map[string]string)
 	for _, pod := range pods.Items {
 		if pod.Status.PodIP != "" {
-			urls[pod.Name] = fmt.Sprintf("http://%s:%s/metrics", pod.Status.PodIP, port)
+			urls[pod.Name] = fmt.Sprintf("http://%s:%d/metrics", pod.Status.PodIP, port)
 		}
 	}
 

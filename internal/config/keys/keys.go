@@ -6,12 +6,11 @@
 // Package keys defines the configuration keys used to access viper
 package keys
 
-//
 // NOTE: adding a key MUST be reflected in the structs defined in config package.
-//       the keys must be the same as the encoding tags
-//       e.g. `XFiles = "x_files"` here, corresponds to
-//            `json:"x_files"` on a struct member
 //
+//	the keys must be the same as the encoding tags
+//	e.g. `XFiles = "x_files"` here, corresponds to
+//	     `json:"x_files"` on a struct member
 const (
 	//
 	// Circonus
@@ -158,10 +157,8 @@ const (
 
 	// K8SEnableDNSMetrics - collect kube-dns/coredns metrics
 	K8SEnableDNSMetrics = "kubernetes.enable_dns_metrics"
-	// K8SCoreDNSMetricsPort - define when scrape/port annotations are not applied on the service
-	K8SCoreDNSMetricsPort = "kubernetes.coredns_metrics_port"
-	// K8SKubeDNSMetricsPort - define when scrape/port annotations are not applied on the service
-	K8SKubeDNSMetricsPort = "kubernetes.kube_dns_metrics_port"
+	// K8SDNSMetricsPort - define when port annotation is not on the service
+	K8SDNSMetricsPort = "kubernetes.dns_metrics_port"
 
 	// K8SEnableEvents enable events
 	K8SEnableEvents = "kubernetes.enable_events"

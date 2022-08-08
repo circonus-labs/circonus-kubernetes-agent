@@ -1,6 +1,7 @@
 # Circonus Kubernetes Agent
 
-An agent designed to retrieve metrics from a Kubernetes cluster. Runs as a deployment, forwards Kubernetes provided metrics for cluster, nodes, pods, and containers to Circonus.
+An agent designed to retreive metrics from Kubernetes clusters.
+Runs as a deployment, forwards provided metrics to Circonus.
 
 ---
 
@@ -26,45 +27,26 @@ An agent designed to retrieve metrics from a Kubernetes cluster. Runs as a deplo
 
 ### kube-state-metrics
 
-For full functionality a recent version of [kube-state-metrics](https://github.com/kubernetes/kube-state-metrics) should be installed in the cluster - see [kube-state-metrics deployment instructions](https://github.com/kubernetes/kube-state-metrics#kubernetes-deployment) for more information.
+For full functionality a recent version of
+[kube-state-metrics](https://github.com/kubernetes/kube-state-metrics)
+should be installed in the cluster - see
+[kube-state-metrics deployment instructions](https://github.com/kubernetes/kube-state-metrics#kubernetes-deployment)
+for more information.
 
 ### DNS
 
-For DNS metrics the agent will look for a service named `kube-dns` in the `kube-system` namespace. It will check for two annotations `prometheus.io/scrape` and `prometheus.io/port`. If `scrape` is `true`, the agent will collect metrics from the endpoints listed for the target port. For example:
+The agent will look for a service named `kube-dns` or `coredns` in the
+`kube-system` namespace.
+It will check for two annotations on the service that matches:
+`prometheus.io/scrape` and `prometheus.io/port`.
+If `scrape` is `true`, the agent will collect metrics from the endpoints listed
+for the target port.
 
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  annotations:
-    prometheus.io/port: "9153"
-    prometheus.io/scrape: "true"
-  labels:
-    k8s-app: kube-dns
-    kubernetes.io/cluster-service: "true"
-    kubernetes.io/name: KubeDNS
-  name: kube-dns
-  namespace: kube-system
-spec:
-  selector:
-    k8s-app: kube-dns
-  type: ClusterIP
-  ports:
-  - name: dns
-    port: 53
-    protocol: UDP
-    targetPort: 53
-  - name: dns-tcp
-    port: 53
-    protocol: TCP
-    targetPort: 53
-  - name: metrics
-    port: 9153
-    protocol: TCP
-    targetPort: 9153
-```
-
-> NOTE: if the annotations are _not_ defined on the service, and the service cannot be modfied for any reason. If the pods backing the kube-dns service _do_ expose metrics use `kube-dns-metrics-port` to define the port from which to request `/metrics`.
+> NOTE: If the annotations `prometheus.io/port` and `prometheus.io/scrape`
+> are not specified on the DNS service in the `kube-system` namespace,
+> `enable-dns-metrics` and `dns-metrics-port`
+> must be configured via flags, environment variables, or config file
+> in order to receive DNS metrics.
 
 ## Installation
 
@@ -151,7 +133,7 @@ Flags:
       --k8s-enable-api-server                 [ENV: CKA_K8S_ENABLE_API_SERVER] Kubernetes enable collection from api-server (default true)
       --k8s-enable-cadvisor-metrics           [ENV: CKA_K8S_ENABLE_CADVISOR_METRICS] Kubernetes enable collection of kubelet cadvisor metrics
       --k8s-enable-events                     [ENV: CKA_K8S_ENABLE_EVENTS] Kubernetes enable collection of events (default true)
-      --k8s-enable-kube-dns-metrics           [ENV: CKA_K8S_ENABLE_KUBE_DNS_METRICS] Kubernetes enable collection of kube dns metrics (default true)
+      --k8s-enable-dns-metrics                [ENV: CKA_K8S_ENABLE_DNS_METRICS] Kubernetes enable collection of kube-dns/CoreDNS metrics (default true)
       --k8s-enable-kube-state-metrics         [ENV: CKA_K8S_ENABLE_KUBE_STATE_METRICS] Kubernetes enable collection from kube-state-metrics (default true)
       --k8s-enable-metrics-server             [ENV: CKA_K8S_ENABLE_METRICS_SERVER] Kubernetes enable collection from metrics-server
       --k8s-enable-node-metrics               [ENV: CKA_K8S_ENABLE_NODE_METRICS] Kubernetes include metrics for individual nodes (default true)
@@ -164,7 +146,7 @@ Flags:
       --k8s-ksm-metrics-port-name string      [ENV: CKA_K8S_KSM_METRICS_PORT_NAME] Kube-state-metrics metrics port name (default "http-metrics")
       --k8s-ksm-request-mode string           [ENV: CKA_K8S_KSM_REQUEST_MODE] Kube-state-metrics request mode, proxy or direct (default "direct")
       --k8s-ksm-telemetry-port-name string    [ENV: CKA_K8S_KSM_TELEMETRY_PORT_NAME] Kube-state-metrics telemetry port name (default "telemetry")
-      --k8s-kube-dns-metrics-port string      [ENV: CKA_K8S_KUBE_DNS_METRICS_PORT] Kube dns metrics port if annotations not on service definition (default "10054")
+      --k8s-dns-metrics-port string           [ENV: CKA_K8S_DNS_METRICS_PORT] kube-dns/CoreDNS metrics port if annotations not on service definition (default "10054")
       --k8s-name string                       [ENV: CKA_K8S_NAME] Kubernetes Cluster Name (used in check title)
       --k8s-node-selector string              [ENV: CKA_K8S_NODE_SELECTOR] Kubernetes key:value node label selector expression
       --k8s-pod-label-key string              [ENV: CKA_K8S_POD_LABEL_KEY] Include pods with label
@@ -254,14 +236,14 @@ collectors:
 
 ### Examples
 
-From `endpoints` with the label `kubernetes.io/name=KubeDNS` collect metrics from port `9153` using the default path of `/metrics`.
+From `endpoints` with the label `k8s-app=kube-dns` collect metrics from port `9153` using the default path of `/metrics`.
 
 ```yaml
 collectors:
   - name: "kube-dns"
     type: "endpoints"
     selectors:
-      label: "kubernetes.io/name=KubeDNS"
+      label: "k8s-app=kube-dns"
     metric_port:
       value: "9153"
 ```
