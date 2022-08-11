@@ -84,9 +84,6 @@ func New(cfg *config.Cluster, node *v1.Node, logger zerolog.Logger, check *circo
 	c.kubeletVer = v
 
 	sl := "/api/v1/nodes/" + node.Name
-	if node.SelfLink != "" {
-		sl = node.SelfLink
-	}
 
 	c.baseURI = sl
 

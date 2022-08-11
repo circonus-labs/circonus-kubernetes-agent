@@ -33,7 +33,7 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 	}
 
 	req := clientset.CoreV1().RESTClient().Get().RequestURI(nc.baseURI + "/proxy/stats/summary")
-	res := req.Do()
+	res := req.Do(nc.ctx)
 	data, err := res.Raw()
 	if err != nil {
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
@@ -153,7 +153,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 		if nc.done() {
 			break
 		}
-		podSpec, err := clientset.CoreV1().Pods(pod.PodRef.Namespace).Get(pod.PodRef.Name, metav1.GetOptions{})
+		podSpec, err := clientset.CoreV1().Pods(pod.PodRef.Namespace).Get(nc.ctx, pod.PodRef.Name, metav1.GetOptions{})
 		if err != nil {
 			nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
 				cgm.Tag{Category: "source", Value: release.NAME},

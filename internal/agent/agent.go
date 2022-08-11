@@ -82,7 +82,7 @@ func New() (*Agent, error) {
 	if len(cfg.Clusters) > 0 { // multiple clusters
 		for _, clusterConfig := range cfg.Clusters {
 			clusterConfig := clusterConfig
-			c, err := cluster.New(clusterConfig, cfg.Circonus, a.logger)
+			c, err := cluster.New(gctx, clusterConfig, cfg.Circonus, a.logger)
 			if err != nil {
 				a.logger.Error().Err(err).Msg("configuring cluster, skipping...")
 				continue
@@ -90,7 +90,7 @@ func New() (*Agent, error) {
 			a.clusters[clusterConfig.Name] = c
 		}
 	} else { // single cluster
-		c, err := cluster.New(cfg.Kubernetes, cfg.Circonus, a.logger)
+		c, err := cluster.New(gctx, cfg.Kubernetes, cfg.Circonus, a.logger)
 		if err != nil {
 			a.logger.Error().Err(err).Msg("configuring cluster")
 		} else {

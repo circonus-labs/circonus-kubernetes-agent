@@ -170,7 +170,7 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 	}
 
 	req := clientset.CoreV1().RESTClient().Get().RequestURI(nc.baseURI + "/proxy/metrics")
-	res := req.Do()
+	res := req.Do(nc.ctx)
 	data, err := res.Raw()
 	if err != nil {
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
@@ -212,7 +212,7 @@ func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags [
 	}
 
 	req := clientset.CoreV1().RESTClient().Get().RequestURI(nc.baseURI + "/proxy/metrics/cadvisor")
-	res := req.Do()
+	res := req.Do(nc.ctx)
 	data, err := res.Raw()
 	if err != nil {
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{

@@ -6,6 +6,7 @@
 package circonus
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
@@ -13,9 +14,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	stdlog "log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -65,7 +66,7 @@ type Check struct {
 	filterDynamicMetrics bool
 }
 
-func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterCfg *config.Cluster) (*Check, error) {
+func NewCheck(ctx context.Context, parentLogger zerolog.Logger, cfg *config.Circonus, clusterCfg *config.Cluster) (*Check, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid circonus config (nil)")
 	}
@@ -80,7 +81,7 @@ func NewCheck(parentLogger zerolog.Logger, cfg *config.Circonus, clusterCfg *con
 	}
 
 	var err error
-	c.clusterVers, err = k8s.GetVersion(clusterCfg)
+	c.clusterVers, err = k8s.GetVersion(ctx, clusterCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +177,7 @@ func (c *Check) createAPIClient() (*apiclient.API, error) {
 	}
 	if c.config.API.CAFile != "" {
 		c.log.Debug().Str("file", c.config.API.CAFile).Msg("adding CA cert to api client")
-		cert, err := ioutil.ReadFile(c.config.API.CAFile)
+		cert, err := os.ReadFile(c.config.API.CAFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "configuring API client")
 		}

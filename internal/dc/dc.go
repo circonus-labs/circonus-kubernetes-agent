@@ -11,10 +11,11 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -104,7 +105,7 @@ func New(cfg *config.Cluster, parentLogger zerolog.Logger, check *circonus.Check
 	}
 
 	configFile := cfg.DynamicCollectorFile
-	data, err := ioutil.ReadFile(configFile)
+	data, err := os.ReadFile(configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +238,7 @@ func (dc *DC) collectEndpoints(ctx context.Context, collector Collector) {
 		opts.LabelSelector = collector.Selectors.Label
 	}
 
-	endpoints, err := clientset.CoreV1().Endpoints("").List(opts)
+	endpoints, err := clientset.CoreV1().Endpoints("").List(ctx, opts)
 	if err != nil {
 		logger.Warn().Err(err).Msg("querying k8s endpoints")
 		return
@@ -300,7 +301,7 @@ func (dc *DC) collectNodes(ctx context.Context, collector Collector) {
 		opts.LabelSelector = collector.Selectors.Label
 	}
 
-	nodes, err := clientset.CoreV1().Nodes().List(opts)
+	nodes, err := clientset.CoreV1().Nodes().List(ctx, opts)
 	if err != nil {
 		logger.Warn().Err(err).Msg("querying k8s nodes")
 		return
@@ -384,7 +385,7 @@ func (dc *DC) collectPods(ctx context.Context, collector Collector) {
 		opts.LabelSelector = collector.Selectors.Label
 	}
 
-	pods, err := clientset.CoreV1().Pods("").List(opts)
+	pods, err := clientset.CoreV1().Pods("").List(ctx, opts)
 	if err != nil {
 		logger.Warn().Err(err).Msg("querying k8s pods")
 		return
@@ -463,7 +464,7 @@ func (dc *DC) collectServices(ctx context.Context, collector Collector) {
 		opts.LabelSelector = collector.Selectors.Label
 	}
 
-	services, err := clientset.CoreV1().Services("").List(opts)
+	services, err := clientset.CoreV1().Services("").List(ctx, opts)
 	if err != nil {
 		logger.Warn().Err(err).Msg("querying k8s services")
 		return
@@ -577,7 +578,7 @@ func (dc *DC) getMetrics(ctx context.Context, collector Collector, target metric
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
-	d, err := ioutil.ReadAll(resp.Body)
+	d, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Error().Err(err).Str("url", target.URL).Msg("reading response")
 		return

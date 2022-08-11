@@ -11,7 +11,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -143,7 +143,7 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	collected := 0
 	collectErr := 0
 
-	addresses, err := ksm.getEndpointTargets()
+	addresses, err := ksm.getEndpointTargets(ctx)
 	if err != nil {
 		ksm.check.AddText("collect_ksm_state", cgm.Tags{
 			cgm.Tag{Category: "cluster", Value: ksm.config.Name},
@@ -195,7 +195,7 @@ func (ksm *KSM) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 }
 
 // getEndpointTargets returns a list of ip:port targets for metric requests
-func (ksm *KSM) getEndpointTargets() ([]Address, error) {
+func (ksm *KSM) getEndpointTargets(ctx context.Context) ([]Address, error) {
 	if ksm.config.KSMFieldSelectorQuery == "" {
 		err := fmt.Errorf("kube-state-metrics field selectory query not found in configuration")
 		ksm.log.Error().
@@ -210,7 +210,7 @@ func (ksm *KSM) getEndpointTargets() ([]Address, error) {
 		return nil, err
 	}
 
-	endpoints, err := clientset.CoreV1().Endpoints("").List(metav1.ListOptions{FieldSelector: ksm.config.KSMFieldSelectorQuery})
+	endpoints, err := clientset.CoreV1().Endpoints("").List(ctx, metav1.ListOptions{FieldSelector: ksm.config.KSMFieldSelectorQuery})
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func (ksm *KSM) getMetrics(ctx context.Context, metricURL string) error {
 		cgm.Tag{Category: "units", Value: "milliseconds"},
 	}, float64(time.Since(start).Milliseconds()))
 
-	d, err := ioutil.ReadAll(resp.Body)
+	d, err := io.ReadAll(resp.Body)
 	if err != nil {
 		ksm.log.Error().Err(err).Str("url", metricURL).Msg("reading response")
 		return err

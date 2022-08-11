@@ -95,7 +95,7 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 
 	collectStart := time.Now()
 
-	nodes, err := n.nodeList()
+	nodes, err := n.nodeList(ctx)
 	if err != nil {
 		n.log.Error().Err(err).Msg("fetching list of nodes")
 		n.Lock()
@@ -172,7 +172,7 @@ func (n *Nodes) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	n.Unlock()
 }
 
-func (n *Nodes) nodeList() (*v1.NodeList, error) {
+func (n *Nodes) nodeList(ctx context.Context) (*v1.NodeList, error) {
 	clientset, err := k8s.GetClient(n.config)
 	if err != nil {
 		n.log.Error().Err(err).Msg("initializing client set")
@@ -186,7 +186,7 @@ func (n *Nodes) nodeList() (*v1.NodeList, error) {
 	}
 
 	start := time.Now()
-	nodes, err := clientset.CoreV1().Nodes().List(listOptions)
+	nodes, err := clientset.CoreV1().Nodes().List(ctx, listOptions)
 	if err != nil {
 		n.check.IncrementCounter("collect_api_errors", cgm.Tags{
 			cgm.Tag{Category: "source", Value: release.NAME},

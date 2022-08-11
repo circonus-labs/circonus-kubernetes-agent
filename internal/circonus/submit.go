@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -251,7 +250,7 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 		return err
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		resultLogger.Error().Err(err).Msg("reading body")
 		return err

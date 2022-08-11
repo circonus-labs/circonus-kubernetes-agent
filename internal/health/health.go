@@ -106,7 +106,7 @@ func (h *Health) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Ti
 func (h *Health) deployments(ctx context.Context, cs *kubernetes.Clientset, ts *time.Time, parentStreamTags, parentMeasurementTags []string) {
 	metrics := make(map[string]circonus.MetricSample)
 
-	list, err := cs.AppsV1().Deployments("").List(v1.ListOptions{})
+	list, err := cs.AppsV1().Deployments("").List(ctx, v1.ListOptions{})
 	if err != nil {
 		h.log.Error().Err(err).Msg("deployments list")
 	}
@@ -142,7 +142,7 @@ func (h *Health) deployments(ctx context.Context, cs *kubernetes.Clientset, ts *
 func (h *Health) daemonsets(ctx context.Context, cs *kubernetes.Clientset, ts *time.Time, parentStreamTags, parentMeasurementTags []string) {
 	metrics := make(map[string]circonus.MetricSample)
 
-	list, err := cs.AppsV1().DaemonSets("").List(v1.ListOptions{})
+	list, err := cs.AppsV1().DaemonSets("").List(ctx, v1.ListOptions{})
 	if err != nil {
 		h.log.Error().Err(err).Msg("daemonsets list")
 	}
@@ -178,7 +178,7 @@ func (h *Health) daemonsets(ctx context.Context, cs *kubernetes.Clientset, ts *t
 func (h *Health) statefulsets(ctx context.Context, cs *kubernetes.Clientset, ts *time.Time, parentStreamTags, parentMeasurementTags []string) {
 	metrics := make(map[string]circonus.MetricSample)
 
-	list, err := cs.AppsV1().StatefulSets("").List(v1.ListOptions{})
+	list, err := cs.AppsV1().StatefulSets("").List(ctx, v1.ListOptions{})
 	if err != nil {
 		h.log.Error().Err(err).Msg("statefulsets list")
 	}

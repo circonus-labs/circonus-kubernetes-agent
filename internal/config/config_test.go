@@ -6,7 +6,7 @@
 package config
 
 import (
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
@@ -35,7 +35,7 @@ func TestShowConfig(t *testing.T) {
 	t.Log("YAML")
 	{
 		viper.Set(keys.ShowConfig, "yaml")
-		err := ShowConfig(ioutil.Discard)
+		err := ShowConfig(io.Discard)
 		if err != nil {
 			t.Fatalf("expected no error, got %s", err)
 		}
@@ -44,7 +44,7 @@ func TestShowConfig(t *testing.T) {
 	t.Log("TOML")
 	{
 		viper.Set(keys.ShowConfig, "toml")
-		err := ShowConfig(ioutil.Discard)
+		err := ShowConfig(io.Discard)
 		if err != nil {
 			t.Fatalf("expected no error, got %s", err)
 		}
@@ -53,7 +53,7 @@ func TestShowConfig(t *testing.T) {
 	t.Log("JSON")
 	{
 		viper.Set(keys.ShowConfig, "json")
-		err := ShowConfig(ioutil.Discard)
+		err := ShowConfig(io.Discard)
 		if err != nil {
 			t.Fatalf("expected no error, got %s", err)
 		}

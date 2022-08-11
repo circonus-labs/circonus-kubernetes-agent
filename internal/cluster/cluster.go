@@ -11,7 +11,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -52,7 +52,7 @@ type Collector interface {
 	Collect(context.Context, *tls.Config, *time.Time)
 }
 
-func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) (*Cluster, error) {
+func New(ctx context.Context, cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) (*Cluster, error) {
 	if cfg.Name == "" {
 		return nil, errors.New("invalid cluster config (empty name)")
 	}
@@ -68,7 +68,7 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 	}
 
 	if c.cfg.BearerToken == "" && c.cfg.BearerTokenFile != "" {
-		token, err := ioutil.ReadFile(c.cfg.BearerTokenFile)
+		token, err := os.ReadFile(c.cfg.BearerTokenFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "bearer token file")
 		}
@@ -77,7 +77,7 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 	c.logger.Debug().Str("token", c.cfg.BearerToken[0:8]+"...").Msg("using bearer token")
 
 	if c.cfg.CAFile != "" {
-		cert, err := ioutil.ReadFile(c.cfg.CAFile)
+		cert, err := os.ReadFile(c.cfg.CAFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "configuring k8s api tls")
 		}
@@ -108,7 +108,7 @@ func New(cfg config.Cluster, circCfg config.Circonus, parentLog zerolog.Logger) 
 	if circCfg.Check.Target == "" {
 		circCfg.Check.Target = strings.ReplaceAll(cfg.Name, " ", "_")
 	}
-	check, err := circonus.NewCheck(c.logger, &circCfg, &cfg)
+	check, err := circonus.NewCheck(ctx, c.logger, &circCfg, &cfg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to initialize circonus for cluster (%s)", cfg.Name)
 	}
@@ -303,7 +303,7 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 
 	{ // get api/cluster version/platform
 
-		verplat, err := k8s.GetVersionPlatform(&c.cfg)
+		verplat, err := k8s.GetVersionPlatform(ctx, &c.cfg)
 		if err != nil {
 			c.logger.Warn().Err(err).Msg("getting api/cluster version + platform information")
 		} else {
