@@ -274,12 +274,16 @@ func (a *API) CreateGraph(cfg *Graph) (*Graph, error) {
 	}
 
 	if a.Debug {
-		a.Log.Printf("update graph, sending JSON: %s", string(jsonCfg))
+		a.Log.Printf("create graph, sending JSON: %s", string(jsonCfg))
 	}
 
 	result, err := a.Post(config.GraphPrefix, jsonCfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating graph")
+	}
+
+	if a.Debug {
+		a.Log.Printf("create graph, received JSON: %s", string(result))
 	}
 
 	graph := &Graph{}

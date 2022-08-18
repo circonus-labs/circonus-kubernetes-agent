@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/circonus-labs/go-apiclient/config"
@@ -137,6 +138,10 @@ func (a *API) UpdateCheckBundle(cfg *CheckBundle) (*CheckBundle, error) {
 		return nil, errors.Errorf("invalid check bundle CID (%s)", bundleCID)
 	}
 
+	if len(cfg.Tags) > 0 {
+		cfg.Tags = fixTags(cfg.Tags)
+	}
+
 	jsonCfg, err := json.Marshal(cfg)
 	if err != nil {
 		return nil, err
@@ -166,14 +171,7 @@ func (a *API) CreateCheckBundle(cfg *CheckBundle) (*CheckBundle, error) {
 	}
 
 	if len(cfg.Tags) > 0 {
-		// remove blanks
-		tags := make([]string, 0, len(cfg.Tags))
-		for _, tag := range cfg.Tags {
-			if tag != "" {
-				tags = append(tags, tag)
-			}
-		}
-		cfg.Tags = tags
+		cfg.Tags = fixTags(cfg.Tags)
 	}
 
 	jsonCfg, err := json.Marshal(cfg)
@@ -275,4 +273,33 @@ func (a *API) SearchCheckBundles(searchCriteria *SearchQueryType, filterCriteria
 	}
 
 	return &results, nil
+}
+
+func fixTags(tags []string) []string {
+	if len(tags) == 0 {
+		return tags
+	}
+
+	unique := make(map[string]bool)
+	var result []string
+
+	for _, tag := range tags {
+		// remove blanks
+		if tag == "" {
+			continue
+		}
+
+		// lowercase
+		tag = strings.ToLower(tag)
+
+		// remove duplicates
+		if _, found := unique[tag]; !found {
+			unique[tag] = true
+			result = append(result, tag)
+		}
+	}
+
+	sort.Strings(result)
+
+	return result
 }
