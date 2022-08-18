@@ -10,7 +10,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -103,7 +103,7 @@ func (dns *DNS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 
 	collectStart := time.Now()
 
-	urls, err := dns.getMetricURLs()
+	urls, err := dns.getMetricURLs(ctx)
 	if err != nil {
 		dns.check.AddText("collect_dns_state", cgm.Tags{
 			cgm.Tag{Category: "cluster", Value: dns.config.Name},
@@ -143,18 +143,18 @@ func (dns *DNS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Tim
 	dns.Unlock()
 }
 
-func (dns *DNS) getMetricURLs() (map[string]string, error) {
+func (dns *DNS) getMetricURLs(ctx context.Context) (map[string]string, error) {
 	clientset, err := k8s.GetClient(dns.config)
 	if err != nil {
 		return nil, err
 	}
 
-	svc, err := clientset.CoreV1().Services("kube-system").Get("kube-dns", metav1.GetOptions{})
+	svc, err := clientset.CoreV1().Services("kube-system").Get(ctx, "kube-dns", metav1.GetOptions{})
 	dns.service = "kube-dns"
 	if err != nil {
 		dns.log.Info().Str("get kube-dns service failed", err.Error()).Msg("service not found, checking coredns")
 		dns.service = "coredns"
-		svc, err = clientset.CoreV1().Services("kube-system").Get("coredns", metav1.GetOptions{})
+		svc, err = clientset.CoreV1().Services("kube-system").Get(ctx, "coredns", metav1.GetOptions{})
 		if err != nil {
 			dns.service = ""
 			dns.log.Warn().Str("get all dns services failed", err.Error()).Msg("service not found, nothing to do")
@@ -202,7 +202,7 @@ func (dns *DNS) getMetricURLs() (map[string]string, error) {
 		i++
 	}
 
-	pods, err := clientset.CoreV1().Pods(svc.Namespace).List(metav1.ListOptions{LabelSelector: strings.Join(selectors, ",")})
+	pods, err := clientset.CoreV1().Pods(svc.Namespace).List(ctx, metav1.ListOptions{LabelSelector: strings.Join(selectors, ",")})
 	if err != nil {
 		return nil, errors.Wrap(err, "getting list of dns pods")
 	}
@@ -255,7 +255,7 @@ func (dns *DNS) getMetrics(ctx context.Context, podName, metricURL string) error
 			cgm.Tag{Category: "target", Value: dns.service},
 			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
 		})
-		data, err := ioutil.ReadAll(resp.Body)
+		data, err := io.ReadAll(resp.Body)
 		if err != nil {
 			dns.log.Error().Err(err).Str("url", metricURL).Msg("reading response")
 			return err

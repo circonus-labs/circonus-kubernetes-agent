@@ -8,7 +8,6 @@ package circonus
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strconv"
@@ -763,7 +762,7 @@ type CustomRules struct {
 
 func initializeAlerting(client *apiclient.API, logger zerolog.Logger, clusterName, clusterTag, clusterVers, checkCID, checkUUID string) {
 	configFile := viper.GetString(keys.DefaultAlertsFile)
-	data, err := ioutil.ReadFile(configFile)
+	data, err := os.ReadFile(configFile)
 	if err != nil {
 		logger.Warn().Err(err).Str("alert_config", configFile).Msg("skipping")
 		return
@@ -1086,7 +1085,7 @@ func manageDefaultRules(client *apiclient.API, logger zerolog.Logger, da Default
 func createCustomRules(client *apiclient.API, logger zerolog.Logger, clusterName, clusterTag, checkCID string) error {
 	logger.Debug().Msg("create custom alerting rules")
 	configFile := viper.GetString(keys.CustomRulesFile)
-	data, err := ioutil.ReadFile(configFile)
+	data, err := os.ReadFile(configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil

@@ -7,7 +7,7 @@ package circonus
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
 
@@ -120,7 +120,7 @@ type metricFilters struct {
 
 func (c *Check) loadMetricFilters() [][]string {
 	mfConfigFile := viper.GetString(keys.MetricFiltersFile)
-	data, err := ioutil.ReadFile(mfConfigFile)
+	data, err := os.ReadFile(mfConfigFile)
 	if err != nil {
 		c.log.Warn().Err(err).Str("metric_filter_config", mfConfigFile).Msg("using defaults")
 		return c.defaultFilters()

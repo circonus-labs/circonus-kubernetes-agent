@@ -10,9 +10,9 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/url"
+	"os"
 	"strings"
 
 	apiclient "github.com/circonus-labs/go-apiclient"
@@ -92,7 +92,7 @@ func (c *Check) initializeBroker(client *apiclient.API, bundle *apiclient.CheckB
 // getCACert will read from a file or fetch from API
 func getCACert(fn string, client *apiclient.API) ([]byte, error) {
 	if fn != "" {
-		data, err := ioutil.ReadFile(fn)
+		data, err := os.ReadFile(fn)
 		if err != nil {
 			return nil, fmt.Errorf("configuring broker tls: %w", err)
 		}

@@ -103,7 +103,7 @@ func (as *AS) Collect(ctx context.Context, tlsConfig *tls.Config, ts *time.Time)
 
 	start := time.Now()
 	req := clientset.CoreV1().RESTClient().Get().RequestURI("/metrics")
-	res := req.Do()
+	res := req.Do(ctx)
 
 	data, err := res.Raw()
 	if err != nil {

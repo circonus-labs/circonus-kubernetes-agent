@@ -34,7 +34,7 @@ func (nc *Collector) resources(parentStreamTags []string, parentMeasurementTags 
 	}
 
 	req := clientset.CoreV1().RESTClient().Get().RequestURI(nc.baseURI + "/proxy/metrics/resource")
-	res := req.Do()
+	res := req.Do(nc.ctx)
 	data, err := res.Raw()
 	if err != nil {
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{
@@ -76,7 +76,7 @@ func (nc *Collector) probes(parentStreamTags []string, parentMeasurementTags []s
 	}
 
 	req := clientset.CoreV1().RESTClient().Get().RequestURI(nc.baseURI + "/proxy/metrics/probes")
-	res := req.Do()
+	res := req.Do(nc.ctx)
 	data, err := res.Raw()
 	if err != nil {
 		nc.check.IncrementCounter("collect_api_errors", cgm.Tags{

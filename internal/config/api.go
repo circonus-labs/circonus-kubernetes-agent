@@ -6,8 +6,8 @@
 package config
 
 import (
-	"io/ioutil"
 	"net/url"
+	"os"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
@@ -33,7 +33,7 @@ func validateAPIOptions(apiKey, apiKeyFile, apiApp, apiURL, apiCAFile string) er
 		if err != nil {
 			return err
 		}
-		data, err := ioutil.ReadFile(f)
+		data, err := os.ReadFile(f)
 		if err != nil {
 			return err
 		}

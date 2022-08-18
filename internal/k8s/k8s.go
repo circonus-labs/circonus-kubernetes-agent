@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,13 +43,13 @@ func GetClient(clusterConfig *config.Cluster) (*kubernetes.Clientset, error) {
 }
 
 // GetVersion gets the cluster version
-func GetVersion(clusterConfig *config.Cluster) (string, error) {
+func GetVersion(ctx context.Context, clusterConfig *config.Cluster) (string, error) {
 	clientset, err := GetClient(clusterConfig)
 	if err != nil {
 		return "", err
 	}
 	req := clientset.CoreV1().RESTClient().Get().RequestURI("/version")
-	res := req.Do()
+	res := req.Do(ctx)
 
 	data, err := res.Raw()
 	if err != nil {
@@ -64,13 +65,13 @@ func GetVersion(clusterConfig *config.Cluster) (string, error) {
 }
 
 // GetVersionPlatform gets the cluster version + " " + platform
-func GetVersionPlatform(clusterConfig *config.Cluster) (string, error) {
+func GetVersionPlatform(ctx context.Context, clusterConfig *config.Cluster) (string, error) {
 	clientset, err := GetClient(clusterConfig)
 	if err != nil {
 		return "", err
 	}
 	req := clientset.CoreV1().RESTClient().Get().RequestURI("/version")
-	res := req.Do()
+	res := req.Do(ctx)
 
 	data, err := res.Raw()
 	if err != nil {
