@@ -1,3 +1,14 @@
+# v0.7.18
+
+* feat: clean tags - remove blanks and duplicates, lowercase, and sort
+* fix: debug messages
+* fix(lint): ioutil deprecation
+* fix(lint): gofmt
+* fix(lint): struct alignment
+* chore: update to go1.17
+* feat(deps): bump go-retryablehttp from 0.7.0 to 0.7.1
+* chore: Merge remote-tracking branch 'upstream/master'
+
 # v0.7.17
 
 * upd: Implements a new DisableRetries configuration setting to allow the

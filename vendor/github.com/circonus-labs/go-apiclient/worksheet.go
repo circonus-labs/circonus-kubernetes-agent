@@ -152,7 +152,7 @@ func (a *API) CreateWorksheet(cfg *Worksheet) (*Worksheet, error) {
 	}
 
 	if a.Debug {
-		a.Log.Printf("create annotation, sending JSON: %s", string(jsonCfg))
+		a.Log.Printf("create worksheet, sending JSON: %s", string(jsonCfg))
 	}
 
 	result, err := a.Post(config.WorksheetPrefix, jsonCfg)

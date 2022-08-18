@@ -6,7 +6,7 @@ require (
 	code.cloudfoundry.org/bytefmt v0.0.0-20211005130812-5bb3c17173e5
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137
 	github.com/circonus-labs/circonus-gometrics/v3 v3.4.6
-	github.com/circonus-labs/go-apiclient v0.7.17
+	github.com/circonus-labs/go-apiclient v0.7.18
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-retryablehttp v0.7.1
 	github.com/hashicorp/go-version v1.6.0
