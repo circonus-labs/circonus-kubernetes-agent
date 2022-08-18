@@ -2,18 +2,18 @@
 
 # usage: changelog.sh [ -c | --changelog-data CHANGELOG_DATA_FILE ] [ -d | --debug ] [ -f | --from-version FROM_VERSION ] [ -o | --output OUTPUT_FILE ] [ -t | --to-version TO_VERSION ]
 
+# Prior to generating a release, either: 
+# run `chglog add --version vX.Y.Z` and DO NOT SPECIFY TO_VERSION/-t/--to-version
+# or 
+# use TO_VERSION/-t/--to-version, and the utility will do it for you
+
+
 # FROM_VERSION is the previous version in the changelog and can be automatically detected from the existing OUTPUT_FILE
 # TO_VERSION is the new version to be added to the changelog and can be automatically detected from the existing CHANGELOG_DATA_FILE
 # Optionally, it can be specified and the tool will automatically add it to the CHANGELOG_DATA_FILE and OUTPUT_FILE
 # requirements:
 # - chglog (https://github.com/goreleaser/chglog)
 # - yq (https://github.com/mikefarah/yq)
-
-# SOP:
-# Once a PR is ready to be merged, either: 
-# run `chglog add --version vX.Y.Z` and DO NOT SPECIFY TO_VERSION/-t/--to-version
-# or 
-# use TO_VERSION/-t/--to-version, and the utility will do it for you
 
 # @default: "CHANGELOG.md"
 # @type: string
@@ -176,7 +176,7 @@ if [ "${FROM_VERSION}" = "${TO_VERSION}" ]; then
 fi
 
 # if not debug, check for and remove old entries in the changelog between TO_VERSION and FROM_VERSION.
-if [ "${DEBUG}" != "false" ]; then
+if [ "${DEBUG}" = "false" ]; then
   sed -n -i '' -e '/'"${TO_VERSION}"'/{' -e ':a' -e 'N' -e '/'"${FROM_VERSION}"'/!ba' -e 's/.*\n//' -e '}' -e 'p' "${OUTPUT_FILE}"
 fi
 

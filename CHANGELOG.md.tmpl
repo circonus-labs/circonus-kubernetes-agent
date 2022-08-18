@@ -13,7 +13,9 @@
 {{- if eq $first "true" }}
 {{ indent 12 . }}
 {{- else }}
-({{ $commit }})  {{ . }}
+
+([{{ $commit }}](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/{{ $commit }}))  
+{{ indent 12 . }}
 {{- $first = "true" }}
 {{- end }}
 {{- end }}
