@@ -1,25 +1,78 @@
 # v0.13.0
-2022-08-01
+2022-08-08
 
-(ea5236bb)  Add support for CoreDNS.
+
+([833c904b](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/833c904b))  
+            Tags: v0.13.0
+
+([ea5236bb](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/ea5236bb))  
+            Add support for CoreDNS.
             Add auto-detection of CoreDNS if detection of kube-dns fails.
             Add configuration key to enable users to set the default CoreDNS
             metrics scrape port.
-(34650875)  Fix agent trying to add an erroneous tag to the check bundle.
-(3c1bb387)  Revert change to move metric creation into conditional in cluster
+
+([34650875](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/34650875))  
+            Fix agent trying to add an erroneous tag to the check bundle.
+
+([3c1bb387](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/3c1bb387))  
+            Revert change to move metric creation into conditional in cluster
             collector.
-(328f105d)  Fix logic in creating default rulesets and metric filters to return
+
+([328f105d](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/328f105d))  
+            Fix logic in creating default rulesets and metric filters to return
             required vals and determine cluster version before creating them.
-(36652400)  Refactor code to be more easily readable and and check all errors.
-(19fbcc25)  Fix whitespace issues in self-contained metricfilters.
+
+([36652400](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/36652400))  
+            Refactor code to be more easily readable and and check all errors.
+
+([19fbcc25](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/19fbcc25))  
+            Fix whitespace issues in self-contained metricfilters.
             Fix error wrapping in k8s api call.
             Add k8s version const for comparison usage.
-(3a0637ae)  Fix default metric filters for k8s v1.20+ to search for the correct
+
+([3a0637ae](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/3a0637ae))  
+            Fix default metric filters for k8s v1.20+ to search for the correct
             metric names.
-(1d64029c)  dependency-name: github.com/spf13/cobra
+
+([4f532ab5](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/4f532ab5))  
+            This update adds support for CoreDNS, which is automatically detected
+            if kube-dns does not exist.
+            It also adds a configuration key to enable users to set the default
+            CoreDNS metrics scrape port.
+            We can expect that users will run kube-dns OR coredns, but not both.
+
+([5576f42e](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/5576f42e))  
+            This change will resolve the agent trying to add an erroneous tag to
+            the check bundle.
+
+([619f9973](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/619f9973))  
+            This just moves a call to AddText out of a conditional
+
+([6820aa34](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/6820aa34))  
+            This change will fix the logic to return the values required and
+            correctly determine the cluster version for creating the default rules
+            and filters.
+
+([70216e56](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/70216e56))  
+            This change refactors code to be simpler (more easily readable) and
+            check all errors
+
+([8b8935a8](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/8b8935a8))  
+            This change is mostly for code quality reasons and will likely have
+            minimal visibility to our users (aside from the ones who decide to
+            audit the k8s agent).
+
+([af4bcb01](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/af4bcb01))  
+            This change will fix the v1.20+ MetricFilters to search for the correct
+            metric names.
+
+([1d64029c](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/1d64029c))  
+            dependency-name: github.com/spf13/cobra
               dependency-type: direct:production
               update-type: version-update:semver-minor
-(f7aa1308)  dependency-name: actions/checkout
+
+([f7aa1308](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/f7aa1308))  
+            dependency-name: actions/checkout
               dependency-type: direct:production
               update-type: version-update:semver-major
 
