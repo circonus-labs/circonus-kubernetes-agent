@@ -2,7 +2,7 @@ run:
   skip-dirs-use-default: true
   skip-files:
     - ".*_mock_test.go$"
-  modules-download-mode: readonly
+  modules-download-mode: vendor
 
 linters-settings:
   errcheck:
