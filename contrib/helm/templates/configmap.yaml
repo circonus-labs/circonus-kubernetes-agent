@@ -7,6 +7,8 @@ metadata:
     labels:
         app.kubernetes.io/name: circonus-kubernetes-agent
 data:
+    ## port to collect DNS metrics on (if DNS service does not have scrape/port annotations, such as on GKE)
+    dns-metrics-port: {{ .Values.dns.port | quote }}
     ## broker to use when creating a new httptrap check
     circonus-check-broker-cid: {{ .Values.broker_cid | quote }}
     ## REQUIRED -- name identifying the cluster, used in the check 
