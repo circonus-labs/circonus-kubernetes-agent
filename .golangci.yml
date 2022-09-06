@@ -137,10 +137,7 @@ linters:
     - staticcheck
     - unused
     - gosimple
-    - structcheck
-    - varcheck
     - ineffassign
-    - deadcode
     - typecheck
     # - revive
     # - golint -- deprecated, owner archived repo, replaced by 'revive'
