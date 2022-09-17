@@ -117,7 +117,6 @@ type Log struct {
 
 // Validate verifies the required portions of the configuration
 func Validate() error {
-
 	err := validateAPIOptions(
 		viper.GetString(keys.APITokenKey),
 		viper.GetString(keys.APITokenKeyFile),

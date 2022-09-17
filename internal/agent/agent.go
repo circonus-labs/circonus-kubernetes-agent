@@ -12,11 +12,10 @@ import (
 	"expvar"
 	"fmt"
 	"net/http"
-	"time"
-
 	// _ "net/http/pprof" //nolint:gosec
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/cluster"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
@@ -144,7 +143,6 @@ func New() (*Agent, error) {
 
 // Start the agent
 func (a *Agent) Start() error {
-
 	a.group.Go(a.handleSignals)
 
 	for id := range a.clusters {

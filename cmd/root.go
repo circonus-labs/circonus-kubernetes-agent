@@ -84,6 +84,7 @@ func bindFlagError(flag string, err error) {
 		log.Fatal().Err(err).Str("flag", flag).Msg("binding flag")
 	}
 }
+
 func bindEnvError(envVar string, err error) {
 	if err != nil {
 		log.Fatal().Err(err).Str("var", envVar).Msg("binding env var")

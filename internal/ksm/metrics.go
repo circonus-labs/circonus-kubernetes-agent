@@ -36,8 +36,8 @@ func (ksm *KSM) queueMetrics(
 	check *circonus.Check,
 	data io.Reader,
 	parentStreamTags []string,
-	parentMeasurementTags []string) error {
-
+	parentMeasurementTags []string,
+) error {
 	srcLogger := ksm.log.With().Str("ksm_source", ksmSource).Logger()
 
 	var baseStreamTags []string

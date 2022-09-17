@@ -11,7 +11,6 @@ import (
 )
 
 func TestVerifyFile(t *testing.T) {
-
 	t.Log("empty")
 	{
 		_, err := verifyFile("")

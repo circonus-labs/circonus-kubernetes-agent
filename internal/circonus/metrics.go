@@ -68,18 +68,16 @@ type MetricSample struct {
 	Timestamp uint64      `json:"_ts,omitempty"`
 }
 
-var (
-	metricTypeRx = regexp.MustCompile(`^[` + strings.Join([]string{
-		MetricTypeInt32,
-		MetricTypeUint32,
-		MetricTypeInt64,
-		MetricTypeUint64,
-		MetricTypeFloat64,
-		MetricTypeString,
-		MetricTypeHistogram,
-		MetricTypeCumulativeHistogram,
-	}, "") + `]$`)
-)
+var metricTypeRx = regexp.MustCompile(`^[` + strings.Join([]string{
+	MetricTypeInt32,
+	MetricTypeUint32,
+	MetricTypeInt64,
+	MetricTypeUint64,
+	MetricTypeFloat64,
+	MetricTypeString,
+	MetricTypeHistogram,
+	MetricTypeCumulativeHistogram,
+}, "") + `]$`)
 
 // AddGauge to queue for submission
 func (c *Check) AddGauge(metricName string, tags cgm.Tags, value interface{}) {
@@ -149,8 +147,8 @@ func (c *Check) QueueMetricSample(
 	streamTags,
 	measurementTags []string,
 	value interface{},
-	timestamp *time.Time) error {
-
+	timestamp *time.Time,
+) error {
 	if metrics == nil {
 		return errors.New("invalid metrics queue (nil)")
 	}
