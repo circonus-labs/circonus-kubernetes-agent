@@ -1,16 +1,12 @@
 #!/usr/bin/env bash
 
+cd "$(dirname """$0""")"/../ || exit
+
 # usage: changelog.sh [ -c | --changelog-data CHANGELOG_DATA_FILE ] [ -d | --debug ] [ -f | --from-version FROM_VERSION ] [ -o | --output OUTPUT_FILE ] [ -t | --to-version TO_VERSION ]
 
-# Prior to generating a release, either: 
-# run `chglog add --version vX.Y.Z` and DO NOT SPECIFY TO_VERSION/-t/--to-version
-# or 
-# use TO_VERSION/-t/--to-version, and the utility will do it for you
+# Prior to generating a release
+# use TO_VERSION/-t/--to-version, and the util
 
-
-# FROM_VERSION is the previous version in the changelog and can be automatically detected from the existing OUTPUT_FILE
-# TO_VERSION is the new version to be added to the changelog and can be automatically detected from the existing CHANGELOG_DATA_FILE
-# Optionally, it can be specified and the tool will automatically add it to the CHANGELOG_DATA_FILE and OUTPUT_FILE
 # requirements:
 # - chglog (https://github.com/goreleaser/chglog)
 # - yq (https://github.com/mikefarah/yq)
@@ -21,19 +17,26 @@ OUTPUT_FILE="${OUTPUT_FILE:-CHANGELOG.md}"
 
 # @default: "CHANGELOG.md.tmpl"
 # @type: string
-OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE:-${OUTPUT_FILE}.tmpl}"
+OUTPUT_TEMPLATE_FILE="${OUTPUT_TEMPLATE_FILE:-./templates/files/${OUTPUT_FILE}.tmpl}"
 
 # @default: @generated
 # @type: string
 # @note: defaults to the last version in the OUTPUT_FILE (all if empty)
 # @note: This is the older version
+# @note: FROM_VERSION is the previous version in the changelog and can be automatically detected from the existing OUTPUT_FILE
 FROM_VERSION="${FROM_VERSION:-}"
 
 # @default: @generated
 # @type: string
 # @note: defaults to the latest tagged version
 # @note: This is the newer version
+# @note: TO_VERSION is the new version to be added to the changelog and can be automatically detected from the existing CHANGELOG_DATA_FILE
 TO_VERSION="${TO_VERSION:-}"
+
+# @default: @generated
+# @type: string
+# @note: defaults to the latest tagged version + 1 minor version
+SUGGESTED_VERSION="$(grep v CHANGELOG.md | head -1 | cut -f2 -d' ' | awk -F. -v OFS=. '{$NF += 1 ; print}')"
 
 # @default: false
 # @type: boolean
@@ -111,6 +114,7 @@ eval set -- "${POSITIONALS}"
 # parse arguments
 #
 
+
 # if CHANGELOG_DATA_FILE doesn't exist, create it
 if [ ! -f "${CHANGELOG_DATA_FILE}" ]; then
   if [ -n "${OUTPUT_FILE}" ]; then
@@ -139,16 +143,17 @@ if [ -z "${FROM_VERSION}" ]; then
   fi
 fi
 
-# if TO_VERSION is unset, exit
+# if TO_VERSION is unset, prompt the user
 if [ -z "${TO_VERSION}" ]; then
-  if [ -f "${CHANGELOG_DATA_FILE}" ]; then
-    TO_VERSION=$(yq '.[0].semver' "${CHANGELOG_DATA_FILE}")
-    TO_VERSION="v${TO_VERSION}"
-  else
-    echo "ERROR: to version unset and no CHANGELOG_DATA_FILE found."
-    echo "Exiting..."
-    exit 1
-  fi
+  echo "From version is: ${FROM_VERSION}"
+  echo "Suggested version is: ${SUGGESTED_VERSION}"
+  while true; do
+    read -r -p "Press [Y/y] to accept suggesed version or input a semantic version: " to_version
+    case $to_version in
+      [Yy]* ) TO_VERSION="${SUGGESTED_VERSION}"; break;;
+      v* ) TO_VERSION="${to_version}"; break;;
+    esac
+  done
 fi
 
 # if TO_VERSION doesn't exist in the CHANGELOG_DATA_FILE, add it
