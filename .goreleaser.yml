@@ -1,101 +1,107 @@
 project_name: circonus-kubernetes-agent
 
-builds:
-    -
-        id: cka
-        main: main.go
-        binary: sbin/circonus-kubernetes-agentd
-        env:
-            - CGO_ENABLED=0
-        goos:
-            - linux
-        goarch:
-            - amd64
-            - arm64
-        ignore:
-            - goarch: 386
-        ldflags:
-            - -s
-            - -w
-            - -extldflags "-static"
-            - -X github.com/circonus-labs/circonus-kubernetes-agent/internal/release.VERSION={{.Version}}
-            - -X github.com/circonus-labs/circonus-kubernetes-agent/internal/release.COMMIT={{.ShortCommit}}
-            - -X github.com/circonus-labs/circonus-kubernetes-agent/internal/release.DATE={{.Date}}
-            - -X github.com/circonus-labs/circonus-kubernetes-agent/internal/release.TAG={{.Tag}}
-dockers:
-    -
-        goos: linux
-        goarch: amd64
-        goarm: ''
-        ids: ['cka']
-        image_templates:
-            - "registry.hub.docker.com/circonus/{{.ProjectName}}:{{.Tag}}-amd64"
-            - "registry.hub.docker.com/circonus/{{.ProjectName}}:{{.Tag}}"
-            - "registry.hub.docker.com/circonus/{{.ProjectName}}:latest-amd64"
-            - "registry.hub.docker.com/circonus/{{.ProjectName}}:latest"
-        skip_push: false
-        dockerfile: docker/x86_64/Dockerfile
-        build_flag_templates:
-            - "--pull"
-            - "--label=org.label-schema.schema-version=1.0"
-            - "--label=org.label-schema.version={{.Version}}"
-            - "--label=org.label-schema.name={{.ProjectName}}"
-            - "--label=org.opencontainers.image.created={{.Date}}"    
-            - "--label=org.opencontainers.image.title={{.ProjectName}}"    
-            - "--label=org.opencontainers.image.revision={{.FullCommit}}"    
-            - "--label=org.opencontainers.image.version={{.Version}}"    
-            - "--platform=linux/amd64"    
-    -
-        goos: linux
-        goarch: arm64
-        goarm: ''
-        ids: ['cka']
-        image_templates:
-            - "registry.hub.docker.com/circonus/{{.ProjectName}}:{{.Tag}}-arm64"
-            - "registry.hub.docker.com/circonus/{{.ProjectName}}:latest-arm64"
-        skip_push: false
-        dockerfile: docker/arm64/Dockerfile
-        build_flag_templates:
-            - "--pull"
-            - "--label=org.label-schema.schema-version=1.0"
-            - "--label=org.label-schema.version={{.Version}}"
-            - "--label=org.label-schema.name={{.ProjectName}}"
-            - "--label=org.opencontainers.image.created={{.Date}}"    
-            - "--label=org.opencontainers.image.title={{.ProjectName}}"    
-            - "--label=org.opencontainers.image.revision={{.FullCommit}}"    
-            - "--label=org.opencontainers.image.version={{.Version}}"    
-            - "--platform=linux/arm64"    
+builds: 
+  - 
+    binary: sbin/circonus-kubernetes-agentd
+    env: 
+      - CGO_ENABLED=0
+    goarch: 
+      - amd64
+      - arm64
+    goos: 
+      - linux
+    id: cka
+    ignore: 
+      - 
+        goarch: 386
+    ldflags: 
+      - "-s"
+      - "-w"
+      - "-extldflags \"-static\""
+      - "-X github.com/circonus-labs/circonus-kubernetes-agent/internal/release.VERSION={{.Version}}"
+      - "-X github.com/circonus-labs/circonus-kubernetes-agent/internal/release.COMMIT={{.ShortCommit}}"
+      - "-X github.com/circonus-labs/circonus-kubernetes-agent/internal/release.DATE={{.Date}}"
+      - "-X github.com/circonus-labs/circonus-kubernetes-agent/internal/release.TAG={{.Tag}}"
+    main: main.go
 
-docker_manifests:
-    - name_template: "registry.hub.docker.com/circonus/{{.ProjectName}}:latest"
-      image_templates:
-        - "registry.hub.docker.com/circonus/{{.ProjectName}}:latest"
-        - "registry.hub.docker.com/circonus/{{.ProjectName}}:latest-amd64"
-        - "registry.hub.docker.com/circonus/{{.ProjectName}}:latest-arm64"
-    - name_template: "registry.hub.docker.com/circonus/{{.ProjectName}}:{{.Tag}}"
-      image_templates:
-        - "registry.hub.docker.com/circonus/{{.ProjectName}}:{{.Tag}}"
-        - "registry.hub.docker.com/circonus/{{.ProjectName}}:{{.Tag}}-amd64"
-        - "registry.hub.docker.com/circonus/{{.ProjectName}}:{{.Tag}}-arm64"
+dockers: 
+  - 
+    build_flag_templates: 
+      - "--pull"
+      - "--label=org.label-schema.schema-version=1.0"
+      - "--label=org.label-schema.version={{.Version}}"
+      - "--label=org.label-schema.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--platform=linux/amd64"
+    dockerfile: docker/x86_64/Dockerfile
+    goarch: amd64
+    goarm: ""
+    goos: linux
+    ids: 
+      - cka
+    image_templates: 
+      - "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:{{.Tag}}-amd64"
+      - "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:{{.Tag}}"
+      - "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:latest-amd64"
+      - "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:latest"
+    skip_push: false
+  - 
+    build_flag_templates: 
+      - "--pull"
+      - "--label=org.label-schema.schema-version=1.0"
+      - "--label=org.label-schema.version={{.Version}}"
+      - "--label=org.label-schema.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--platform=linux/arm64"
+    dockerfile: docker/arm64/Dockerfile
+    goarch: arm64
+    goarm: ""
+    goos: linux
+    ids: 
+      - cka
+    image_templates: 
+      - "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:{{.Tag}}-arm64"
+      - "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:latest-arm64"
+    skip_push: false
 
-archives:
-    -   
-        id: default
-        name_template: "{{.ProjectName}}_{{.Version}}_{{.Os}}_{{.Arch}}"
-        format: tar.gz
-        replacements:
-            amd64: x86_64
-        files:
-            - LICENSE
-            - README.md
-            - CHANGELOG.md
+docker_manifests: 
+  - 
+    image_templates: 
+      - "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:latest"
+      - "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:latest-amd64"
+      - "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:latest-arm64"
+    name_template: "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:latest"
+  - 
+    image_templates: 
+      - "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:{{.Tag}}"
+      - "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:{{.Tag}}-amd64"
+      - "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:{{.Tag}}-arm64"
+    name_template: "{{.Env.DOCKER_REGISTRY}}/{{.ProjectName}}:{{.Tag}}"
 
-release:
-    github:
-        owner: circonus-labs
-        name: circonus-kubernetes-agent
-    draft: false
-    prerelease: auto
+archives: 
+  - 
+    files: 
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+    format: tar.gz
+    id: default
+    name_template: "{{.ProjectName}}_{{.Version}}_{{.Os}}_{{.Arch}}"
+    replacements: 
+      amd64: x86_64
 
-checksum:
-    name_template: "{{.ProjectName}}_checksums.txt"
+release: 
+  draft: false
+  github: 
+    name: circonus-kubernetes-agent
+    owner: circonus-labs
+  prerelease: auto
+
+checksum: 
+  name_template: "{{.ProjectName}}_checksums.txt"

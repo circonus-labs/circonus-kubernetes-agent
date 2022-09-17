@@ -1,8 +1,10 @@
 BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
 BRANCH_PRIMARY=$(shell git symbolic-ref refs/remotes/origin/HEAD | sed 's;^refs/remotes/origin/;;')
 BUILD_FLAGS=-mod=vendor
+GCI=$(shell which gci)
+GIT=$(shell which git)
 GO=$(shell which go)
-GOFMT=$(shell which gofmt)
+GOFUMPT=$(shell which gofumpt)
 GOLANGCI_LINT=$(shell which golangci-lint)
 GORELEASER=$(shell which goreleaser)
 NOVENDOR=$(shell go list -f {{.Dir}} ./...)
@@ -12,10 +14,13 @@ TRUFFLEHOG=$(shell which trufflehog)
 
 SHELL=/usr/bin/env bash
 
-.PHONY: gofmt go_mod golangci_lint go_test trufflehog render build_deps changelog build commit push release is_primary tag 
+.PHONY: gofumpt gci go_mod golangci_lint go_test trufflehog render build_deps changelog build commit push release is_primary tag 
 
-gofmt:
-	$(GOFMT) -s -w $(NOVENDOR)
+gofumpt:
+	$(GOFUMPT) -l -w $(NOVENDOR)
+
+gci:
+	$(GCI) write --skip-generated -s standard,default $(NOVENDOR)
 
 go_mod:
 	$(GO) mod tidy
@@ -33,29 +38,31 @@ trufflehog:
 render:
 	$(SCRIPTS_DIR)/render.sh
 
-build_deps: render gofmt go_mod golangci_lint go_test trufflehog
+build_deps: render gofumpt gci go_mod golangci_lint go_test trufflehog
 
 changelog:
 	$(SCRIPTS_DIR)/changelog.sh
 
 build: build_deps
-	$(GORELEASER) --rm-dist --snapshot
+	DOCKER_REGISTRY=registry.k8s.dev.circonus.com $(GORELEASER) --rm-dist --snapshot
 
 commit: build_deps
+	$(GIT) status
 	$(GITCOMM)
 
 commit_for_tag: changelog build_deps
+	$(GIT) status
 	$(GITCOMM)
 
 push:
-	git push -u origin $(BRANCH)
+	$(GIT) push -u origin $(BRANCH)
 
 is_primary:
 	[ "$(BRANCH)" = "$(BRANCH_PRIMARY)" ] || ( echo "Current branch is not repo primary branch" && exit 1 )
 
 tag: is_primary build_deps
-	git tag -s
+	$(GIT) tag -s
 
 release: is_primary build_deps
-	$(GORELEASER) release --rm-dist
+	DOCKER_REGISTRY=registry.hub.docker.com/circonus $(GORELEASER) release --rm-dist
 
