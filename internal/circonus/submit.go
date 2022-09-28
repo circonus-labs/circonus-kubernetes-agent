@@ -7,8 +7,6 @@ package circonus
 
 import (
 	"bytes"
-	"strings"
-
 	// "compress/gzip"
 	"context"
 	"encoding/json"
@@ -19,6 +17,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"code.cloudfoundry.org/bytefmt"

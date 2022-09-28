@@ -59,7 +59,6 @@ func (nc *Collector) resources(parentStreamTags []string, parentMeasurementTags 
 	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, nc.log, bytes.NewReader(data), parentStreamTags, parentMeasurementTags, nil); err != nil {
 		nc.log.Error().Err(err).Msg("parsing node resource metrics")
 	}
-
 }
 
 // probes emits node probe stats

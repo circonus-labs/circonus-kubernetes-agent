@@ -38,8 +38,8 @@ func QueueMetrics(
 	data io.Reader,
 	parentStreamTags []string,
 	parentMeasurementTags []string,
-	ts *time.Time) error {
-
+	ts *time.Time,
+) error {
 	var baseStreamTags []string
 	if len(parentStreamTags) > 0 {
 		baseStreamTags = make([]string, len(parentStreamTags))

@@ -139,7 +139,6 @@ func New(ctx context.Context, cfg config.Cluster, circCfg config.Circonus, paren
 }
 
 func (c *Cluster) Start(ctx context.Context) error {
-
 	var eventWatcher *events.Events
 	if c.cfg.EnableEvents {
 		ew, err := events.New(&c.cfg, c.logger, c.check)

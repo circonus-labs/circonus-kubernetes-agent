@@ -12,10 +12,10 @@ import (
 	"expvar"
 	"fmt"
 	"net/http"
-
 	// _ "net/http/pprof" //nolint:gosec
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/cluster"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
@@ -36,6 +36,23 @@ type Agent struct {
 	clusters    map[string]*cluster.Cluster
 	signalCh    chan os.Signal
 	logger      zerolog.Logger
+}
+
+func serveHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		switch r.URL.Path {
+		case "/stats", "/stats/":
+			expvar.Handler().ServeHTTP(w, r)
+		case "/health", "/health/":
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintln(w, "Alive")
+		default:
+			http.NotFound(w, r)
+		}
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 // New returns a new agent instance
@@ -108,23 +125,14 @@ func New() (*Agent, error) {
 		// _ = http.ListenAndServe(":6060", nil) // pprof
 		// NOTE: http://addr:8080/stats - application stats
 		//       http://addr:8080/health - liveness probe
-		err := http.ListenAndServe(":8080",
-			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				switch r.Method {
-				case http.MethodGet:
-					switch r.URL.Path {
-					case "/stats", "/stats/":
-						expvar.Handler().ServeHTTP(w, r)
-					case "/health", "/health/":
-						w.WriteHeader(http.StatusOK)
-						fmt.Fprintln(w, "Alive")
-					default:
-						http.NotFound(w, r)
-					}
-				default:
-					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-				}
-			}))
+		srv := http.Server{
+			Addr:              ":8080",
+			WriteTimeout:      10 * time.Second,
+			ReadHeaderTimeout: 2 * time.Second,
+			ReadTimeout:       10 * time.Second,
+			Handler:           http.HandlerFunc(serveHTTP),
+		}
+		err := srv.ListenAndServe()
 		if !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal().Err(err).Msg("internal http server exited")
 		}
@@ -135,7 +143,6 @@ func New() (*Agent, error) {
 
 // Start the agent
 func (a *Agent) Start() error {
-
 	a.group.Go(a.handleSignals)
 
 	for id := range a.clusters {

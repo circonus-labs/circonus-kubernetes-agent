@@ -125,7 +125,6 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "system_containers").Logger(), true); err != nil {
 		nc.log.Warn().Err(err).Msg("submitting metrics")
 	}
-
 }
 
 func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string, parentMeasurementTags []string) {

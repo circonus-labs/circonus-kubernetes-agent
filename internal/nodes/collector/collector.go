@@ -10,7 +10,6 @@ import (
 	// "bytes"
 	"context"
 	"crypto/tls"
-
 	// "encoding/json"
 	"fmt"
 	"sync"
@@ -20,16 +19,13 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
-	"github.com/spf13/viper"
-
 	// "github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	// "github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/hashicorp/go-version"
-
 	// "github.com/prometheus/common/expfmt"
 	"github.com/rs/zerolog"
-
+	"github.com/spf13/viper"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
