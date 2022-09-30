@@ -29,3 +29,5 @@ ckatest
 test/
 
 changelog.yml
+
+.prow/tf/gcp/logs/
