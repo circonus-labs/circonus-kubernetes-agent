@@ -1,13 +1,14 @@
 
 locals {
-  business_unit          = "k8s-agent-e2e-test-private"
-  cluster_name           = "${var.name_prefix}-${var.kubernetes_version}-${local.business_unit}-zonal-cluster"
-  network_name           = "${var.name_prefix}-${var.kubernetes_version}-${local.business_unit}-network"
-  subnet_name            = "${var.name_prefix}-${var.kubernetes_version}-${local.business_unit}-subnet"
-  master_auth_subnetwork = "${var.name_prefix}-${var.kubernetes_version}-${local.business_unit}-master-subnet"
-  pods_range_name        = "${var.name_prefix}-${var.kubernetes_version}-${local.business_unit}-ip-range-pods"
-  svc_range_name         = "${var.name_prefix}-${var.kubernetes_version}-${local.business_unit}-ip-range-svc"
-  subnet_names           = [for subnet_self_link in module.gcp-network.subnets_self_links : split("/", subnet_self_link)[length(split("/", subnet_self_link)) - 1]]
+  business_unit           = "k8s-agent-e2e-test-private"
+  safe_kubernetes_version = replace(var.kubernetes_version, ".", "-")
+  cluster_name            = "${var.name_prefix}-${var.safe_kubernetes_version}-${local.business_unit}-zonal-cluster"
+  network_name            = "${var.name_prefix}-${var.safe_kubernetes_version}-${local.business_unit}-network"
+  subnet_name             = "${var.name_prefix}-${var.safe_kubernetes_version}-${local.business_unit}-subnet"
+  master_auth_subnetwork  = "${var.name_prefix}-${var.safe_kubernetes_version}-${local.business_unit}-master-subnet"
+  pods_range_name         = "${var.name_prefix}-${var.safe_kubernetes_version}-${local.business_unit}-ip-range-pods"
+  svc_range_name          = "${var.name_prefix}-${var.safe_kubernetes_version}-${local.business_unit}-ip-range-svc"
+  subnet_names            = [for subnet_self_link in module.gcp-network.subnets_self_links : split("/", subnet_self_link)[length(split("/", subnet_self_link)) - 1]]
 }
 
 data "google_client_config" "default" {}
