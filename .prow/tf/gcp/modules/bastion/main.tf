@@ -24,14 +24,6 @@ resource "google_compute_firewall" "bastion-ssh" {
   target_tags = ["bastion"]
 }
 
-// The user-data script on Bastion instance provisioning.
-data "template_file" "startup_script" {
-  template = <<-EOF
-  sudo apt-get update -y
-  sudo apt-get install -y tinyproxy
-  EOF
-}
-
 // The Bastion host.
 resource "google_compute_instance" "bastion" {
   name         = local.hostname
@@ -42,7 +34,7 @@ resource "google_compute_instance" "bastion" {
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-10"
+      image = "debian-cloud/debian-11"
     }
   }
 
@@ -53,7 +45,10 @@ resource "google_compute_instance" "bastion" {
   }
 
   // Install tinyproxy on startup.
-  metadata_startup_script = data.template_file.startup_script.rendered
+  metadata_startup_script = <<SCRIPT
+  sudo apt-get update -y
+  sudo apt-get install -y tinyproxy
+  SCRIPT
 
   network_interface {
     subnetwork = var.subnet_name
