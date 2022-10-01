@@ -19,30 +19,30 @@ module "gcp-network" {
   version = ">= 4.0.1, < 5.0.0"
 
   project_id   = var.project_id
-  network_name = local.network_name
+  network_name = var.network_name
 
   subnets = [
     {
-      subnet_name   = local.subnet_name
-      subnet_ip     = "10.0.0.0/17"
+      subnet_name   = var.subnet_name
+      subnet_ip     = var.subnet_cidr
       subnet_region = var.region
     },
     {
-      subnet_name   = local.master_auth_subnetwork
-      subnet_ip     = "10.60.0.0/17"
+      subnet_name   = var.master_auth_subnetwork
+      subnet_ip     = var.master_authorized_cidr
       subnet_region = var.region
     },
   ]
 
   secondary_ranges = {
-    (local.subnet_name) = [
+    (var.subnet_name) = [
       {
-        range_name    = local.pods_range_name
-        ip_cidr_range = "192.168.0.0/18"
+        range_name    = var.pods_range_name
+        ip_cidr_range = var.pods_cidr
       },
       {
-        range_name    = local.svc_range_name
-        ip_cidr_range = "192.168.64.0/18"
+        range_name    = var.svc_range_name
+        ip_cidr_range = var.svc_cidr
       },
     ]
   }
