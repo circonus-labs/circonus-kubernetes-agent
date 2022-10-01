@@ -25,7 +25,7 @@ output "client_token" {
 }
 
 output "ca_certificate" {
-  value = module.gke.ca_certificate
+  value     = module.gke.ca_certificate
   sensitive = true
 }
 

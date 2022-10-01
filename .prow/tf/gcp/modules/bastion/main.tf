@@ -1,16 +1,16 @@
 locals {
-  hostname = format("%s-bastion", var.bastion_name)
+  hostname = var.bastion_name
 }
 
 // Dedicated service account for the Bastion instance.
 resource "google_service_account" "bastion" {
-  account_id   = format("%s-bastion-sa", var.bastion_name)
+  account_id   = substr(format("%s-sa", var.bastion_name), 0, 28)
   display_name = "GKE Bastion Service Account"
 }
 
 // Allow access to the Bastion Host via SSH.
 resource "google_compute_firewall" "bastion-ssh" {
-  name          = format("%s-bastion-ssh", var.bastion_name)
+  name          = format("%s-ssh", var.bastion_name)
   network       = var.network_name
   direction     = "INGRESS"
   project       = var.project_id
@@ -53,7 +53,7 @@ resource "google_compute_instance" "bastion" {
   network_interface {
     subnetwork = var.subnet_name
 
-    
+
     access_config {
       // Not setting "nat_ip", use an ephemeral external IP.
       network_tier = "STANDARD"

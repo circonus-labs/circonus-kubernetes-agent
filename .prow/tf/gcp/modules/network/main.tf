@@ -28,7 +28,7 @@ module "gcp-network" {
       subnet_region = var.region
     },
     {
-      subnet_name   = var.master_auth_subnetwork
+      subnet_name   = var.master_subnet_name
       subnet_ip     = var.master_authorized_cidr
       subnet_region = var.region
     },
