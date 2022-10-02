@@ -1,95 +1,65 @@
-
 locals {
-  business_unit           = "k8s-agent-e2e"
-  main_zone               = var.zones[0]
+  business_unit = "k8s-agent-e2e"
+
   safe_kubernetes_version = replace(var.kubernetes_version, ".", "-")
-  bastion_name            = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-bastion"
-  cluster_name            = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-zonal-cluster"
-  network_name            = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-network"
-  subnet_name             = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-subnet"
-  master_subnet_name      = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-master-subnet"
-  pods_range_name         = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-ip-range-pods"
-  svc_range_name          = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-ip-range-svc"
-  subnet_names            = [for subnet_self_link in module.network.subnets_self_links : split("/", subnet_self_link)[length(split("/", subnet_self_link)) - 1]]
 
-  subnet_cidr            = "10.0.0.0/17"
-  master_authorized_cidr = "10.60.0.0/17"
-  pods_cidr              = "192.168.0.0/18"
-  svc_cidr               = "192.168.64.0/18"
-  master_ipv4_cidr_block = "172.16.0.0/28"
+  bastion_name       = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-bastion"
+  cluster_name       = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-zonal-cluster"
+  network_name       = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-network"
+  subnet_name        = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-subnet"
+  master_subnet_name = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-master-subnet"
+  pods_range_name    = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-ip-range-pods"
+  svc_range_name     = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-ip-range-svc"
+
+  subnet_cidr                    = "10.10.0.0/16"
+  cluster_master_ip_cidr_range   = "10.100.100.0/28"
+  cluster_pods_ip_cidr_range     = "10.101.0.0/16"
+  cluster_services_ip_cidr_range = "10.102.0.0/16"
 }
-
-data "google_client_config" "default" {}
 
 provider "google" {
   project = var.project_id
   region  = var.region
-  zone    = local.main_zone
+  zone    = var.main_zone
 }
 
-provider "kubernetes" {
-  host                   = "https://${module.gke.endpoint}"
-  token                  = data.google_client_config.default.access_token
-  cluster_ca_certificate = base64decode(module.gke.ca_certificate)
+module "google_networks" {
+  source = "./modules/networks"
+
+  project_id = var.project_id
+  region     = var.region
+
+  network_name = local.network_name
+  subnet_name  = local.subnet_name
+  subnet_cidr  = local.subnet_cidr
 }
 
-module "network" {
-  source                 = "./modules/network/"
-  network_name           = local.network_name
-  project_id             = var.project_id
-  region                 = var.region
-  subnet_name            = local.subnet_name
-  subnet_cidr            = local.subnet_cidr
-  master_subnet_name     = local.master_subnet_name
-  master_authorized_cidr = local.master_authorized_cidr
-  pods_range_name        = local.pods_range_name
-  pods_cidr              = local.pods_cidr
-  svc_range_name         = local.svc_range_name
-  svc_cidr               = local.svc_cidr
+module "google_kubernetes_cluster" {
+  source = "./modules/kubernetes_cluster"
+
+  project_id = var.project_id
+  region     = var.region
+
+  cluster_name               = local.cluster_name
+  kubernetes_version         = var.kubernetes_version
+  release_channel            = var.release_channel
+  node_zones                 = var.cluster_node_zones
+  network_name               = module.google_networks.network.name
+  subnet_name                = module.google_networks.subnet.name
+  master_ipv4_cidr_block     = local.cluster_master_ip_cidr_range
+  pods_ipv4_cidr_block       = local.cluster_pods_ip_cidr_range
+  services_ipv4_cidr_block   = local.cluster_services_ip_cidr_range
+  authorized_ipv4_cidr_block = "${module.bastion.ip}/32"
 }
 
 module "bastion" {
-  source       = "./modules/bastion/"
-  bastion_name = local.bastion_name
+  source = "./modules/bastion"
+
   project_id   = var.project_id
   region       = var.region
-  zone         = local.main_zone
-  network_name = local.network_name
-  subnet_name  = local.subnet_names[index(module.network.subnets_names, local.subnet_name)]
+  zone         = var.main_zone
+  bastion_name = local.bastion_name
+  network_name = module.google_networks.network.name
+  subnet_name  = module.google_networks.subnet.name
 }
 
-module "gke" {
-  source                  = "./modules/private-cluster/"
-  name                    = local.cluster_name
-  project_id              = var.project_id
-  kubernetes_version      = var.kubernetes_version
-  release_channel         = var.release_channel
-  regional                = false
-  region                  = var.region
-  zones                   = var.zones
-  network                 = local.network_name
-  subnetwork              = local.subnet_names[index(module.network.subnets_names, local.subnet_name)]
-  ip_range_pods           = local.pods_range_name
-  ip_range_services       = local.svc_range_name
-  create_service_account  = true
-  service_account         = ""
-  enable_private_endpoint = true
-  enable_private_nodes    = true
-  master_ipv4_cidr_block  = local.master_ipv4_cidr_block
-
-  master_authorized_networks = [
-    {
-      cidr_block   = local.master_authorized_cidr
-      display_name = "VPC"
-    },
-  ]
-
-  node_pools = [
-    {
-      name         = "default-node-pool",
-      auto_repair  = true
-      auto_upgrade = true
-    },
-  ]
-
-}

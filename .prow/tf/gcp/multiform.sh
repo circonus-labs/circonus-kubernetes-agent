@@ -46,7 +46,7 @@ watch_destroy() {
     done
     if [ "${adder}" -gt 0 ]; then
       echo "Destroy not complete, continuing to wait..."
-      sleep 5
+      sleep 10
     else
       echo "Destroy complete"
       finished="true"
@@ -99,7 +99,7 @@ watch_apply() {
     done
     if [ "${adder}" -gt 0 ]; then
       echo "Apply not complete, continuing to wait..."
-      sleep 5
+      sleep 10
     else
       echo "Apply complete"
       finished="true"
