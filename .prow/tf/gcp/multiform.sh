@@ -12,6 +12,8 @@
 # DEPENDENCIES:
 # - yq ()
 
+cd "$(dirname "$0")" || exit
+
 DATA_FILE=./multiform.yaml
 LOG_DIR=./logs/
 FLAGS="-input=false -auto-approve"
