@@ -5,33 +5,28 @@
 # USAGE: $0 [COMMAND]
 # Commands:
 #
-# destroy  | destroys all resources in all workspaces
-# plan     | plans all resources in all workspaces
-# apply    | provisions all resources in all workspaces
+# destroy        | destroys all gcp resources in all workspaces
+# plan           | plans all gcp resources in all workspaces
+# apply          | provisions all gcp resources in all workspaces
+# kubeconfig     | sets up kubeconfig with contexts for all clusters
+# proxy          | sets up proxy for each cluster using gcloud and ssh
+# teardown_proxy | kills all running proxy processes
 
 # DEPENDENCIES:
 # - yq ()
+# - terraform ()
+# - gcloud ()
 
 cd "$(dirname "$0")" || exit
 
-DATA_FILE=./multiform.yaml
+DATA_FILE=../../supported-k8s-versions.yaml
 LOG_DIR=./logs/
 FLAGS="-input=false -auto-approve"
+PROXY_PID_FILE=".gcp-proxy.pid"
 
 destroy() {
   # shellcheck disable=SC2086
   for_workspace_vars_terraform destroy ${FLAGS}
-
-#  for workspace in $(yq -r '.workspaces[].name' "${DATA_FILE}"); do
-#    workspace_vars=""
-#    for var in $(yq -r '.workspaces[] | select(.name == '"${workspace}"') | .vars[].name' "${DATA_FILE}"); do
-#      workspace_vars="${workspace_vars} -var ${var}=$(yq -r '.workspaces[] | select(.name == '"${workspace}"') | .vars[] | select(.name == "kubernetes_version") | .value' ${DATA_FILE})"
-#    done
-#
-#    mkdir -p "${LOG_DIR}/${workspace}"
-#    # shellcheck disable=SC2086
-#    TF_WORKSPACE="${workspace}" terraform destroy ${FLAGS} ${workspace_vars} &>"${LOG_DIR}/${workspace}/destroy.log" &
-#  done
 }
 
 watch_destroy() {
@@ -58,33 +53,11 @@ watch_destroy() {
 
 plan() {
   for_workspace_vars_terraform plan
-
-#  for workspace in $(yq -r '.workspaces[].name' "${DATA_FILE}"); do
-#    workspace_vars=""
-#    for var in $(yq -r '.workspaces[] | select(.name == '"${workspace}"') | .vars[].name' "${DATA_FILE}"); do
-#      workspace_vars="${workspace_vars} -var ${var}=$(yq -r '.workspaces[] | select(.name == '"${workspace}"') | .vars[] | select(.name == "kubernetes_version") | .value' ${DATA_FILE})"
-#    done
-#
-#    mkdir -p "${LOG_DIR}/${workspace}"
-#    # shellcheck disable=SC2086
-#    TF_WORKSPACE="${workspace}" terraform plan ${workspace_vars} &>"${LOG_DIR}/${workspace}/plan.log" &
-#  done
 }
 
 apply() {
   # shellcheck disable=SC2086
   for_workspace_vars_terraform apply ${FLAGS}
-
-#  for workspace in $(yq -r '.workspaces[].name' "${DATA_FILE}"); do
-#    workspace_vars=""
-#    for var in $(yq -r '.workspaces[] | select(.name == '"${workspace}"') | .vars[].name' "${DATA_FILE}"); do
-#      workspace_vars="${workspace_vars} -var ${var}=$(yq -r '.workspaces[] | select(.name == '"${workspace}"') | .vars[] | select(.name == "kubernetes_version") | .value' ${DATA_FILE})"
-#    done
-#
-#    mkdir -p "${LOG_DIR}/${workspace}"
-#    # shellcheck disable=SC2086
-#    TF_WORKSPACE="${workspace}" terraform apply ${FLAGS} ${workspace_vars} &>"${LOG_DIR}/${workspace}/apply.log" &
-#  done
 }
 
 watch_apply() {
@@ -113,7 +86,7 @@ for_workspace_vars_terraform() {
   for workspace in $(yq -r '.workspaces[].name' "${DATA_FILE}"); do
     workspace_vars=""
     for var in $(yq -r '.workspaces[] | select(.name == '"${workspace}"') | .vars[].name' "${DATA_FILE}"); do
-      workspace_vars="${workspace_vars} -var ${var}=$(yq -r '.workspaces[] | select(.name == '"${workspace}"') | .vars[] | select(.name == "kubernetes_version") | .value' ${DATA_FILE})"
+      workspace_vars="${workspace_vars} -var ${var}=$(yq -r '.workspaces[] | select(.name == '"${workspace}"') | .vars[] | select(.name == '"${var}"') | .value' ${DATA_FILE})"
     done
 
     mkdir -p "${LOG_DIR}/${workspace}"
@@ -122,10 +95,66 @@ for_workspace_vars_terraform() {
   done
 }
 
+kubeconfig() {
+
+  for workspace in $(yq -r '.workspaces[].name' "${DATA_FILE}"); do
+    eval TF_WORKSPACE="${workspace}" terraform output get_credentials
+  done
+}
+
+proxy() {
+
+  # if the proxy pid file exists, then tearing down the proxy must have not finished.
+  if [ -f "${PROXY_PID_FILE}" ]; then
+    teardown_proxy
+  fi
+
+  touch "${PROXY_PID_FILE}"
+  for workspace in $(yq -r '.workspaces[].name' "${DATA_FILE}"); do
+    PROXY_CMD=$(TF_WORKSPACE="${workspace}" terraform output bastion_open_tunnel_command)
+    PROXY_CMD="${PROXY_CMD/L8888/L8$workspace}"
+    # shellcheck disable=SC2086
+    eval ${PROXY_CMD}
+    echo "${!}" >> "${PROXY_PID_FILE}"
+  done
+}
+
+teardown_proxy() {
+
+  for pid in ${PROXY_PID_FILE}; do
+    killed=false
+    while [ "${killed}" != true ]; do
+      kill -9 "${pid}"
+      if ps -p ${pid} > /dev/null; then
+        echo "Waiting for ${pid} to die..."
+      else
+        killed=true
+      fi
+      sleep 2
+    done &
+  done
+  rm -f "${PROXY_PID_FILE}"
+}
+
 check_dependencies() {
 
-  # make log dir
-  mkdir -p "${LOG_DIR}"
+  # check yq
+  if ! command -v yq &> /dev/null; then
+    echo "[ERROR] yq is not installed"
+    exit 1
+  fi
+
+  # check terraform
+  if ! command -v terraform &> /dev/null; then
+    echo "[ERROR] terraform is not installed"
+    exit 1
+  fi
+
+  # check gcloud
+  if ! command -v gcloud &> /dev/null; then
+    echo "[ERROR] Google Cloud SDK is not installed"
+    exit 1
+  fi
 
   if [ ! -f .terraform.lock.hcl ]; then
     terraform init
@@ -134,11 +163,8 @@ check_dependencies() {
     done
   fi
 
-  # check yq
-  if ! command -v yq &> /dev/null; then
-    echo "[ERROR] yq is not installed"
-    exit 1
-  fi
+  # make log dir
+  mkdir -p "${LOG_DIR}"
 }
 
 if check_dependencies; then
