@@ -3,7 +3,7 @@ KUBECONFIG=$(HOME)/.kube/config
 
 SHELL=/usr/bin/env bash
 
-.PHONY: all
+.PHONY: all terraform gcp helm clean
 
 all: terraform helm
 
