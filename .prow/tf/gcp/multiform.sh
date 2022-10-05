@@ -120,6 +120,7 @@ kubeconfig() {
 
     eval "${cred_cmd}"
     yq -i '(.workspaces[] | select(.name == "'"${workspace}"'")).kubectl.context = "gke_'"${project_id}"'_'"${region}"'_'"${cluster_name}"'"' "${RUNTIME_DATA_FILE}"
+    yq -i '(.workspaces[] | select(.name == "'"${workspace}"'")).kubectl.cluster_name = "'"${cluster_name}"'"' "${RUNTIME_DATA_FILE}"
   done
 }
 

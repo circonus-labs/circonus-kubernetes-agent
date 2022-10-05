@@ -58,7 +58,7 @@ multiplex_helmfile() {
     port_number=$(yq -r '(.workspaces[] | select(.name == "'"${workspace}"'")).proxy.port' "${RUNTIME_DATA_FILE}")
     ctx=$(yq -r '(.workspaces[] | select(.name == "'"${workspace}"'")).kubectl.context' "${RUNTIME_DATA_FILE}")
     kube_contexts=$(kubectl config view | yq -r '.contexts[].name')
-    cluster_name=$(yq -r '.workspaces[] | select(.name == "'"${workspace}"'") | .vars[] | select(.name == "kubernetes_version") | .value' "${RUNTIME_DATA_FILE}")
+    cluster_name=$(yq -r '(.workspaces[] | select(.name == "'"${workspace}"'")).kubectl.cluster_name' "${RUNTIME_DATA_FILE}")
 
     mkdir -p "${LOG_DIR}/${workspace}"
     if [[ "${kube_contexts}" == *"${ctx}"* ]]; then
