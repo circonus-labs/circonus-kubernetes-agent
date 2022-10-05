@@ -1,3 +1,4 @@
+// WARN: this is a template rendered from a template in $reporoot/templates/files/
 // Copyright © 2021 Circonus, Inc. <support@circonus.com>
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -10,6 +11,7 @@ import (
 	"os"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
+
 	"github.com/hashicorp/go-version"
 	"github.com/spf13/viper"
 )
@@ -161,6 +163,7 @@ func (c *Check) loadMetricFilters() [][]string {
 }
 
 func (c *Check) defaultFilters() [][]string {
+
 	var defaultMetricFiltersData []byte
 
 	v120, err := version.NewVersion(v120str)
