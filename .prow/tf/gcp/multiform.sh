@@ -160,6 +160,13 @@ teardown_proxy() {
 
 check_dependencies() {
 
+  if [ ! -f "${RUNTIME_DATA_FILE}" ]; then
+    echo "[ERROR] RUNTIME_DATA_FILE ${RUNTIME_DATA_FILE} not found"
+    exit 1
+  fi
+
+  # TODO validate RUNTIME_DATA_FILE
+
   # check yq
   if ! command -v yq &> /dev/null; then
     echo "[ERROR] yq is not installed"
@@ -175,11 +182,6 @@ check_dependencies() {
   # check gcloud
   if ! command -v gcloud &> /dev/null; then
     echo "[ERROR] Google Cloud SDK is not installed"
-    exit 1
-  fi
-
-  if [ ! -f "${RUNTIME_DATA_FILE}" ]; then
-    echo "[ERROR] RUNTIME_DATA_FILE ${RUNTIME_DATA_FILE} not found"
     exit 1
   fi
 

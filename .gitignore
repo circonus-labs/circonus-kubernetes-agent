@@ -31,7 +31,7 @@ test/
 changelog.yml
 
 .sops.yaml
-.prow/.runtime-*.yaml
+.prow/.runtime*
 .prow/tf/gcp/logs/
 .prow/tf/gcp/.terraform
 .prow/tf/gcp/.terraform.lock.hcl

@@ -72,8 +72,20 @@ multiplex_helmfile() {
 
 check_dependencies() {
 
+  if [ ! -f "${RUNTIME_DATA_FILE}" ]; then
+    echo "[ERROR] RUNTIME_DATA_FILE ${RUNTIME_DATA_FILE} not found"
+    exit 1
+  fi
+
+  # TODO validate RUNTIME_DATA_FILE
+
   # make log dir
   mkdir -p "${LOG_DIR}"
+
+  # remove old logs
+  for workspace in $(yq -r '.workspaces[].name' "${RUNTIME_DATA_FILE}"); do
+    rm -rf "${LOG_DIR:?}/${workspace}"
+  done
 
   # check yq
   if ! command -v yq &> /dev/null; then
@@ -87,10 +99,6 @@ check_dependencies() {
     exit 1
   fi
 
-  if [ ! -f "${RUNTIME_DATA_FILE}" ]; then
-    echo "[ERROR] RUNTIME_DATA_FILE ${RUNTIME_DATA_FILE} not found"
-    exit 1
-  fi
 }
 
 if check_dependencies; then
