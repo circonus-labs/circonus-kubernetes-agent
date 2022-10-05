@@ -30,7 +30,9 @@ test/
 
 changelog.yml
 
+.sops.yaml
 .prow/tf/gcp/logs/
 .prow/tf/gcp/.terraform
 .prow/tf/gcp/.terraform.lock.hcl
 .prow/tf/gcp/terraform.tfstate.d
+.prow/helm/logs/

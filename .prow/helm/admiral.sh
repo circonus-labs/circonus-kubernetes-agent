@@ -12,17 +12,62 @@
 
 cd "$(dirname "$0")" || exit 1
 
-LOG_DIR=./logs/
+NAME_PREFIX="${NAME_PREFIX:=manual}"
+LOG_DIR="./logs/"
+RUNTIME_DATA_FILE="../.runtime-${NAME_PREFIX}.yaml"
 
-CONTEXTS=$(kubectl config view | yq -r '.contexts[].name')
+wait_sync() {
 
-main() {
-
-  for ctx in ${CONTEXTS}; do
-    mkdir -p "${LOG_DIR}/${ctx}"
-    helmfile sync --kube-context "${ctx}" &> "${LOG_DIR}/${ctx}/helmfile_sync.log" &
+  finished="false"
+  while [ "${finished}" != "true" ]; do
+    for workspace in $(yq -r '.workspaces[].name' "${RUNTIME_DATA_FILE}"); do
+      if grep -q "All helmfiles synced" "${LOG_DIR}/${workspace}/helmfile_sync.log"; then
+        finished="true"
+        break
+      fi
+    done
+    if [ "${finished}" != "true" ]; then
+      sleep 10
+    fi
   done
+  echo "All applys complete"
+}
 
+# TODO make this functional
+watch_sync() {
+
+  last_workspace=$(yq '.workspaces[(.workspaces | length) - 1].name' "${RUNTIME_DATA_FILE}")
+	( tail -f -n0 "${LOG_DIR}/${last_workspace}/helmfile_sync.log" & ) | grep -q "All helmfiles synced"
+}
+
+sync() {
+
+  multiplex_helmfile sync
+  last_workspace=$(yq '.workspaces[(.workspaces | length) - 1].name' "${RUNTIME_DATA_FILE}")
+  echo "All helmfiles synced" >> "${LOG_DIR}/${last_workspace}/helmfile_sync.log"
+}
+
+destroy() {
+
+  multiplex_helmfile destroy
+}
+
+multiplex_helmfile() {
+
+  for workspace in $(yq -r '.workspaces[].name' "${RUNTIME_DATA_FILE}"); do
+    port_number=$(yq -r '(.workspaces[] | select(.name == "'"${workspace}"'")).proxy.port' "${RUNTIME_DATA_FILE}")
+    ctx=$(yq -r '(.workspaces[] | select(.name == "'"${workspace}"'")).kubectl.context' "${RUNTIME_DATA_FILE}")
+    kube_contexts=$(kubectl config view | yq -r '.contexts[].name')
+    cluster_name=$(yq -r '.workspaces[] | select(.name == "'"${workspace}"'") | .vars[] | select(.name == "kubernetes_version") | .value' "${RUNTIME_DATA_FILE}")
+
+    mkdir -p "${LOG_DIR}/${workspace}"
+    if [[ "${kube_contexts}" == *"${ctx}"* ]]; then
+      HTTPS_PROXY="localhost:${port_number}" CLUSTER_NAME="${cluster_name}" helmfile "${1}" --kube-context "${ctx}" &> "${LOG_DIR}/${workspace}/helmfile_${1}.log" &
+    else
+      echo "[ERROR] Couldn't find ${ctx} in kubectl config"
+      exit 1
+    fi
+  done
 }
 
 check_dependencies() {
@@ -42,8 +87,16 @@ check_dependencies() {
     exit 1
   fi
 
+  if [ ! -f "${RUNTIME_DATA_FILE}" ]; then
+    echo "[ERROR] RUNTIME_DATA_FILE ${RUNTIME_DATA_FILE} not found"
+    exit 1
+  fi
 }
 
 if check_dependencies; then
-  main
+  if [ $# -eq 0 ]; then
+    sync
+  else
+    "${@}"
+  fi
 fi

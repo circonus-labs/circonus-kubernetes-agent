@@ -4,5 +4,6 @@ repositories:
 
 releases:
   - name: metrics-server
+    installed: false
     namespace: kube-system
     chart: metrics-server/metrics-server
