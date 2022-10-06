@@ -1,0 +1,2 @@
+creation_rules:
+  - pgp: "put the output of `gpg --with-colons --fingerprint | awk -F: '$1 == "fpr" {print $10;}' | head -n1` here"

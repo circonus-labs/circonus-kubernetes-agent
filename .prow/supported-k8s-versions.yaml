@@ -1,0 +1,31 @@
+workspaces:
+  - name: "121"
+    proxy:
+      port: 8121
+    vars:
+      - name: kubernetes_version
+        value: "1.21"
+  - name: "122"
+    proxy:
+      port: 8122
+    vars:
+      - name: kubernetes_version
+        value: "1.22"
+  - name: "123"
+    proxy:
+      port: 8123
+    vars:
+      - name: kubernetes_version
+        value: "1.23"
+  - name: "124"
+    proxy:
+      port: 8124
+    vars:
+      - name: kubernetes_version
+        value: "1.24"
+  - name: "125"
+    proxy:
+      port: 8125
+    vars:
+      - name: kubernetes_version
+        value: "1.25"
