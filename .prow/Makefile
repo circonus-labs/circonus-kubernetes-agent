@@ -25,39 +25,38 @@ all: terraform helm
 terraform: gcp
 
 gcp: runtime_data
-	NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) apply
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) apply
 # ifeq ($(NAME_PREFIX),manual)
 # 	NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) watch_apply
 # else
-	NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) wait_apply
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) wait_apply
 # endif
-	if [ -f "$(KUBECONFIG)" ]; then mv $(KUBECONFIG) $(KUBECONFIG).bak; fi
-	NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) kubeconfig
-	NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) proxy
+	@if [ -f "$(KUBECONFIG)" ] && ! [ -f "$(KUBECONFIG).bak" ]; then mv $(KUBECONFIG) $(KUBECONFIG).bak; fi
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) kubeconfig
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) proxy
 
 runtime_data:
 ifeq ($(NAME_PREFIX),manual)
-	if [ ! -f "$(RUNTIME_DATA_FILE)" ]; then cp "$(DATA_FILE)" "$(RUNTIME_DATA_FILE)"; fi
+	@if [ ! -f "$(RUNTIME_DATA_FILE)" ]; then cp "$(DATA_FILE)" "$(RUNTIME_DATA_FILE)"; fi
 else
-	cp "$(DATA_FILE)" "$(RUNTIME_DATA_FILE)"
+	@cp "$(DATA_FILE)" "$(RUNTIME_DATA_FILE)"
 endif
 
 helm:
-	NAME_PREFIX=$(NAME_PREFIX) $(ADMIRAL) sync
+	@NAME_PREFIX=$(NAME_PREFIX) $(ADMIRAL) sync
 # ifeq ($(NAME_PREFIX),manual)
 #   NAME_PREFIX=$(NAME_PREFIX) $(ADMIRAL) watch_sync
 # else
-	NAME_PREFIX=$(NAME_PREFIX) $(ADMIRAL) wait_sync
+	@NAME_PREFIX=$(NAME_PREFIX) $(ADMIRAL) wait_sync
 # endif
 
 clean:
-	if [ -f "$(KUBECONFIG).bak" ]; then mv "$(KUBECONFIG).bak" "$(KUBECONFIG)"; fi
-	$(MULTIFORM) teardown_proxy
-	$(MULTIFORM) destroy
-ifeq ($(NAME_PREFIX),manual)
-	$(MULTIFORM) wait_destroy
-#	$(MULTIFORM) watch_destroy
-else
-	$(MULTIFORM) wait_destroy
-	rm -f "$(RUNTIME_DATA_FILE)"
-endif
+	@if [ -f "$(KUBECONFIG).bak" ]; then mv "$(KUBECONFIG).bak" "$(KUBECONFIG)"; fi
+	@$(MULTIFORM) teardown_proxy
+	@$(MULTIFORM) destroy
+# ifeq ($(NAME_PREFIX),manual)
+# $(MULTIFORM) watch_destroy
+# else
+	@$(MULTIFORM) wait_destroy
+#	rm -f "$(RUNTIME_DATA_FILE)"
+# endif
