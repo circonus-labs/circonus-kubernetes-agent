@@ -1,0 +1,9 @@
+## WARN: this is a template rendered from a file in $reporoot/templates/files/
+circonus_api_key: ""
+kubernetes_name: ""
+contact_email: ""
+broker_cid: "/broker/35"
+dns:
+  port: "10055"
+metric_filters: |
+{{ .data.metric_filters | indent 2 }}

@@ -1,4 +1,5 @@
-// WARN: this is a template rendered from a template in $reporoot/templates/files/
+// WARN: this is a template rendered from a file in $reporoot/templates/files/
+
 // Copyright © 2021 Circonus, Inc. <support@circonus.com>
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
