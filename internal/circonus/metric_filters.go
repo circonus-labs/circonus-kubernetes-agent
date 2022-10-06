@@ -11,7 +11,6 @@ import (
 	"os"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
-
 	"github.com/hashicorp/go-version"
 	"github.com/spf13/viper"
 )
@@ -163,7 +162,6 @@ func (c *Check) loadMetricFilters() [][]string {
 }
 
 func (c *Check) defaultFilters() [][]string {
-
 	var defaultMetricFiltersData []byte
 
 	v120, err := version.NewVersion(v120str)

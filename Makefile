@@ -3,6 +3,7 @@ BRANCH_PRIMARY=$(shell git symbolic-ref refs/remotes/origin/HEAD | sed 's;^refs/
 BUILD_FLAGS=-mod=vendor
 GCI=$(shell which gci)
 GIT=$(shell which git)
+GITCOMM=$(shell which gitcomm)
 GO=$(shell which go)
 GOFUMPT=$(shell which gofumpt)
 GOLANGCI_LINT=$(shell which golangci-lint)
