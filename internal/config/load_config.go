@@ -21,7 +21,6 @@ import (
 // `target` is an interface in to which the data will be loaded. Checks for
 // '<base>.json', '<base>.toml', and '<base>.yaml'.
 func LoadConfigFile(base string, target interface{}) error {
-
 	if base == "" {
 		return errors.Errorf("invalid config file (empty)")
 	}

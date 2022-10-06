@@ -1119,7 +1119,6 @@ func createCustomRules(client *apiclient.API, logger zerolog.Logger, clusterName
 }
 
 func makeRule(client *apiclient.API, logger zerolog.Logger, rule apiclient.RuleSet, create bool) error {
-
 	if create {
 		r, err := client.CreateRuleSet(&rule)
 		if err != nil {

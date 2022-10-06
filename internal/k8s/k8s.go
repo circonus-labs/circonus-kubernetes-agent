@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
-
 	apimachineryversion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"

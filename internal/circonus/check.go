@@ -26,7 +26,6 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/defaults"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
-
 	apiclient "github.com/circonus-labs/go-apiclient"
 	apiclicfg "github.com/circonus-labs/go-apiclient/config"
 	"github.com/pkg/errors"
@@ -361,7 +360,6 @@ func (c *Check) updateMetricFilters(client *apiclient.API, cfg *config.Circonus,
 
 // createCheckBundle creates a new check bundle
 func (c *Check) createCheckBundle(client *apiclient.API, cfg *config.Circonus) (*apiclient.CheckBundle, error) {
-
 	secret, err := makeSecret()
 	if err != nil {
 		secret = "myS3cr3t"

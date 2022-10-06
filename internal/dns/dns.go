@@ -221,7 +221,6 @@ func (dns *DNS) getMetricURLs(ctx context.Context) (map[string]string, error) {
 }
 
 func (dns *DNS) getMetrics(ctx context.Context, podName, metricURL string) error {
-
 	start := time.Now()
 	req, err := http.NewRequestWithContext(ctx, "GET", metricURL, nil)
 	if err != nil {

@@ -614,8 +614,8 @@ func (dc *DC) getMetrics(ctx context.Context, collector Collector, target metric
 
 // getSettings parses the various settings and returns the user-controlled settings (from value, annotation, or label)
 func (dc *DC) getSettings(itemType, itemName string, collector Collector,
-	labels map[string]string, annotations map[string]string) (bool, string, string, string, bool, error) {
-
+	labels map[string]string, annotations map[string]string,
+) (bool, string, string, string, bool, error) {
 	var err error
 	collect := false
 	port := ""
