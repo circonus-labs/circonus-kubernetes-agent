@@ -149,46 +149,105 @@ func (dns *DNS) getMetricURLs(ctx context.Context) (map[string]string, error) {
 		return nil, err
 	}
 
+	/*
+		1. parse scrape options from config
+		2. check known services in order [ kube-dns, coredns ]
+		3. if known service exists, check if it has a scrape annotation (and use it if it does)
+		4. if known service doesn't have a scrape annotation, check if config options have scrape settings
+		5. if config options have scrape settings, check if known service has port from scrape settings
+		6. if known service does not have port from scrape settings, check if any other services do
+	*/
+
+	// parse scrape options from config
+	port := viper.GetInt(keys.K8SDNSMetricsPort)
+	scrape := viper.GetBool(keys.K8SEnableDNSMetrics)
+
+	// check for kube-dns first
 	svc, err := clientset.CoreV1().Services("kube-system").Get(ctx, "kube-dns", metav1.GetOptions{})
-	dns.service = "kube-dns"
-	if err != nil {
+
+	// if kube-dns found
+	if err == nil {
+
+		dns.service = "kube-dns"
+
+		for name, value := range svc.Annotations {
+			switch name {
+			case "prometheus.io/port":
+				p, err := strconv.Atoi(value)
+				if err != nil {
+					return nil, errors.Wrap(err, "parsing service port annotation")
+				}
+				port = p
+			case "prometheus.io/scrape":
+				s, err := strconv.ParseBool(value)
+				if err != nil {
+					return nil, errors.Wrap(err, "parsing service scrape annotation")
+				}
+				scrape = s
+			}
+		}
+
+		// if kube-dns not found
+	} else {
+
 		dns.log.Info().Str("get kube-dns service failed", err.Error()).Msg("service not found, checking coredns")
-		dns.service = "coredns"
+		// maybe we're using coredns?
 		svc, err = clientset.CoreV1().Services("kube-system").Get(ctx, "coredns", metav1.GetOptions{})
-		if err != nil {
-			dns.service = ""
-			dns.log.Warn().Str("get all dns services failed", err.Error()).Msg("service not found, nothing to do")
-			return nil, err
-		}
-	}
 
-	scrape := false
-	port := 0
+		// if we're not using coredns
+		if err == nil {
 
-	for name, value := range svc.Annotations {
-		switch name {
-		case "prometheus.io/port":
-			p, err := strconv.Atoi(value)
-			if err != nil {
-				return nil, errors.Wrap(err, "parsing service port annotation")
+			dns.service = "coredns"
+
+			for name, value := range svc.Annotations {
+				switch name {
+				case "prometheus.io/port":
+					p, err := strconv.Atoi(value)
+					if err != nil {
+						return nil, errors.Wrap(err, "parsing service port annotation")
+					}
+					port = p
+				case "prometheus.io/scrape":
+					s, err := strconv.ParseBool(value)
+					if err != nil {
+						return nil, errors.Wrap(err, "parsing service scrape annotation")
+					}
+					scrape = s
+				}
 			}
-			port = p
-		case "prometheus.io/scrape":
-			s, err := strconv.ParseBool(value)
-			if err != nil {
-				return nil, errors.Wrap(err, "parsing service scrape annotation")
-			}
-			scrape = s
-		}
-	}
 
-	if port == 0 {
-		dns.log.Warn().Int("port", port).Msg("service annotations not found, checking supplied service ports")
-		port = viper.GetInt(keys.K8SDNSMetricsPort)
+		} else if port != 0 && scrape {
+			// get all services
+			svcsl, err := clientset.CoreV1().Services("kube-system").List(ctx, metav1.ListOptions{})
+			if err != nil {
+				dns.service = ""
+				dns.log.Warn().Str("get all kube-system services failed", err.Error()).Msg("service not found, nothing to do")
+				return nil, err
+			}
+
+			// see if we have any services that match the port from the scrape settings
+			for i, s := range svcsl.Items {
+				if val, ok := s.Annotations["prometheus.io/port"]; ok {
+					vali, err := strconv.Atoi(val)
+					if err != nil {
+						return nil, errors.Wrap(err, "parsing service port annotation")
+					}
+					if vali == port {
+						dns.service = "kube-dns"
+						svc = &svcsl.Items[i]
+						break
+					}
+				}
+			}
+		}
 	}
 
 	if !scrape {
-		return nil, errors.New("service not configured for scraping")
+		return nil, errors.New("dns service not configured for scraping")
+	}
+
+	if port == 0 {
+		return nil, errors.New("dns service scrape port not configured")
 	}
 
 	if len(svc.Spec.Selector) == 0 {

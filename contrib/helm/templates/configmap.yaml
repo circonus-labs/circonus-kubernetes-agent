@@ -20,7 +20,7 @@ data:
 
 
     metric-filters.json: |
-      {{ .Values.metric_filters | indent 6 }}
+{{ .Values.metric_filters | indent 6 }}
 
 
     ##
