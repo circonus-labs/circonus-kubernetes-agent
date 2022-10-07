@@ -1,0 +1,4 @@
+releases:
+  - name: kube-dns-metrics
+    namespace: kube-system
+    chart: ../charts/kube-dns-metrics
