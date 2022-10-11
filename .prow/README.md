@@ -24,13 +24,18 @@ A deployment process as easy as `seq 1 3`
 
 0. Ensure the host system has the required dependencies installed
 1. `cd` to this directory.
-2. run `make`
+2. run `make` **note: the tf can take up to 20 minutes to deploy**
 3. ???
 
 ### Manual teardown
 
 1. run `make clean`
 2. ???
+
+### Troubleshooting manual deploy/teardown
+
+Just run the step again.
+They should all be idempotent.
 
 ## Automatic
 
