@@ -18,22 +18,9 @@ endif
 
 RUNTIME_DATA_FILE=./.runtime-$(NAME_PREFIX).yaml
 
-.PHONY: all terraform gcp runtime_data helm clean
+.PHONY: all terraform runtime_data gcp kubeconfig proxy helm clean
 
-all: terraform helm
-
-terraform: gcp
-
-gcp: runtime_data
-	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) apply
-# ifeq ($(NAME_PREFIX),manual)
-# 	NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) watch_apply
-# else
-	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) wait_apply
-# endif
-	@if [ -f "$(KUBECONFIG)" ] && ! [ -f "$(KUBECONFIG).bak" ]; then mv $(KUBECONFIG) $(KUBECONFIG).bak; fi
-	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) kubeconfig
-	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) proxy
+all: runtime_data terraform kubeconfig proxy helm
 
 runtime_data:
 ifeq ($(NAME_PREFIX),manual)
@@ -41,6 +28,23 @@ ifeq ($(NAME_PREFIX),manual)
 else
 	@cp "$(DATA_FILE)" "$(RUNTIME_DATA_FILE)"
 endif
+
+terraform: gcp
+
+gcp: 
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) apply
+# ifeq ($(NAME_PREFIX),manual)
+# 	NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) watch_apply
+# else
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) wait_apply
+# endif
+
+kubeconfig:
+	@if [ -f "$(KUBECONFIG)" ] && ! [ -f "$(KUBECONFIG).bak" ]; then mv $(KUBECONFIG) $(KUBECONFIG).bak; fi
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) kubeconfig
+
+proxy:
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) proxy
 
 helm:
 	@NAME_PREFIX=$(NAME_PREFIX) $(ADMIRAL) sync

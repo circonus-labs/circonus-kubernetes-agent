@@ -98,7 +98,7 @@ resource "google_container_node_pool" "product_cluster_linux_node_pool" {
   version        = google_container_cluster.product_cluster.min_master_version
 
   autoscaling {
-    max_node_count = 5
+    max_node_count = 2
     min_node_count = 1
   }
   max_pods_per_node = 100
