@@ -49,17 +49,18 @@ type Collectors struct {
 }
 
 type Collector struct {
-	MetricPort MetricPort `yaml:"metric_port"`
-	MetricPath MetricPath `yaml:"metric_path"`
-	Schema     Schema     `yaml:"schema"`
-	Rollup     Rollup     `yaml:"rollup"`
-	Control    Control    `yaml:"control"`
-	Selectors  Selectors  `yaml:"selectors"`
-	Type       string     `yaml:"type"`
-	Name       string     `yaml:"name"`
-	Tags       string     `yaml:"tags"`
-	LabelTags  string     `yaml:"label_tags"`
-	Disable    bool       `yaml:"disable"`
+	MetricPort   MetricPort `yaml:"metric_port"`
+	MetricPath   MetricPath `yaml:"metric_path"`
+	Schema       Schema     `yaml:"schema"`
+	Rollup       Rollup     `yaml:"rollup"`
+	Control      Control    `yaml:"control"`
+	Selectors    Selectors  `yaml:"selectors"`
+	Type         string     `yaml:"type"`
+	Name         string     `yaml:"name"`
+	Tags         string     `yaml:"tags"`
+	LabelTags    string     `yaml:"label_tags"`
+	ResourceTags string     `yaml:"resource_tags"`
+	Disable      bool       `yaml:"disable"`
 }
 
 type Selectors struct {
