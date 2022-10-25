@@ -15,10 +15,6 @@ TRUFFLEHOG=$(shell which trufflehog)
 
 SHELL=/usr/bin/env bash
 
-ifndef DOCKER_REGISTRY
-	override DOCKER_REGISTRY = registry.k8s.dev.circonus.com
-endif
-
 .PHONY: gofumpt gci go_mod golangci_lint go_test trufflehog render build_deps changelog build commit push release is_primary tag 
 
 gofumpt:

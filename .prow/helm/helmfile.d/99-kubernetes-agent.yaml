@@ -5,6 +5,6 @@ releases:
   values:
   - ../config/{{`{{ .Release.Name }}`}}/values.yaml
   - kubernetes_name: {{ requiredEnv "CLUSTER_NAME" }}
-  - image: {{ requiredEnv "REGISTRY_NAME" }}/circonus-kubernetes-agent:latest
+  - image: {{ requiredEnv "FULL_IMAGE_NAME" }}
   secrets:
   - ../config/{{`{{ .Release.Name }}`}}/secrets.yaml

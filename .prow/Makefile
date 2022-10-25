@@ -11,10 +11,17 @@ ifdef IS_CI
 NAME_PREFIX=$(shell git symbolic-ref --short HEAD)
 endif
 
+#
 ifeq ($(NAME_PREFIX),)
 # Defaults NAME_PREFIX to "manual" if IS_CI is unset or set to ""
 NAME_PREFIX=manual
 endif
+
+#  
+ifndef FULL_IMAGE_NAME
+	override FULL_IMAGE_NAME = registry.k8s.dev.circonus.com/circonus-kubernetes-agent:latest
+endif
+
 
 RUNTIME_DATA_FILE=./.runtime-$(NAME_PREFIX).yaml
 
@@ -50,7 +57,7 @@ proxy:
 	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) proxy
 
 helm:
-	@NAME_PREFIX=$(NAME_PREFIX) $(ADMIRAL) sync
+	@NAME_PREFIX=$(NAME_PREFIX) FULL_IMAGE_NAME=$(FULL_IMAGE_NAME) $(ADMIRAL) sync
 # ifeq ($(NAME_PREFIX),manual)
 #   NAME_PREFIX=$(NAME_PREFIX) $(ADMIRAL) watch_sync
 # else

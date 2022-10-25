@@ -132,7 +132,7 @@ registry() {
 
     # update RUNTIME_DATA_FILE with registry name
     yq -i '(.workspaces[] | select(.name == "'"${workspace}"'")).registry_name = "'"${region}"'-docker.pkg.dev/'"${project_id}"'/'"${registry_name}"'"' "${RUNTIME_DATA_FILE}"
-  (cd ../../../ && make build REGISTRY_NAME="${region}-docker.pkg.dev/${project_id}/${registry_name}")
+  (cd ../../../ && make build FULL_IMAGE_NAME="${region}-docker.pkg.dev/${project_id}/${registry_name}/circonus-kubernetes-agent:latest")
   done
   echo "[INFO] Registry images pushed successfully"
 }

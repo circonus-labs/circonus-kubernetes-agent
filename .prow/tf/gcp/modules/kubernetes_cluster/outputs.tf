@@ -3,7 +3,3 @@ output "name" {
   description = "The Kubernetes cluster name."
 }
 
-output "service_account" {
-  value       = 
-  description = "The service account of the cluster."
-}

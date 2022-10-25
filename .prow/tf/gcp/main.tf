@@ -10,7 +10,7 @@ locals {
   master_subnet_name = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-master-subnet"
   pods_range_name    = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-ip-range-pods"
   svc_range_name     = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}-ip-range-svc"
-  registry_name      = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business.unit}"
+  registry_name      = "${var.name_prefix}-${local.safe_kubernetes_version}-${local.business_unit}"
 
   subnet_cidr                    = "10.10.0.0/16"
   cluster_master_ip_cidr_range   = "10.100.100.0/28"
