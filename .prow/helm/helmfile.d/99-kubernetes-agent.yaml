@@ -2,9 +2,9 @@ releases:
 - name: circonus-kubernetes-agent
   namespace: circonus-kubernetes-agent
   chart: ../../../contrib/helm/
-  recreatePods: true
   values:
   - ../config/{{`{{ .Release.Name }}`}}/values.yaml
   - kubernetes_name: {{ requiredEnv "CLUSTER_NAME" }}
+  - image: {{ requiredEnv "REGISTRY_NAME" }}/circonus-kubernetes-agent:latest
   secrets:
   - ../config/{{`{{ .Release.Name }}`}}/secrets.yaml

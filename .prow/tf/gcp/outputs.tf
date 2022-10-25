@@ -33,6 +33,11 @@ output "bastion_zone" {
   value       = module.bastion.zone
 }
 
+output "registry_name" {
+  description = "the k8s agent registry"
+  value       = local.registry_name
+}
+
 output "get_credentials" {
   description = "Gcloud get-credentials command"
   value       = format("gcloud container clusters get-credentials --project %s --region %s --internal-ip %s", var.project_id, var.region, local.cluster_name)

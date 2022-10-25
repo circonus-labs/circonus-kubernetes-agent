@@ -18,9 +18,9 @@ endif
 
 RUNTIME_DATA_FILE=./.runtime-$(NAME_PREFIX).yaml
 
-.PHONY: all terraform runtime_data gcp kubeconfig proxy helm clean
+.PHONY: all terraform runtime_data gcp kubeconfig registry proxy helm clean
 
-all: runtime_data terraform kubeconfig proxy helm
+all: runtime_data terraform kubeconfig registry proxy helm
 
 runtime_data:
 ifeq ($(NAME_PREFIX),manual)
@@ -42,6 +42,9 @@ gcp:
 kubeconfig:
 	@if [ -f "$(KUBECONFIG)" ] && ! [ -f "$(KUBECONFIG).bak" ]; then mv $(KUBECONFIG) $(KUBECONFIG).bak; fi
 	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) kubeconfig
+
+registry:
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) registry
 
 proxy:
 	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) proxy

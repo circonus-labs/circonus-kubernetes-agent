@@ -129,6 +129,7 @@ multiplex_helmfile() {
     ctx=$(yq -r '(.workspaces[] | select(.name == "'"${workspace}"'")).kubectl.context' "${RUNTIME_DATA_FILE}")
     kube_contexts=$(kubectl config view | yq -r '.contexts[].name')
     cluster_name=$(yq -r '(.workspaces[] | select(.name == "'"${workspace}"'")).kubectl.cluster_name' "${RUNTIME_DATA_FILE}")
+    registry_name=$(yq -r '(.workspaces[] | select(.name == "'"${workspace}"'")).registry_name' "${RUNTIME_DATA_FILE}")
 
     # ensure workspace log dir exists
     mkdir -p "${LOG_DIR}/${workspace}"
@@ -136,7 +137,7 @@ multiplex_helmfile() {
     if [[ "${kube_contexts}" == *"${ctx}"* ]]; then
       # background a task that starts helmfile and notifies of completion in the workspace command log
       # shellcheck disable=SC2068
-      ( (HTTPS_PROXY="localhost:${port_number}" CLUSTER_NAME="${cluster_name}" helmfile ${@} --kube-context "${ctx}" &> "${LOG_DIR}/${workspace}/helmfile_${command}.log") \
+      ( (HTTPS_PROXY="localhost:${port_number}" CLUSTER_NAME="${cluster_name}" REGISTRY_NAME="${registry_name}" helmfile ${@} --kube-context "${ctx}" &> "${LOG_DIR}/${workspace}/helmfile_${command}.log") \
         && (echo "Helmfile ${command} complete!" > "${LOG_DIR}/${workspace}/helmfile_${command}.log") ) &
     else
       echo "[ERROR] Couldn't find ${ctx} in kubectl config" | tee "${LOG_DIR}/${workspace}/helmfile_${command}.log"
