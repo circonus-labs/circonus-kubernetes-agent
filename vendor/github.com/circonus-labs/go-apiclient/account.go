@@ -40,7 +40,8 @@ type AccountUser struct {
 
 // Account defines an account. See https://login.circonus.com/resources/api/calls/account for more information.
 type Account struct {
-	CID                  string          `json:"_cid,omitempty"`                   // string
+	CID                  string          `json:"_cid,omitempty"` // string
+	AccountUUID          string          `json:"_account_uuid,omitempty"`
 	Country              string          `json:"country_code,omitempty"`           // string
 	Name                 string          `json:"name,omitempty"`                   // string
 	OwnerCID             string          `json:"_owner,omitempty"`                 // string
