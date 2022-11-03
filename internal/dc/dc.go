@@ -49,18 +49,17 @@ type Collectors struct {
 }
 
 type Collector struct {
-	MetricPort   MetricPort `yaml:"metric_port"`
-	MetricPath   MetricPath `yaml:"metric_path"`
-	Schema       Schema     `yaml:"schema"`
-	Rollup       Rollup     `yaml:"rollup"`
-	Control      Control    `yaml:"control"`
-	Selectors    Selectors  `yaml:"selectors"`
-	Type         string     `yaml:"type"`
-	Name         string     `yaml:"name"`
-	Tags         string     `yaml:"tags"`
-	LabelTags    string     `yaml:"label_tags"`
-	ResourceTags string     `yaml:"resource_tags"`
-	Disable      bool       `yaml:"disable"`
+	MetricPort MetricPort `yaml:"metric_port"`
+	MetricPath MetricPath `yaml:"metric_path"`
+	Schema     Schema     `yaml:"schema"`
+	Rollup     Rollup     `yaml:"rollup"`
+	Control    Control    `yaml:"control"`
+	Selectors  Selectors  `yaml:"selectors"`
+	Type       string     `yaml:"type"`
+	Name       string     `yaml:"name"`
+	Tags       string     `yaml:"tags"`
+	LabelTags  string     `yaml:"label_tags"`
+	Disable    bool       `yaml:"disable"`
 }
 
 type Selectors struct {
@@ -430,6 +429,30 @@ func (dc *DC) collectPods(ctx context.Context, collector Collector) {
 		}
 		tags := generateTags(collector.Tags, collector.LabelTags, item.Labels)
 		tags = append(tags, "collector_target:"+item.Name)
+		if len(item.OwnerReferences) > 0 {
+			var ownerName, ownerKind string
+			switch item.OwnerReferences[0].Kind {
+			case "ReplicaSet":
+				replica, repErr := clientset.AppsV1().ReplicaSets(item.Namespace).Get(ctx, item.OwnerReferences[0].Name, metav1.GetOptions{})
+				if repErr != nil {
+					logger.Warn().Str("pod", item.Name).Msg("unable to get replicaset for pod")
+				} else if len(replica.OwnerReferences) > 1 {
+					ownerName = replica.OwnerReferences[0].Name
+					ownerKind = "Deployment"
+				}
+			case "DaemonSet", "StatefulSet":
+				ownerName = item.OwnerReferences[0].Name
+				ownerKind = item.OwnerReferences[0].Kind
+			default:
+				logger.Warn().Str("pod", item.Name).Str("kind", item.OwnerReferences[0].Kind).Msg("unknown pod owner kind")
+			}
+			if ownerKind != "" && ownerName != "" {
+				tags = append(tags, strings.ToLower(ownerKind)+":"+ownerName)
+			}
+		}
+		if item.Spec.NodeName != "" {
+			tags = append(tags, "node_name:"+item.Spec.NodeName)
+		}
 		if item.Namespace != "" {
 			tags = append(tags, "namespace:"+item.Namespace)
 		}
@@ -808,7 +831,13 @@ func generateTags(tags string, labels string, itemLabels map[string]string) []st
 			tagList = append(tagList, strings.TrimSpace(t))
 		}
 	}
-	if labels != "" {
+
+	if labels == "*" {
+		// make all the labels tags
+		for ln, lv := range itemLabels {
+			tagList = append(tagList, ln+":"+lv)
+		}
+	} else if labels != "" {
 		ll := strings.Split(labels, ",")
 		for ln, lv := range itemLabels {
 			for _, l := range ll {
@@ -819,6 +848,7 @@ func generateTags(tags string, labels string, itemLabels map[string]string) []st
 			}
 		}
 	}
+
 	return tagList
 }
 
