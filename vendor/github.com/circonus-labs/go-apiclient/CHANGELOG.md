@@ -1,3 +1,7 @@
+# v0.7.19
+
+* feat: add support for `_account_uuid` attribute to account
+
 # v0.7.18
 
 * feat: clean tags - remove blanks and duplicates, lowercase, and sort
