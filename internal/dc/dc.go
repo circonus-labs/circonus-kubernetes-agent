@@ -436,7 +436,7 @@ func (dc *DC) collectPods(ctx context.Context, collector Collector) {
 				replica, repErr := clientset.AppsV1().ReplicaSets(item.Namespace).Get(ctx, item.OwnerReferences[0].Name, metav1.GetOptions{})
 				if repErr != nil {
 					logger.Warn().Str("pod", item.Name).Msg("unable to get replicaset for pod")
-				} else if len(replica.OwnerReferences) > 1 {
+				} else if len(replica.OwnerReferences) > 0 {
 					ownerName = replica.OwnerReferences[0].Name
 					ownerKind = "Deployment"
 				}
