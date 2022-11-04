@@ -232,7 +232,7 @@ collectors:
 | rollup.label | no | label to use ||
 | rollup.value | no | static value (`1`, `t`, `T`, `TRUE`, `true`, `True`, `0`, `f`, `F`, `FALSE`, `false`, `False`) | `"false"` |
 | tags | no | comma separated list of static tags to add e.g. `"app:myapp,foo:bar"` ||
-| label_tags | no | comma separated list of labels to use as tags e.g. `"environment,location"` ||
+| label_tags | no | comma separated list of labels to use as tags e.g. `"environment,location"` or `*` to make all labels tags ||
 
 ### Examples
 

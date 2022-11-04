@@ -1,3 +1,9 @@
+# v0.14.0
+
+* feat: add node_name tag for pods
+* feat: add owner tag for pods
+* feat: add support for label_tags=* to turn all labels into tags for the given object
+
 # v0.13.0
 2022-08-08
 
