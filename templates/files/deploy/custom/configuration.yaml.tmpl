@@ -1,3 +1,4 @@
+## WARN: this is a template rendered from a file in $reporoot/templates/files/
 ##
 ## NOTE: Change settings here, in the corresonding
 ##       Secret or ConfigMap entry. Ensure settings
@@ -5,237 +6,236 @@
 ##       in order for it to take effect.
 ##
 ---
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      # versioned, cadence independent of app version
-      name: cka-secrets-v1
-      labels:
-          app.kubernetes.io/name: circonus-kubernetes-agent
-    stringData:
-      ## Circonus API Key is REQUIRED
-      circonus-api-key: ""
-      ## For in-cluster operation, the service account token
-      ## will be used. Only set this to use a DIFFERENT token 
-      ## than the kubernetes-bearer-token-file setting
-      ## below. The file will always take precedence, ensure 
-      ## kubernetes-bearer-token-file is set to "" when using 
-      ## this setting.
-      #kubernetes-bearer-token: ""
-
+apiVersion: v1
+kind: Secret
+metadata:
+  # versioned, cadence independent of app version
+  name: cka-secrets-v1
+  labels:
+    app.kubernetes.io/name: circonus-kubernetes-agent
+stringData:
+  ## Circonus API Key is REQUIRED
+  circonus-api-key: ""
+  ## For in-cluster operation, the service account token
+  ## will be used. Only set this to use a DIFFERENT token 
+  ## than the kubernetes-bearer-token-file setting
+  ## below. The file will always take precedence, ensure 
+  ## kubernetes-bearer-token-file is set to "" when using 
+  ## this setting.
+  #kubernetes-bearer-token: ""
 ---
-  apiVersion: v1
-  kind: ConfigMap
-  metadata:
-      # versioned, cadence independent of app version
-      name: cka-config-v1
-      labels:
-          app.kubernetes.io/name: circonus-kubernetes-agent
-  data:
-      #circonus-api-key-file: ""
-      #circonus-api-app: "circonus-kubernetes-agent"
-      #circonus-api-url: "https://api.circonus.com/v2"
-      #circonus-api-ca-file: ""
-      #circonus-api-debug: "false"
-      ## broker to use when creating a new httptrap check
-      #circonus-check-broker-cid: "/broker/35"
-      #circonus-check-broker-ca-file: ""
-      ## create a check, if one cannot be found using the target
-      #circonus-check-create: "true"
-      ## or, turn create off, and specify a check which has already been created
-      #circonus-check-bundle-cid: ""
-      ## comman delimited list of k:v tags to add to the check
-      #circonus-check-tags: ""
-      ## Use a static target to ensure that the agent can find the check
-      ## the next time the pod starts. Otherwise, the pod's hostname will
-      ## be used and a new check would be created each time the pod is
-      ## created when create is enabled. The kubernetes-name will be
-      ## used if check-target is not set.
-      circonus-check-target: ""
-      ## set a custom display title for the check when it is created
-      #circonus-check-title: ""
-      ## comma delimited list of k:v streamtags to add to every metric
-      #circonus-default-streamtags: ""
-      ##
-      ## set a name identifying the cluster, to be used in the check 
-      ## title when it is created
-      kubernetes-name: ""
-      #kubernetes-api-url: "https://kubernetes.default.svc"
-      #kubernetes-api-ca-file: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-      #kubernetes-bearer-token-file: "/var/run/secrets/kubernetes.io/serviceaccount/token"
-      ## collect event metrics - default is enabled for dashboard
-      kubernetes-enable-events: "true"
-      ## collect metrics from kube-state-metrics if running - default is enabled for dashboard
-      kubernetes-enable-kube-state-metrics: "true"
-      ## kube-state-metrics fieldSelector query, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
-      kubernetes-ksm-field-selector-query: "metadata.name=kube-state-metrics"
-      ## kube-state-metrics metrics port, no default, service endpoint ports will be used if not set
-      kubernetes-ksm-metrics-port: ""
-      ## kube-state-metrics metrics port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
-      ## if using helm or some other tool, look at the configuration to see if the port is named differently in the service endpoint...
-      kubernetes-ksm-metrics-port-name: "http-metrics"
-      ## collect metrics from api-server - default is enabled for dashboard
-      kubernetes-enable-api-server: "true"
-      ## collect node metrics - default is enabled for dashboard
-      kubernetes-enable-nodes: "true"
-      ## expression to use for node labelSelector - blank = all nodes
-      kubernetes-node-selector: ""
-      ## collect kublet /stats/summary performance metrics (e.g. cpu, memory, fs) - default is enabled for dashboard (k8s <v1.18 only)
-      kubernetes-enable-node-stats: "true"
-      ## collect kublet /metrics observation metrics - default is enabled for dashboard
-      kubernetes-enable-node-metrics: "true"
-      ## enable kubelet cadvisor metrics
-      kubernetes-enable-cadvisor-metrics: "false"
-      ## enable kubelet node resource metrics (k8s v1.18+)
-      kubernetes-enable-node-resource-metrics: "true"
-      ## enable kubelet node probe metrics (k8s v1.18+)
-      kubernetes-enable-node-probe-metrics: "false"
-      ## enable kube-dns/coredns metrics - default is enabled for dashboard
-      kubernetes-enable-dns-metrics: "true"
-      ## port to request `/metrics` from if scrape/port annotations not defined on kube-dns/coredns service (e.g. GKE)
-      kubernetes-dns-metrics-port: "10054"
-      ## include pod metrics, requires nodes to be enabled - - default is enabled for dashboard
-      kubernetes-include-pod-metrics: "true"
-      ## include only pods with this label key, blank = all pods
-      kubernetes-pod-label-key: ""
-      ## include only pods with label key and value, blank = all pods with label key
-      kubernetes-pod-label-val: ""
-      ## include container metrics, requires nodes+pods to be enabled
-      kubernetes-include-container-metrics: "false"
-      ## collection interval, how often to collect metrics (note if a previous 
-      ## collection is still in progress another will NOT be started)
-      #kubernetes-collection-interval: "1m"
-      ## api request timelimit
-      #kubernetes-api-timelimit: "10s"
-      ##
-      ## dynamic collectors (see readme in github repository)
-      ##
-      dynamic-collectors.yaml: |
-        collectors:
-          - name: "" 
-            disable: true
-            type: "" 
-            schema: ""
-            selectors:
-              label: "" 
-              field: ""
-            control:
-              annotation: ""
-              label: ""
-              value: ""
-            metric_port:
-              annotation: ""
-              label: ""
-              value: ""
-            metric_path:
-              annotation: ""
-              label: ""
-              value: ""
-      ##
-      ## Metric filters control which metrics are passed on by the broker
-      ## NOTE: This list is applied to the check every time the agent pod starts.
-      ##       Updates through any other method will be overwritten by this list.
-      ##
-      ## NOTE: By default, all dynamically collected metrics will all be submitted.
-      ##       To apply filters to them, remove the current 'NO_LOCAL_FILTER' rule, and
-      ##       add specific rules to control the flow of metrics.
-      metric-filters.json: |
-{{ .metric_filters | indent 8 }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # versioned, cadence independent of app version
+  name: cka-config-v1
+  labels:
+    app.kubernetes.io/name: circonus-kubernetes-agent
+data:
+  #circonus-api-key-file: ""
+  #circonus-api-app: "circonus-kubernetes-agent"
+  #circonus-api-url: "https://api.circonus.com/v2"
+  #circonus-api-ca-file: ""
+  #circonus-api-debug: "false"
+  ## broker to use when creating a new httptrap check
+  #circonus-check-broker-cid: "/broker/35"
+  #circonus-check-broker-ca-file: ""
+  ## create a check, if one cannot be found using the target
+  #circonus-check-create: "true"
+  ## or, turn create off, and specify a check which has already been created
+  #circonus-check-bundle-cid: ""
+  ## comman delimited list of k:v tags to add to the check
+  #circonus-check-tags: ""
+  ## Use a static target to ensure that the agent can find the check
+  ## the next time the pod starts. Otherwise, the pod's hostname will
+  ## be used and a new check would be created each time the pod is
+  ## created when create is enabled. The kubernetes-name will be
+  ## used if check-target is not set.
+  circonus-check-target: ""
+  ## set a custom display title for the check when it is created
+  #circonus-check-title: ""
+  ## comma delimited list of k:v streamtags to add to every metric
+  #circonus-default-streamtags: ""
+  ##
+  ## set a name identifying the cluster, to be used in the check 
+  ## title when it is created
+  kubernetes-name: ""
+  #kubernetes-api-url: "https://kubernetes.default.svc"
+  #kubernetes-api-ca-file: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  #kubernetes-bearer-token-file: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+  ## collect event metrics - default is enabled for dashboard
+  kubernetes-enable-events: "true"
+  ## collect metrics from kube-state-metrics if running - default is enabled for dashboard
+  kubernetes-enable-kube-state-metrics: "true"
+  ## kube-state-metrics fieldSelector query, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
+  kubernetes-ksm-field-selector-query: "metadata.name=kube-state-metrics"
+  ## kube-state-metrics metrics port, no default, service endpoint ports will be used if not set
+  kubernetes-ksm-metrics-port: ""
+  ## kube-state-metrics metrics port name, default from https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml
+  ## if using helm or some other tool, look at the configuration to see if the port is named differently in the service endpoint...
+  kubernetes-ksm-metrics-port-name: "http-metrics"
+  ## collect metrics from api-server - default is enabled for dashboard
+  kubernetes-enable-api-server: "true"
+  ## collect node metrics - default is enabled for dashboard
+  kubernetes-enable-nodes: "true"
+  ## expression to use for node labelSelector - blank = all nodes
+  kubernetes-node-selector: ""
+  ## collect kublet /stats/summary performance metrics (e.g. cpu, memory, fs) - default is enabled for dashboard (k8s <v1.18 only)
+  kubernetes-enable-node-stats: "true"
+  ## collect kublet /metrics observation metrics - default is enabled for dashboard
+  kubernetes-enable-node-metrics: "true"
+  ## enable kubelet cadvisor metrics
+  kubernetes-enable-cadvisor-metrics: "false"
+  ## enable kubelet node resource metrics (k8s v1.18+)
+  kubernetes-enable-node-resource-metrics: "true"
+  ## enable kubelet node probe metrics (k8s v1.18+)
+  kubernetes-enable-node-probe-metrics: "false"
+  ## enable kube-dns/coredns metrics - default is enabled for dashboard
+  kubernetes-enable-dns-metrics: "true"
+  ## port to request `/metrics` from if scrape/port annotations not defined on kube-dns/coredns service (e.g. GKE)
+  kubernetes-dns-metrics-port: "10054"
+  ## include pod metrics, requires nodes to be enabled - - default is enabled for dashboard
+  kubernetes-include-pod-metrics: "true"
+  ## include only pods with this label key, blank = all pods
+  kubernetes-pod-label-key: ""
+  ## include only pods with label key and value, blank = all pods with label key
+  kubernetes-pod-label-val: ""
+  ## include container metrics, requires nodes+pods to be enabled
+  kubernetes-include-container-metrics: "false"
+  ## collection interval, how often to collect metrics (note if a previous 
+  ## collection is still in progress another will NOT be started)
+  #kubernetes-collection-interval: "1m"
+  ## api request timelimit
+  #kubernetes-api-timelimit: "10s"
+  ##
+  ## dynamic collectors (see readme in github repository)
+  ##
+  dynamic-collectors.yaml: |
+    collectors:
+      - name: "" 
+        disable: true
+        type: "" 
+        schema: ""
+        selectors:
+          label: "" 
+          field: ""
+        control:
+          annotation: ""
+          label: ""
+          value: ""
+        metric_port:
+          annotation: ""
+          label: ""
+          value: ""
+        metric_path:
+          annotation: ""
+          label: ""
+          value: ""
+  ##
+  ## Metric filters control which metrics are passed on by the broker
+  ## NOTE: This list is applied to the check every time the agent pod starts.
+  ##       Updates through any other method will be overwritten by this list.
+  ##
+  ## NOTE: By default, all dynamically collected metrics will all be submitted.
+  ##       To apply filters to them, remove the current 'NO_LOCAL_FILTER' rule, and
+  ##       add specific rules to control the flow of metrics.
+  metric-filters.json: |
+{{ .data.metric_filters | indent 4 }}
 
-      ##
-      ## alert configuration
-      ##
-      ## one of, contact.email OR contact.group_cid
-      ##
-      ## Note: if neither supplied, all alertring and some dashboard functionality will be disabled
-      ##
-      default-alerts.json: |
-        {
-          "contact": {
-            "email": "",
-            "group_cid": ""
-          },
-          "rule_settings": {
-            "crashloops_container": {
-              "disabled": true,
-              "threshold": "0",
-              "window": 300
-            },
-            "crashloops_init_container": {
-              "disabled": true,
-              "threshold": "0",
-              "window": 300
-            },
-            "cpu_utilization": {
-              "disabled": true,
-              "threshold": "75",
-              "window": 900
-            },
-            "disk_pressure": {
-              "disabled": true,
-              "threshold": "0",
-              "window": 300
-            },
-            "memory_pressure": {
-              "disabled": true,
-              "threshold": "0",
-              "window": 300
-            },
-            "pid_pressure": {
-              "disabled": true,
-              "threshold": "0",
-              "window": 300
-            },
-            "network_unavailable": {
-              "disabled": true,
-              "threshold": "0.99",
-              "window": 300
-            },
-            "job_failures": {
-              "disabled": true,
-              "threshold": "0",
-              "window": 300
-            },
-            "persistent_volume_failures": {
-              "disabled": true,
-              "threshold": "0",
-              "window": 300
-            },
-            "pod_pending_delays": {
-              "disabled": true,
-              "threshold": "0.99",
-              "window": 900
-            },
-            "deployment_glitches": {
-              "disabled": true,
-              "min_threshold": "0",
-              "min_window": 300,
-              "max_threshold": "0",
-              "max_window": 300
-            },
-            "daemonsets_not_ready": {
-              "disabled": true,
-              "min_threshold": "0",
-              "min_window": 300,
-              "max_threshold": "0",
-              "max_window": 300
-            },
-            "statefulsets_not_ready": {
-              "disabled": true,
-              "min_threshold": "0",
-              "min_window": 300,
-              "max_threshold": "0",
-              "max_window": 300
-            }
-          }
+  ##
+  ## alert configuration
+  ##
+  ## one of, contact.email OR contact.group_cid
+  ##
+  ## Note: if neither supplied, all alertring and some dashboard functionality will be disabled
+  ##
+  default-alerts.json: |
+    {
+      "contact": {
+        "email": "",
+        "group_cid": ""
+      },
+      "rule_settings": {
+        "crashloops_container": {
+          "disabled": true,
+          "threshold": "0",
+          "window": 300
+        },
+        "crashloops_init_container": {
+          "disabled": true,
+          "threshold": "0",
+          "window": 300
+        },
+        "cpu_utilization": {
+          "disabled": true,
+          "threshold": "75",
+          "window": 900
+        },
+        "disk_pressure": {
+          "disabled": true,
+          "threshold": "0",
+          "window": 300
+        },
+        "memory_pressure": {
+          "disabled": true,
+          "threshold": "0",
+          "window": 300
+        },
+        "pid_pressure": {
+          "disabled": true,
+          "threshold": "0",
+          "window": 300
+        },
+        "network_unavailable": {
+          "disabled": true,
+          "threshold": "0.99",
+          "window": 300
+        },
+        "job_failures": {
+          "disabled": true,
+          "threshold": "0",
+          "window": 300
+        },
+        "persistent_volume_failures": {
+          "disabled": true,
+          "threshold": "0",
+          "window": 300
+        },
+        "pod_pending_delays": {
+          "disabled": true,
+          "threshold": "0.99",
+          "window": 900
+        },
+        "deployment_glitches": {
+          "disabled": true,
+          "min_threshold": "0",
+          "min_window": 300,
+          "max_threshold": "0",
+          "max_window": 300
+        },
+        "daemonsets_not_ready": {
+          "disabled": true,
+          "min_threshold": "0",
+          "min_window": 300,
+          "max_threshold": "0",
+          "max_window": 300
+        },
+        "statefulsets_not_ready": {
+          "disabled": true,
+          "min_threshold": "0",
+          "min_window": 300,
+          "max_threshold": "0",
+          "max_window": 300
         }
-      ##
-      ## "rules" is an array of custom alert rule set objects (see https://login.circonus.com/resources/api/calls/rule_set 
-      ## for more information on object format alternatively, use the UI to view the API Object of an existing rule set)
-      ##
-      custom-rules.json: |
-        {
-          "rules":[
+      }
+    }
+  ##
+  ## "rules" is an array of custom alert rule set objects (see https://login.circonus.com/resources/api/calls/rule_set 
+  ## for more information on object format alternatively, use the UI to view the API Object of an existing rule set)
+  ##
+  custom-rules.json: |
+    {
+      "rules":[
 
-          ]
-        }
+      ]
+    }

@@ -118,6 +118,25 @@ kubeconfig() {
   echo "[INFO] Kubeconfig contexts generated successfully"
 }
 
+# zzz
+registry() {
+
+  echo "[INFO] Init fetching registries..."
+  # loop through the workspaces
+  for workspace in $(yq -r '.workspaces[].name' "${RUNTIME_DATA_FILE}"); do
+
+    # set up variables
+    project_id=$(TF_WORKSPACE="${workspace}" terraform output --raw project_id)
+    region=$(TF_WORKSPACE="${workspace}" terraform output --raw region)
+    registry_name=$(TF_WORKSPACE="${workspace}" terraform output --raw registry_name)
+
+    # update RUNTIME_DATA_FILE with registry name
+    yq -i '(.workspaces[] | select(.name == "'"${workspace}"'")).registry_name = "'"${region}"'-docker.pkg.dev/'"${project_id}"'/'"${registry_name}"'"' "${RUNTIME_DATA_FILE}"
+  (cd ../../../ && make build FULL_IMAGE_NAME="${region}-docker.pkg.dev/${project_id}/${registry_name}/circonus-kubernetes-agent:latest")
+  done
+  echo "[INFO] Registry images pushed successfully"
+}
+
 # set up a reverse ssh tunnel per workspace
 # ssh tunnel -> bastion -> gke control plane
 proxy() {

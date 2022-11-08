@@ -3,6 +3,7 @@ BRANCH_PRIMARY=$(shell git symbolic-ref refs/remotes/origin/HEAD | sed 's;^refs/
 BUILD_FLAGS=-mod=vendor
 GCI=$(shell which gci)
 GIT=$(shell which git)
+GITCOMM=$(shell which gitcomm)
 GO=$(shell which go)
 GOFUMPT=$(shell which gofumpt)
 GOLANGCI_LINT=$(shell which golangci-lint)
@@ -44,7 +45,7 @@ changelog:
 	$(SCRIPTS_DIR)/changelog.sh
 
 build: build_deps
-	DOCKER_REGISTRY=registry.k8s.dev.circonus.com $(GORELEASER) --rm-dist --snapshot
+	DOCKER_REGISTRY=$(DOCKER_REGISTRY) $(GORELEASER) --rm-dist --snapshot
 
 commit: build_deps
 	$(GIT) status

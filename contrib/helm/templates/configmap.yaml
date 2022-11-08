@@ -17,6 +17,13 @@ data:
     ## tags on rules, contact group, etc.
     kubernetes-name: {{ .Values.kubernetes_name | quote }}
     ## see deploy/custom/configuration.yaml for more information
+
+    circonus-api-url: {{ .Values.circonus_api_url | quote }}
+
+    metric-filters.json: |
+{{ .Values.metric_filters | indent 6 }}
+
+
     ##
     ## alert configuration
     ##

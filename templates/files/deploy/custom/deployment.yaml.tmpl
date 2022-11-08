@@ -1,280 +1,281 @@
+## WARN: this is a template rendered from a file in $reporoot/templates/files/
 ---
-  apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    name: circonus-kubernetes-agent
-    labels:
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: circonus-kubernetes-agent
+  labels:
+    app.kubernetes.io/name: circonus-kubernetes-agent
+    app.kubernetes.io/version: {{ .data.agent_version }}
+spec:
+  selector:
+    matchLabels:
       app.kubernetes.io/name: circonus-kubernetes-agent
-      app.kubernetes.io/version: {{ .version }}
-  spec:
-    selector:
-      matchLabels:
+      app.kubernetes.io/version: {{ .data.agent_version }}
+  replicas: 1
+  template:
+    metadata:
+      name: circonus-kubernetes-agent
+      labels:
         app.kubernetes.io/name: circonus-kubernetes-agent
-        app.kubernetes.io/version: {{ .version }}
-    replicas: 1
-    template:
-      metadata:
-        name: circonus-kubernetes-agent
-        labels:
-          app.kubernetes.io/name: circonus-kubernetes-agent
-          app.kubernetes.io/version: {{ .version }}
-      spec:
-        serviceAccountName: circonus-kubernetes-agent
-        containers:
-          - name: circonus-kubernetes-agent
-            image: circonus/circonus-kubernetes-agent:{{ .version }}
-            command: ["/circonus-kubernetes-agentd"]
-            args: 
-              #- --debug
-              #
-              # controls how many concurrent node metric collectors are run
-              # increase: for performance when collect_duration exceeds 60s
-              # decrease: to control resource utilization
-              # default, runtime.NumCPU()
-              # - --k8s-pool-size=2
-            env:
-              ##
-              ## NOTE: Change settings in configuration.yaml file, in the 
-              ##       corresponding Secret or ConfigMap entry. Ensure
-              ##       setting is uncommeted in both files in order for 
-              ##       it to take effect.
-              ##
-              - name: CKA_CIRCONUS_API_KEY
-                valueFrom:
-                  secretKeyRef:
-                    name: cka-secrets-v1
-                    key: circonus-api-key
-              # - name: CKA_CIRCONUS_API_KEY_FILE
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: circonus-api-key-file
-              # - name: CKA_CIRCONUS_API_APP
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: circonus-api-app
-              # - name: CKA_CIRCONUS_API_URL
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: circonus-api-url
-              # - name: CKA_CIRCONUS_API_CAFILE
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: circonus-api-ca-file
-              # - name: CKA_CIRCONUS_API_DEBUG
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: circonus-api-debug
-              # - name: CKA_CIRCONUS_CHECK_BROKER_CID
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: circonus-check-broker-cid
-              # - name: CKA_CIRCONUS_CHECK_BROKER_CA_FILE
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: circonus-check-broker-ca-file
-              # - name: CKA_CIRCONUS_CHECK_CREATE
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: circonus-check-create
-              # - name: CKA_CIRCONUS_CHECK_BUNDLE_CID
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: circonus-check-bundle-cid
-              # - name: CKA_CIRCONUS_CHECK_TAGS
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: circonus-check-tags
-              - name: CKA_CIRCONUS_CHECK_TARGET
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: circonus-check-target
-              # - name: CKA_CIRCONUS_CHECK_TITLE
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: circonus-check-title
-              # - name: CKA_CIRCONUS_DEFAULT_STREAMTAGS
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: circonus-default-streamtags
-              - name: CKA_K8S_NAME
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-name
-              # - name: CKA_K8S_API_URL
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: kubernetes-api-url
-              # - name: CKA_K8S_API_CA_FILE
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: kubernetes-api-ca-file
-              # - name: CKA_K8S_BEARER_TOKEN
-              #   valueFrom:
-              #     secretKeyRef:
-              #       name: cka-secrets-v1
-              #       key: kubernetes-bearer-token
-              # - name: CKA_K8S_BEARER_TOKEN_FILE
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: kubernetes-bearer-token-file
-              - name: CKA_K8S_ENABLE_EVENTS
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-enable-events
-              - name: CKA_K8S_ENABLE_KUBE_STATE_METRICS
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-enable-kube-state-metrics
-              - name: CKA_K8S_KSM_FIELD_SELECTOR_QUERY
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-ksm-field-selector-query
-              - name: CKA_K8S_KSM_METRICS_PORT
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-ksm-metrics-port
-              - name: CKA_K8S_KSM_METRICS_PORT_NAME
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-ksm-metrics-port-name
-              - name: CKA_K8S_ENABLE_API_SERVER
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-enable-api-server
-              - name: CKA_K8S_ENABLE_NODES
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-enable-nodes
-              - name: CKA_K8S_NODE_SELECTOR
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-node-selector
-              - name: CKA_K8S_ENABLE_NODE_STATS
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-enable-node-stats
-              - name: CKA_K8S_ENABLE_NODE_METRICS
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-enable-node-metrics
-              - name: CKA_K8S_ENABLE_CADVISOR_METRICS
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-enable-cadvisor-metrics
-              - name: CKA_K8S_ENABLE_NODE_RESOURCE_METRICS
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-enable-node-resource-metrics
-              - name: CKA_K8S_ENABLE_NODE_PROBE_METRICS
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-enable-node-probe-metrics
-              - name: CKA_K8S_ENABLE_DNS_METRICS
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-enable-dns-metrics
-              - name: CKA_K8S_DNS_METRICS_PORT
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-dns-metrics-port
-              - name: CKA_K8S_INCLUDE_CONTAINERS
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-include-container-metrics
-              - name: CKA_K8S_INCLUDE_PODS
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-include-pod-metrics
-              - name: CKA_K8S_POD_LABEL_KEY
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-pod-label-key
-              - name: CKA_K8S_POD_LABEL_VAL
-                valueFrom:
-                  configMapKeyRef:
-                    name: cka-config-v1
-                    key: kubernetes-pod-label-val
-              # - name: CKA_K8S_INTERVAL
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: kubernetes-collection-interval
-              # - name: CKA_K8S_API_TIMELIMIT
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: cka-config-v1
-              #       key: kubernetes-api-timelimit
-              - name: GODEBUG
-                value: "madvdontneed=1"
+        app.kubernetes.io/version: {{ .data.agent_version }}
+    spec:
+      serviceAccountName: circonus-kubernetes-agent
+      containers:
+        - name: circonus-kubernetes-agent
+          image: circonus/circonus-kubernetes-agent:{{ .data.agent_version }}
+          command: ["/circonus-kubernetes-agentd"]
+          args: 
+            #- --debug
+            #
+            # controls how many concurrent node metric collectors are run
+            # increase: for performance when collect_duration exceeds 60s
+            # decrease: to control resource utilization
+            # default, runtime.NumCPU()
+            # - --k8s-pool-size=2
+          env:
             ##
-            ## No single set of resource settings is optimal for
-            ## all clusters. Factors such as number of nodes, pods, 
-            ## and containers all play a role. Run without resource
-            ## settings, tune resource/time balance, monitor actual 
-            ## utilization, then set requests and limits applicable 
-            ## to the specific environment.
+            ## NOTE: Change settings in configuration.yaml file, in the 
+            ##       corresponding Secret or ConfigMap entry. Ensure
+            ##       setting is uncommeted in both files in order for 
+            ##       it to take effect.
             ##
-            # resources:
-            #   requests:
-            #     memory: "64Mi"
-            #     cpu: "250m"
-            #   limits:
-            #     memory: "512Mi"
-            #     cpu: "500m"
-            livenessProbe:
-              httpGet:
-                path: /health
-                port: 8080                
-              initialDelaySeconds: 30
-            volumeMounts:
-              - name: configs
-                mountPath: /ck8sa
-                readOnly: true
-        volumes:
-          - name: configs
-            configMap:
-              name: cka-config-v1
-              items:
-                - key: metric-filters.json
-                  path: metric-filters.json
-                - key: default-alerts.json
-                  path: default-alerts.json
-                - key: custom-rules.json
-                  path: custom-rules.json
-                - key: dynamic-collectors.yaml
-                  path: dynamic-collectors.yaml
+            - name: CKA_CIRCONUS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cka-secrets-v1
+                  key: circonus-api-key
+            # - name: CKA_CIRCONUS_API_KEY_FILE
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: circonus-api-key-file
+            # - name: CKA_CIRCONUS_API_APP
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: circonus-api-app
+            # - name: CKA_CIRCONUS_API_URL
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: circonus-api-url
+            # - name: CKA_CIRCONUS_API_CAFILE
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: circonus-api-ca-file
+            # - name: CKA_CIRCONUS_API_DEBUG
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: circonus-api-debug
+            # - name: CKA_CIRCONUS_CHECK_BROKER_CID
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: circonus-check-broker-cid
+            # - name: CKA_CIRCONUS_CHECK_BROKER_CA_FILE
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: circonus-check-broker-ca-file
+            # - name: CKA_CIRCONUS_CHECK_CREATE
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: circonus-check-create
+            # - name: CKA_CIRCONUS_CHECK_BUNDLE_CID
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: circonus-check-bundle-cid
+            # - name: CKA_CIRCONUS_CHECK_TAGS
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: circonus-check-tags
+            - name: CKA_CIRCONUS_CHECK_TARGET
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: circonus-check-target
+            # - name: CKA_CIRCONUS_CHECK_TITLE
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: circonus-check-title
+            # - name: CKA_CIRCONUS_DEFAULT_STREAMTAGS
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: circonus-default-streamtags
+            - name: CKA_K8S_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-name
+            # - name: CKA_K8S_API_URL
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: kubernetes-api-url
+            # - name: CKA_K8S_API_CA_FILE
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: kubernetes-api-ca-file
+            # - name: CKA_K8S_BEARER_TOKEN
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: cka-secrets-v1
+            #       key: kubernetes-bearer-token
+            # - name: CKA_K8S_BEARER_TOKEN_FILE
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: kubernetes-bearer-token-file
+            - name: CKA_K8S_ENABLE_EVENTS
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-enable-events
+            - name: CKA_K8S_ENABLE_KUBE_STATE_METRICS
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-enable-kube-state-metrics
+            - name: CKA_K8S_KSM_FIELD_SELECTOR_QUERY
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-ksm-field-selector-query
+            - name: CKA_K8S_KSM_METRICS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-ksm-metrics-port
+            - name: CKA_K8S_KSM_METRICS_PORT_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-ksm-metrics-port-name
+            - name: CKA_K8S_ENABLE_API_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-enable-api-server
+            - name: CKA_K8S_ENABLE_NODES
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-enable-nodes
+            - name: CKA_K8S_NODE_SELECTOR
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-node-selector
+            - name: CKA_K8S_ENABLE_NODE_STATS
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-enable-node-stats
+            - name: CKA_K8S_ENABLE_NODE_METRICS
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-enable-node-metrics
+            - name: CKA_K8S_ENABLE_CADVISOR_METRICS
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-enable-cadvisor-metrics
+            - name: CKA_K8S_ENABLE_NODE_RESOURCE_METRICS
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-enable-node-resource-metrics
+            - name: CKA_K8S_ENABLE_NODE_PROBE_METRICS
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-enable-node-probe-metrics
+            - name: CKA_K8S_ENABLE_DNS_METRICS
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-enable-dns-metrics
+            - name: CKA_K8S_DNS_METRICS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-dns-metrics-port
+            - name: CKA_K8S_INCLUDE_CONTAINERS
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-include-container-metrics
+            - name: CKA_K8S_INCLUDE_PODS
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-include-pod-metrics
+            - name: CKA_K8S_POD_LABEL_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-pod-label-key
+            - name: CKA_K8S_POD_LABEL_VAL
+              valueFrom:
+                configMapKeyRef:
+                  name: cka-config-v1
+                  key: kubernetes-pod-label-val
+            # - name: CKA_K8S_INTERVAL
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: kubernetes-collection-interval
+            # - name: CKA_K8S_API_TIMELIMIT
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: cka-config-v1
+            #       key: kubernetes-api-timelimit
+            - name: GODEBUG
+              value: "madvdontneed=1"
+          ##
+          ## No single set of resource settings is optimal for
+          ## all clusters. Factors such as number of nodes, pods, 
+          ## and containers all play a role. Run without resource
+          ## settings, tune resource/time balance, monitor actual 
+          ## utilization, then set requests and limits applicable 
+          ## to the specific environment.
+          ##
+          # resources:
+          #   requests:
+          #     memory: "64Mi"
+          #     cpu: "250m"
+          #   limits:
+          #     memory: "512Mi"
+          #     cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080                
+            initialDelaySeconds: 30
+          volumeMounts:
+            - name: configs
+              mountPath: /ck8sa
+              readOnly: true
+      volumes:
+        - name: configs
+          configMap:
+            name: cka-config-v1
+            items:
+              - key: metric-filters.json
+                path: metric-filters.json
+              - key: default-alerts.json
+                path: default-alerts.json
+              - key: custom-rules.json
+                path: custom-rules.json
+              - key: dynamic-collectors.yaml
+                path: dynamic-collectors.yaml

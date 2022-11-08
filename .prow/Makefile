@@ -11,29 +11,23 @@ ifdef IS_CI
 NAME_PREFIX=$(shell git symbolic-ref --short HEAD)
 endif
 
+#
 ifeq ($(NAME_PREFIX),)
 # Defaults NAME_PREFIX to "manual" if IS_CI is unset or set to ""
 NAME_PREFIX=manual
 endif
 
+#  
+ifndef FULL_IMAGE_NAME
+	override FULL_IMAGE_NAME = registry.k8s.dev.circonus.com/circonus-kubernetes-agent:latest
+endif
+
+
 RUNTIME_DATA_FILE=./.runtime-$(NAME_PREFIX).yaml
 
-.PHONY: all terraform gcp runtime_data helm clean
+.PHONY: all terraform runtime_data gcp kubeconfig registry proxy helm clean
 
-all: terraform helm
-
-terraform: gcp
-
-gcp: runtime_data
-	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) apply
-# ifeq ($(NAME_PREFIX),manual)
-# 	NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) watch_apply
-# else
-	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) wait_apply
-# endif
-	@if [ -f "$(KUBECONFIG)" ] && ! [ -f "$(KUBECONFIG).bak" ]; then mv $(KUBECONFIG) $(KUBECONFIG).bak; fi
-	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) kubeconfig
-	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) proxy
+all: runtime_data terraform kubeconfig registry proxy helm
 
 runtime_data:
 ifeq ($(NAME_PREFIX),manual)
@@ -42,8 +36,28 @@ else
 	@cp "$(DATA_FILE)" "$(RUNTIME_DATA_FILE)"
 endif
 
+terraform: gcp
+
+gcp: 
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) apply
+# ifeq ($(NAME_PREFIX),manual)
+# 	NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) watch_apply
+# else
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) wait_apply
+# endif
+
+kubeconfig:
+	@if [ -f "$(KUBECONFIG)" ] && ! [ -f "$(KUBECONFIG).bak" ]; then mv $(KUBECONFIG) $(KUBECONFIG).bak; fi
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) kubeconfig
+
+registry:
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) registry
+
+proxy:
+	@NAME_PREFIX=$(NAME_PREFIX) $(MULTIFORM) proxy
+
 helm:
-	@NAME_PREFIX=$(NAME_PREFIX) $(ADMIRAL) sync
+	@NAME_PREFIX=$(NAME_PREFIX) FULL_IMAGE_NAME=$(FULL_IMAGE_NAME) $(ADMIRAL) sync
 # ifeq ($(NAME_PREFIX),manual)
 #   NAME_PREFIX=$(NAME_PREFIX) $(ADMIRAL) watch_sync
 # else
