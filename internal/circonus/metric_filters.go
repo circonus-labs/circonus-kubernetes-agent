@@ -8,6 +8,7 @@ package circonus
 import (
 	"encoding/json"
 	"os"
+	"strings"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
 	"github.com/hashicorp/go-version"
@@ -62,8 +63,8 @@ const (
     ["allow", "^statefulset_replica_delta$", "health"],
     ["allow", "^coredns_(dns|forward)_request_(count_total|duration_seconds_avg)$", "dns health"],
     ["allow", "^coredns_(dns|forward)_response_rcode_count_total$", "dns health"],
-    ["allow", "^skydns_skydns_dns_(cachemiss|request|error)_count_total$", "dns health gke"],
-    ["allow", "^kubedns*","dns health"],
+    ["allow", "^kubedns.*","dns health"],
+    ["allow", "^skydns_skydns_dns_.*$", "dns health gke"],
     ["allow", "^events$", "events"],
     ["allow", "^collect_.*$", "agent collection stats"],
     ["allow", "^authentication_attempts$", "api auth health"],
@@ -98,7 +99,8 @@ const (
     ["allow", "^coredns*", "dns health"],
     ["allow", "^coredns_(dns|forward)_request_(count_total|duration_seconds_avg)$", "dns health"],
     ["allow", "^coredns_(dns|forward)_response_rcode_count_total$", "dns health"],
-    ["allow", "^skydns_skydns_dns_(cachemiss|request|error)_count_total$", "dns health gke"],
+    ["allow", "^kubedns.*","dns health"],
+    ["allow", "^skydns_skydns_dns.*$", "dns health gke"],
     ["allow", "^daemonset_scheduled_delta$", "health"],
     ["allow", "^deployment_generation_delta$", "health"],
     ["allow", "^events$", "events"],
@@ -121,7 +123,6 @@ const (
     ["allow", "^kube_pod_start_time$", "pods"],
     ["allow", "^kube_pod_status_condition$", "pods"],
     ["allow", "^kube_statefulset_status_(replicas|replicas_ready)$", "health"],
-    ["allow", "^kubedns*","dns health"],
     ["allow", "^kubelet_.*$", "node metrics k8s v1.18+"],
     ["allow", "^machine_.*$", "node metrics k8s v1.18+"],
     ["allow", "^pod_container_status$", "containers"],
@@ -149,13 +150,13 @@ func (c *Check) loadMetricFilters() [][]string {
 	mfConfigFile := viper.GetString(keys.MetricFiltersFile)
 	data, err := os.ReadFile(mfConfigFile)
 	if err != nil {
-		c.log.Warn().Err(err).Str("metric_filter_config", mfConfigFile).Msg("using defaults")
+		c.log.Warn().Err(err).Msg("using defaults")
 		return c.defaultFilters()
 	}
 
 	var mf metricFilters
 	if err := json.Unmarshal(data, &mf); err != nil {
-		c.log.Warn().Err(err).Str("metric_filter_config", mfConfigFile).Msg("using defaults")
+		c.log.Warn().Err(err).Msg("using defaults")
 		return c.defaultFilters()
 	}
 
@@ -170,11 +171,19 @@ func (c *Check) defaultFilters() [][]string {
 		c.log.Warn().Err(err).Msg("parsing " + v120str)
 	}
 
-	currversion, err := version.NewVersion(c.clusterVers)
+	ver := c.clusterVers
+	b4, _, found := strings.Cut(ver, "-")
+	if found {
+		ver = b4
+	}
+
+	currversion, err := version.NewVersion(ver)
 	if err != nil {
 		c.log.Warn().Err(err).Msg("parsing api version")
 		currversion = v120
 	}
+
+	c.log.Info().Msgf("cluster version: %s full(%s)", currversion.String(), c.clusterVers)
 
 	if currversion.LessThan(v120) {
 		defaultMetricFiltersData = []byte(defaultMetricFiltersStr119)
