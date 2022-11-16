@@ -28,12 +28,12 @@ import (
 )
 
 type AS struct {
+	sync.Mutex
 	config       *config.Cluster
 	check        *circonus.Check
 	log          zerolog.Logger
-	running      bool
 	apiTimelimit time.Duration
-	sync.Mutex
+	running      bool
 }
 
 func New(cfg *config.Cluster, parentLog zerolog.Logger, check *circonus.Check) (*AS, error) {
