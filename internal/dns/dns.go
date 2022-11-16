@@ -184,12 +184,16 @@ func (dns *DNS) getMetricURLs(ctx context.Context) (map[string]string, error) {
 
 	if port == 0 {
 		port = viper.GetInt(keys.K8SDNSMetricsPort)
-		dns.log.Warn().Int("port", port).Msg("service annotations not found, checking configured service ports")
+		dns.log.Debug().Int("port", port).Msgf("service annotation for port not found, checking config for %s", keys.K8SDNSMetricsPort)
+		if port == 0 {
+			return nil, fmt.Errorf("no dns port defined in annotations or configuration")
+		}
 	}
 
 	if !scrape {
+		dns.log.Debug().Msgf("service annotation for scrape not found, checking config for %s", keys.K8SEnableDNSMetrics)
 		if !viper.GetBool(keys.K8SEnableDNSMetrics) {
-			return nil, errors.New("service not configured for scraping")
+			return nil, errors.New("service not configured for scraping in annotations or configuration")
 		}
 	}
 
