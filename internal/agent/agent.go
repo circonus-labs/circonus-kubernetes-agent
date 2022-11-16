@@ -12,7 +12,6 @@ import (
 	"expvar"
 	"fmt"
 	"net/http"
-	// _ "net/http/pprof" //nolint:gosec
 	"os"
 	"os/signal"
 	"time"
@@ -80,6 +79,22 @@ func New() (*Agent, error) {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("parsing config: %w", err)
 	}
+
+	a.logger.Info().
+		Bool(keys.K8SEnableAPIServer, viper.GetBool(keys.K8SEnableAPIServer)).
+		Bool(keys.K8SEnableCadvisorMetrics, viper.GetBool(keys.K8SEnableCadvisorMetrics)).
+		Bool(keys.K8SEnableDNSMetrics, viper.GetBool(keys.K8SEnableDNSMetrics)).
+		Int(keys.K8SDNSMetricsPort, viper.GetInt(keys.K8SDNSMetricsPort)).
+		Bool(keys.K8SEnableEvents, viper.GetBool(keys.K8SEnableEvents)).
+		Bool(keys.K8SEnableKubeStateMetrics, viper.GetBool(keys.K8SEnableKubeStateMetrics)).
+		Bool(keys.K8SEnableNodeMetrics, viper.GetBool(keys.K8SEnableNodeMetrics)).
+		Bool(keys.K8SEnableNodeProbeMetrics, viper.GetBool(keys.K8SEnableNodeProbeMetrics)).
+		Bool(keys.K8SEnableNodeResourceMetrics, viper.GetBool(keys.K8SEnableNodeResourceMetrics)).
+		Bool(keys.K8SEnableNodeStats, viper.GetBool(keys.K8SEnableNodeStats)).
+		Bool(keys.K8SEnableNodes, viper.GetBool(keys.K8SEnableNodes)).
+		Bool(keys.K8SIncludeContainers, viper.GetBool(keys.K8SIncludeContainers)).
+		Bool(keys.K8SIncludePods, viper.GetBool(keys.K8SIncludePods)).
+		Msg("collection configuration")
 
 	// Set the hidden settings based on viper
 	cfg.Circonus.Base64Tags = defaults.Base64Tags
