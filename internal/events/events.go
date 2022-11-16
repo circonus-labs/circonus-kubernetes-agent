@@ -136,6 +136,12 @@ func (e *Events) submitEvent(ctx context.Context, event *corev1.Event) {
 	})
 
 	ets := event.GetCreationTimestamp().UTC()
+
+	// skip older events
+	if time.Since(ets) > 1*time.Minute {
+		return
+	}
+
 	ae := abridgedEvent{
 		Namespace:         event.GetNamespace(),
 		SelfLink:          event.GetSelfLink(),
