@@ -62,7 +62,6 @@ func New(cfg *config.Cluster, node *v1.Node, logger zerolog.Logger, check *circo
 
 	ver := node.Status.NodeInfo.KubeletVersion
 	b4, _, found := strings.Cut(ver, "-")
-	fmt.Println(b4, found)
 	if found {
 		ver = b4
 	}
