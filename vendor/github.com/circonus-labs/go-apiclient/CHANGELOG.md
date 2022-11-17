@@ -1,3 +1,10 @@
+# v0.7.20
+
+* upd: Changes the type of some of the fields of the Graph type to interface{}.
+These fields can be set to nil, an empty string "", or a string containing a
+number that will parse to a float. This is needed to support special rules for
+setting these fields to null via the API /graph endpoint.
+
 # v0.7.19
 
 * feat: add support for `_account_uuid` attribute to account

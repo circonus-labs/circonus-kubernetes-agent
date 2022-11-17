@@ -146,25 +146,25 @@ type OverlayDataOptions struct {
 
 // Graph defines a graph. See https://login.circonus.com/resources/api/calls/graph for more information.
 type Graph struct {
-	LineStyle      *string                     `json:"line_style"`                           // string or null
-	Style          *string                     `json:"style"`                                // string or null
-	Notes          *string                     `json:"notes,omitempty"`                      // string or null
-	LogLeftY       *int                        `json:"logarithmic_left_y,string,omitempty"`  // int encoded as string or null BUG doc: number (not string)
-	LogRightY      *int                        `json:"logarithmic_right_y,string,omitempty"` // int encoded as string or null BUG doc: number (not string)
-	MaxLeftY       *float64                    `json:"max_left_y,string,omitempty"`          // float64 encoded as string or null BUG doc: number (not string)
-	MaxRightY      *float64                    `json:"max_right_y,string,omitempty"`         // float64 encoded as string or null BUG doc: number (not string)
-	MinLeftY       *float64                    `json:"min_left_y,string,omitempty"`          // float64 encoded as string or null BUG doc: number (not string)
-	MinRightY      *float64                    `json:"min_right_y,string,omitempty"`         // float64 encoded as string or null BUG doc: number (not string)
-	OverlaySets    *map[string]GraphOverlaySet `json:"overlay_sets,omitempty"`               // GroupOverLaySets or null
-	CID            string                      `json:"_cid,omitempty"`                       // string
-	Description    string                      `json:"description,omitempty"`                // string
-	Title          string                      `json:"title,omitempty"`                      // string
-	Tags           []string                    `json:"tags,omitempty"`                       // [] len >= 0
-	AccessKeys     []GraphAccessKey            `json:"access_keys,omitempty"`                // [] len >= 0
-	Composites     []GraphComposite            `json:"composites,omitempty"`                 // [] len >= 0
-	Datapoints     []GraphDatapoint            `json:"datapoints,omitempty"`                 // [] len >= 0
-	Guides         []GraphGuide                `json:"guides,omitempty"`                     // [] len >= 0
-	MetricClusters []GraphMetricCluster        `json:"metric_clusters,omitempty"`            // [] len >= 0
+	LineStyle      *string                     `json:"line_style"`          // string or null
+	Style          *string                     `json:"style"`               // string or null
+	Notes          *string                     `json:"notes"`               // string or null
+	OverlaySets    *map[string]GraphOverlaySet `json:"overlay_sets"`        // GroupOverLaySets or null
+	CID            string                      `json:"_cid"`                // string
+	Description    string                      `json:"description"`         // string
+	Title          string                      `json:"title"`               // string
+	LogLeftY       interface{}                 `json:"logarithmic_left_y"`  // string that must parse to an int, empty string "", or null BUG doc: number (not string)
+	LogRightY      interface{}                 `json:"logarithmic_right_y"` // string that must parse to a float, empty string "", or null BUG doc: number (not string)
+	MaxLeftY       interface{}                 `json:"max_left_y"`          // string that must parse to a float, empty string "", or null BUG doc: number (not string)
+	MaxRightY      interface{}                 `json:"max_right_y"`         // string that must parse to a float, empty string "", or null BUG doc: number (not string)
+	MinLeftY       interface{}                 `json:"min_left_y"`          // string that must parse to a float, empty string "", or null BUG doc: number (not string)
+	MinRightY      interface{}                 `json:"min_right_y"`         // string that must parse to a float, empty string "", or null BUG doc: number (not string)
+	Tags           []string                    `json:"tags"`                // [] len >= 0
+	AccessKeys     []GraphAccessKey            `json:"access_keys"`         // [] len >= 0
+	Composites     []GraphComposite            `json:"composites"`          // [] len >= 0
+	Datapoints     []GraphDatapoint            `json:"datapoints"`          // [] len >= 0
+	Guides         []GraphGuide                `json:"guides"`              // [] len >= 0
+	MetricClusters []GraphMetricCluster        `json:"metric_clusters"`     // [] len >= 0
 }
 
 // NewGraph returns a Graph (with defaults, if applicable)
