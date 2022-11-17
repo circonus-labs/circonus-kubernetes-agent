@@ -1,3 +1,21 @@
+# v0.15.0
+
+* chore: update warning when alert config file not found to not stutter the file nam
+* fix: clean non-semver GKE k8s version (metric filters)
+* feat: update skydns filter to include all metrics
+* chore: update warning when metric filter file not found to not stutter the file name
+* feat: debug messages for using config vs annotations
+* feat: emit collection config info msg
+* fix: struct alignment
+* fix: check K8SEnableDNSMetrics if scrape is false
+* fix: port message when using prot from config instead of annotation
+* fix: skip events older than 1m
+* fix: clean non-semver GKE k8s version (node collectors)
+* chore: clean up imports
+* fix: add GKE skydns filter
+* fix: drop NaN metrics when queueing
+* feat: go1.19 for strings.Cut
+
 # v0.14.0
 
 * feat: add node_name tag for pods
@@ -5,8 +23,8 @@
 * feat: add support for label_tags=* to turn all labels into tags for the given object
 
 # v0.13.0
-2022-08-08
 
+2022-08-08
 
 ([833c904b](https://github.com/circonus-labs/circonus-kubernetes-agent/commit/833c904b))  
             Tags: v0.13.0

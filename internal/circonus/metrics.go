@@ -159,6 +159,18 @@ func (c *Check) QueueMetricSample(
 		return errors.New("invalid metric type (empty)")
 	}
 
+	// if NaN, just drop it
+	switch v := value.(type) {
+	case float64:
+		if math.IsNaN(v) {
+			return nil
+		}
+	case float32:
+		if math.IsNaN(float64(v)) {
+			return nil
+		}
+	}
+
 	applyFilters := true
 	if strings.Contains(strings.Join(streamTags, ","), "collector:dynamic") {
 		applyFilters = c.filterDynamicMetrics

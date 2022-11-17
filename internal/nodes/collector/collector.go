@@ -7,11 +7,10 @@
 package collector
 
 import (
-	// "bytes"
 	"context"
 	"crypto/tls"
-	// "encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,16 +18,12 @@ import (
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/circonus"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
-	// "github.com/circonus-labs/circonus-kubernetes-agent/internal/k8s"
-	// "github.com/circonus-labs/circonus-kubernetes-agent/internal/promtext"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/release"
 	"github.com/hashicorp/go-version"
-	// "github.com/prometheus/common/expfmt"
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Collector struct {
@@ -65,9 +60,15 @@ func New(cfg *config.Cluster, node *v1.Node, logger zerolog.Logger, check *circo
 		baseLogger:   logger.With().Str("node", node.Name).Logger(),
 	}
 
-	v, err := version.NewVersion(node.Status.NodeInfo.KubeletVersion)
+	ver := node.Status.NodeInfo.KubeletVersion
+	b4, _, found := strings.Cut(ver, "-")
+	if found {
+		ver = b4
+	}
+
+	v, err := version.NewVersion(ver)
 	if err != nil {
-		return nil, fmt.Errorf("parsing version (%s): %w", node.Status.NodeInfo.KubeletVersion, err)
+		return nil, fmt.Errorf("parsing version (%s): %w", ver, err)
 	}
 
 	minVer := viper.GetString(keys.K8SNodeKubeletVersion)

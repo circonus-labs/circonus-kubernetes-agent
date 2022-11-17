@@ -49,10 +49,10 @@ type Cluster struct {
 	// DEPRECATED
 	KSMTelemetryPortName      string `mapstructure:"ksm_telemetry_port_name" json:"ksm_telemetry_port_name" toml:"ksm_telemetry_port_name" yaml:"ksm_telemetry_port_name"`
 	NodeKubletVersion         string `mapstructure:"node_kublet_version" json:"node_kublet_version" toml:"node_kublet_version" yaml:"node_kublet_version"`
+	DNSMetricsPort            int    `mapstructure:"dns_metrics_port" json:"dns_metrics_port" toml:"dns_metrics_port" yaml:"dns_metrics_port"`
 	NodePoolSize              uint   `mapstructure:"node_pool_size" json:"node_pool_size" toml:"node_pool_size" yaml:"node_pool_size"`
 	IncludePods               bool   `mapstructure:"include_pod_metrics" json:"include_pod_metrics" toml:"include_pod_metrics" yaml:"include_pod_metrics"`
 	EnableDNSMetrics          bool   `mapstructure:"enable_dns_metrics" json:"enable_dns_metrics" toml:"enable_dns_metrics" yaml:"enable_dns_metrics"`
-	DNSMetricsPort            int    `mapstructure:"dns_metrics_port" json:"dns_metrics_port" toml:"dns_metrics_port" yaml:"dns_metrics_port"`
 	EnableNodeResourceMetrics bool   `mapstructure:"enable_node_resource_metrics" json:"enable_node_resource_metrics" toml:"enable_node_resource_metrics" yaml:"enable_node_resource_metrics"`
 	EnableNodeProbeMetrics    bool   `mapstructure:"enable_node_probe_metrics" json:"enable_node_probe_metrics" toml:"enable_node_probe_metrics" yaml:"enable_node_probe_metrics"`
 	EnableNodeMetrics         bool   `mapstructure:"enable_node_metrics" json:"enable_node_metrics" toml:"enable_node_metrics" yaml:"enable_node_metrics"`

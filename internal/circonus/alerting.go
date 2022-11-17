@@ -764,7 +764,7 @@ func initializeAlerting(client *apiclient.API, logger zerolog.Logger, clusterNam
 	configFile := viper.GetString(keys.DefaultAlertsFile)
 	data, err := os.ReadFile(configFile)
 	if err != nil {
-		logger.Warn().Err(err).Str("alert_config", configFile).Msg("skipping")
+		logger.Warn().Err(err).Msg("skipping")
 		return
 	}
 
