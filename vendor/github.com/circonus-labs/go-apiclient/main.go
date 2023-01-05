@@ -367,6 +367,7 @@ func (a *API) apiCall(reqMethod string, reqPath string, data []byte) ([]byte, er
 	if string(a.accountID) != "" {
 		req.Header.Add("X-Circonus-Account-ID", string(a.accountID))
 	}
+	req.Header.Add("Cache-Control", "no-store")
 
 	client := retryablehttp.NewClient()
 	if a.apiURL.Scheme == "https" {
