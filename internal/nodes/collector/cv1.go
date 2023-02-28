@@ -42,7 +42,7 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kubelet"},
 		})
-		nc.log.Error().Err(err).Str("url", req.URL().String()).Msg("fetching stats/summary stats")
+		nc.log.Error().Err(err).Str("k8s_ver", nc.kubeletVer.String()).Str("url", req.URL().String()).Msg("fetching stats/summary stats")
 		return
 	}
 
