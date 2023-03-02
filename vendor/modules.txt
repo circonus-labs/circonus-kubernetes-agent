@@ -14,7 +14,7 @@ github.com/alecthomas/units
 ## explicit; go 1.14
 github.com/circonus-labs/circonus-gometrics/v3
 github.com/circonus-labs/circonus-gometrics/v3/checkmgr
-# github.com/circonus-labs/go-apiclient v0.7.22
+# github.com/circonus-labs/go-apiclient v0.7.23
 ## explicit; go 1.17
 github.com/circonus-labs/go-apiclient
 github.com/circonus-labs/go-apiclient/config
@@ -74,7 +74,7 @@ github.com/google/uuid
 # github.com/hashicorp/go-cleanhttp v0.5.2
 ## explicit; go 1.13
 github.com/hashicorp/go-cleanhttp
-# github.com/hashicorp/go-retryablehttp v0.7.1
+# github.com/hashicorp/go-retryablehttp v0.7.2
 ## explicit; go 1.13
 github.com/hashicorp/go-retryablehttp
 # github.com/hashicorp/go-version v1.6.0

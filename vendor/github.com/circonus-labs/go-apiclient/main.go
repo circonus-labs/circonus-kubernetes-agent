@@ -31,13 +31,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+var rnd *rand.Rand
+
 func init() {
 	n, err := crand.Int(crand.Reader, big.NewInt(math.MaxInt64))
 	if err != nil {
-		rand.Seed(time.Now().UTC().UnixNano())
+		rnd = rand.New(rand.NewSource(time.Now().UTC().UnixNano())) //nolint:gosec //G404
 		return
 	}
-	rand.Seed(n.Int64())
+	rand.New(rand.NewSource(n.Int64())) //nolint:gosec //G404
 }
 
 const (
@@ -255,7 +257,7 @@ func (a *API) Put(reqPath string, data []byte) ([]byte, error) {
 }
 
 func backoff(interval uint) float64 {
-	return math.Floor(((float64(interval) * (1 + rand.Float64())) / 2) + .5) //nolint:gosec
+	return math.Floor(((float64(interval) * (1 + rnd.Float64())) / 2) + .5) //nolint:gosec
 }
 
 // apiRequest manages retry strategy for exponential backoffs
