@@ -227,8 +227,10 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 	if dynamicCollectors != nil {
 		wg.Add(1)
 		go func() {
+			c.logger.Info().Msg("starting dynamic collectors")
 			dynamicCollectors.Collect(collectCtx, c.tlsConfig, &start)
 			wg.Done()
+			c.logger.Info().Msg("finished dynamic collectors")
 		}()
 	}
 
@@ -239,7 +241,9 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 			if err != nil {
 				c.logger.Error().Err(err).Msg("initializing node collector")
 			} else {
+				c.logger.Info().Msg("starting node collector")
 				collector.Collect(collectCtx, c.tlsConfig, &start)
+				c.logger.Info().Msg("finished node collector")
 			}
 		case "health":
 			wg.Add(1)
@@ -248,7 +252,9 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 				if err != nil {
 					c.logger.Error().Err(err).Msg("initializing health collector")
 				} else {
+					c.logger.Info().Msg("starting health collector")
 					collector.Collect(collectCtx, c.tlsConfig, &start)
+					c.logger.Info().Msg("finished health collector")
 				}
 				wg.Done()
 			}()
@@ -259,7 +265,9 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 				if err != nil {
 					c.logger.Error().Err(err).Msg("initializing kube-state-metrics collector")
 				} else {
+					c.logger.Info().Msg("starting ksm collector")
 					collector.Collect(collectCtx, c.tlsConfig, &start)
+					c.logger.Info().Msg("finished ksm collector")
 				}
 				wg.Done()
 			}()
@@ -270,7 +278,9 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 				if err != nil {
 					c.logger.Error().Err(err).Msg("initializing api-server collector")
 				} else {
+					c.logger.Info().Msg("starting api collector")
 					collector.Collect(collectCtx, c.tlsConfig, &start)
+					c.logger.Info().Msg("finished api collector")
 				}
 				wg.Done()
 			}()
@@ -281,7 +291,9 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 				if err != nil {
 					c.logger.Error().Err(err).Msg("initializing kube-dns/coredns collector")
 				} else {
+					c.logger.Info().Msg("starting dns collector")
 					collector.Collect(collectCtx, c.tlsConfig, &start)
+					c.logger.Info().Msg("finished dns collector")
 				}
 				wg.Done()
 			}()
@@ -292,6 +304,8 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 
 	wg.Wait()
 
+	c.logger.Info().Msg("collections complete, adding internal metrics")
+
 	deadlineTimeout := false
 	select {
 	case <-collectCtx.Done():
@@ -301,7 +315,6 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 	}
 
 	{ // get api/cluster version/platform
-
 		verplat, err := k8s.GetVersionPlatform(ctx, &c.cfg)
 		if err != nil {
 			c.logger.Warn().Err(err).Msg("getting api/cluster version + platform information")
@@ -368,8 +381,10 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 		c.check.AddGauge("collect_interval", streamTags, uint64(c.interval.Milliseconds()))
 	}
 
+	c.logger.Info().Msg("starting metric flush")
 	// use regular ctx not the collection deadlined ctx
 	c.check.FlushCGM(ctx, &start, c.logger, true)
+	c.logger.Info().Msg("finished metric flush")
 
 	c.logger.Info().
 		Interface("metrics_sent", cstats).
