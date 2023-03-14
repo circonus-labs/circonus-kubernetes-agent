@@ -1,3 +1,11 @@
+# v0.16.1
+
+* feat: add start/finish status messages around collectors
+
+# v0.16.0
+
+* feat: add `summary/stats` into v2 collection (was supposed to have been deprecated in 1.18) but is still present and user is looking for `usageNanoCores`.
+
 # v0.15.0
 
 * chore: update warning when alert config file not found to not stutter the file nam

@@ -127,7 +127,13 @@ func (nc *Collector) collectV2(concurrent bool, baseStreamTags []string, baseMea
 			nc.meta(baseStreamTags, baseMeasurementTags) // from node list
 			wg.Done()
 		}()
-
+		if nc.cfg.EnableNodeStats { // this has still not been deprecated... keep pulling until it is
+			wg.Add(1)
+			go func() {
+				nc.summary(baseStreamTags, baseMeasurementTags) // from /stats/summary
+				wg.Done()
+			}()
+		}
 		if nc.cfg.EnableNodeMetrics {
 			wg.Add(1)
 			go func() {
@@ -160,6 +166,9 @@ func (nc *Collector) collectV2(concurrent bool, baseStreamTags []string, baseMea
 		wg.Wait()
 	} else {
 		nc.meta(baseStreamTags, baseMeasurementTags) // from node list
+		if nc.cfg.EnableNodeStats {                  // this has still not been deprecated... keep pulling until it is
+			nc.summary(baseStreamTags, baseMeasurementTags) // from /stats/summary
+		}
 		if nc.cfg.EnableNodeMetrics {
 			nc.nmetrics(baseStreamTags, baseMeasurementTags) // from /metrics
 		}
