@@ -88,6 +88,11 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 		return nil
 	}
 
+	baseTags := cgm.Tags{
+		cgm.Tag{Category: "source", Value: release.NAME},
+	}
+	baseTags = append(baseTags, c.defaultTags...)
+
 	rawData, err := json.Marshal(metrics)
 	if err != nil {
 		resultLogger.Error().Err(err).Msg("json encoding metrics")
@@ -215,7 +220,7 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 	retryClient.RetryMax = 10
 	retryClient.RequestLogHook = func(l retryablehttp.Logger, r *http.Request, attempt int) {
 		if attempt > 0 {
-			c.metrics.IncrementWithTags("collect_submit_retries", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}})
+			c.metrics.IncrementWithTags("collect_submit_retries", baseTags)
 			reqStart = time.Now()
 			resultLogger.Warn().Str("url", r.URL.String()).Int("retry", attempt).Msg("retrying...")
 		}
@@ -227,10 +232,9 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 			cgm.Tag{Category: "units", Value: "milliseconds"},
 		}, float64(time.Since(reqStart).Milliseconds()))
 		if r.StatusCode != http.StatusOK {
-			c.metrics.IncrementWithTags("collect_submit_errors", cgm.Tags{
-				cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", r.StatusCode)},
-				cgm.Tag{Category: "source", Value: release.NAME},
-			})
+			tags := cgm.Tags{cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", r.StatusCode)}}
+			tags = append(tags, baseTags...)
+			c.metrics.IncrementWithTags("collect_submit_errors", tags)
 			resultLogger.Warn().Str("url", r.Request.URL.String()).Str("status", r.Status).Msg("non-200 response...")
 		}
 	}
@@ -243,9 +247,7 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 	}
 	if err != nil {
 		resultLogger.Error().Err(err).Msg("making request")
-		c.metrics.IncrementWithTags("collect_submit_fails", cgm.Tags{
-			cgm.Tag{Category: "source", Value: release.NAME},
-		})
+		c.metrics.IncrementWithTags("collect_submit_fails", baseTags)
 		return err
 	}
 
@@ -256,15 +258,14 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		c.metrics.IncrementWithTags("collect_submit_fails", cgm.Tags{
-			cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)},
-			cgm.Tag{Category: "source", Value: release.NAME},
-		})
+		tags := cgm.Tags{cgm.Tag{Category: "code", Value: fmt.Sprintf("%d", resp.StatusCode)}}
+		tags = append(tags, baseTags...)
+		c.metrics.IncrementWithTags("collect_submit_fails", tags)
 		resultLogger.Error().Str("url", c.submissionURL).Str("status", resp.Status).Str("body", string(body)).Msg("submitting telemetry")
 		return errors.Errorf("submitting metrics (%s %s)", c.submissionURL, resp.Status)
 	}
 
-	c.metrics.IncrementWithTags("collect_submits", cgm.Tags{cgm.Tag{Category: "source", Value: release.NAME}})
+	c.metrics.IncrementWithTags("collect_submits", baseTags)
 
 	var result TrapResult
 	if err := json.Unmarshal(body, &result); err != nil {
