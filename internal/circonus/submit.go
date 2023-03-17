@@ -73,9 +73,25 @@ func (c *Check) FlushCGM(ctx context.Context, ts *time.Time, lg zerolog.Logger, 
 			}
 		}
 
-		if err := c.SubmitMetrics(ctx, metrics, lg, !agentStats); err != nil {
-			c.log.Error().Err(err).Msg("submitting cgm metrics")
+		for {
+			submitCtx, submitCtxCancel := context.WithDeadline(ctx, time.Now().Add(30*time.Second))
+			err := c.SubmitMetrics(submitCtx, metrics, lg, !agentStats)
+			if err == nil {
+				submitCtxCancel()
+				break
+			}
+
+			if errors.Is(err, context.DeadlineExceeded) {
+				c.log.Warn().Err(err).Msg("deadline reached submitting metrics, retrying")
+				submitCtxCancel()
+				continue
+			}
+
+			submitCtxCancel()
+			c.log.Error().Err(err).Msg("submitting metrics")
+			break
 		}
+
 	}
 }
 
@@ -126,6 +142,7 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 					MaxIdleConns:        1,
 					MaxIdleConnsPerHost: 0,
 				},
+				Timeout: 60 * time.Second, // hard 60s timeout
 			}
 		} else {
 			c.client = &http.Client{
@@ -141,6 +158,7 @@ func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSamp
 					MaxIdleConns:        1,
 					MaxIdleConnsPerHost: 0,
 				},
+				Timeout: 60 * time.Second, // hard 60s timeout
 			}
 		}
 	}
