@@ -2,7 +2,7 @@
 
 # v0.17.0
 
-* fix(goreleaser): deprecated
+* fix(goreleaser): deprecated syntax
 * build(deps): bump github.com/circonus-labs/go-apiclient from 0.7.22 to 0.7.23
 * feat: implement 30s deadline with retry on metric submission
 * fix: update deps for security vulnerabilities
