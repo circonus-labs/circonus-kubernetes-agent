@@ -198,7 +198,7 @@ github.com/subosito/gotenv
 # github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c
 ## explicit; go 1.13
 github.com/tv42/httpunix
-# go.uber.org/automaxprocs v1.5.1
+# go.uber.org/automaxprocs v1.5.2
 ## explicit; go 1.18
 go.uber.org/automaxprocs
 go.uber.org/automaxprocs/internal/cgroups
