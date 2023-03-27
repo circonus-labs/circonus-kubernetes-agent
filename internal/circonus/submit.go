@@ -43,6 +43,7 @@ const (
 	traceTSFormat        = "20060102_150405.000000000"
 )
 
+// FlushCGM sends the tracking metrics collected in a CGM instance within the Check.
 func (c *Check) FlushCGM(ctx context.Context, ts *time.Time, lg zerolog.Logger, agentStats bool) {
 	if c.metrics != nil {
 		// TODO: add timestamp support to CGM (e.g. FlushMetricsWithTimestamp(ts))
@@ -75,7 +76,7 @@ func (c *Check) FlushCGM(ctx context.Context, ts *time.Time, lg zerolog.Logger, 
 
 		for {
 			submitCtx, submitCtxCancel := context.WithDeadline(ctx, time.Now().Add(30*time.Second))
-			err := c.SubmitMetrics(submitCtx, metrics, lg, !agentStats)
+			err := c.submitMetrics(submitCtx, metrics, lg, !agentStats)
 			if err == nil {
 				submitCtxCancel()
 				break
@@ -95,8 +96,34 @@ func (c *Check) FlushCGM(ctx context.Context, ts *time.Time, lg zerolog.Logger, 
 	}
 }
 
-// Submit sends metrics to a circonus trap
-func (c *Check) SubmitMetrics(ctx context.Context, metrics map[string]MetricSample, resultLogger zerolog.Logger, includeStats bool) error {
+// FlushCollectorMetrics sends metrics from discrete collectors and sub-collectors
+func (c *Check) FlushCollectorMetrics(ctx context.Context, metrics map[string]MetricSample, resultLogger zerolog.Logger, includeStats bool) error {
+	var err error
+
+	for {
+		submitCtx, submitCtxCancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
+		err = c.submitMetrics(submitCtx, metrics, resultLogger, includeStats)
+		if err == nil {
+			submitCtxCancel()
+			break
+		}
+
+		if errors.Is(err, context.DeadlineExceeded) {
+			c.log.Warn().Err(err).Msg("deadline reached submitting metrics, retrying")
+			submitCtxCancel()
+			continue
+		}
+
+		submitCtxCancel()
+		c.log.Error().Err(err).Msg("submitting metrics")
+		break
+	}
+
+	return err
+}
+
+// submitMetrics does the heavy lifting to send metric batches to the trap check
+func (c *Check) submitMetrics(ctx context.Context, metrics map[string]MetricSample, resultLogger zerolog.Logger, includeStats bool) error {
 	if metrics == nil {
 		return errors.New("invalid metrics (nil)")
 	}
