@@ -258,7 +258,7 @@ func (ksm *KSM) queueMetrics(
 		return nil
 	}
 
-	if err := check.SubmitMetrics(ctx, metrics, srcLogger, true); err != nil {
+	if err := check.FlushCollectorMetrics(ctx, metrics, srcLogger, true); err != nil {
 		srcLogger.Warn().Err(err).Msg("submitting metrics")
 	}
 
