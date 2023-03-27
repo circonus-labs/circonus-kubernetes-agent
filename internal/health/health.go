@@ -134,7 +134,7 @@ func (h *Health) deployments(ctx context.Context, cs *kubernetes.Clientset, ts *
 		return
 	}
 
-	if err := h.check.SubmitMetrics(ctx, metrics, h.log.With().Str("type", "health-deployment").Logger(), true); err != nil {
+	if err := h.check.FlushCollectorMetrics(ctx, metrics, h.log.With().Str("type", "health-deployment").Logger(), true); err != nil {
 		h.log.Warn().Err(err).Msg("submitting metrics")
 	}
 }
@@ -170,7 +170,7 @@ func (h *Health) daemonsets(ctx context.Context, cs *kubernetes.Clientset, ts *t
 		return
 	}
 
-	if err := h.check.SubmitMetrics(ctx, metrics, h.log.With().Str("type", "health-daemonset").Logger(), true); err != nil {
+	if err := h.check.FlushCollectorMetrics(ctx, metrics, h.log.With().Str("type", "health-daemonset").Logger(), true); err != nil {
 		h.log.Warn().Err(err).Msg("submitting metrics")
 	}
 }
@@ -206,7 +206,7 @@ func (h *Health) statefulsets(ctx context.Context, cs *kubernetes.Clientset, ts 
 		return
 	}
 
-	if err := h.check.SubmitMetrics(ctx, metrics, h.log.With().Str("type", "health-statefulset").Logger(), true); err != nil {
+	if err := h.check.FlushCollectorMetrics(ctx, metrics, h.log.With().Str("type", "health-statefulset").Logger(), true); err != nil {
 		h.log.Warn().Err(err).Msg("submitting metrics")
 	}
 }
