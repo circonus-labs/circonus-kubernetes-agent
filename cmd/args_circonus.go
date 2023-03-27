@@ -270,6 +270,40 @@ func init() {
 		viper.SetDefault(key, defaultValue)
 	}
 
+	{
+		const (
+			key          = keys.CollectDeadline
+			longOpt      = "collect-deadline"
+			envVar       = release.ENVPREFIX + "_COLLECT_DEADLINE"
+			description  = "Metric collection deadline"
+			defaultValue = defaults.CollectDeadline
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		flag := rootCmd.PersistentFlags().Lookup(longOpt)
+		flag.Hidden = true
+		bindFlagError(longOpt, viper.BindPFlag(key, flag))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
+		viper.SetDefault(key, defaultValue)
+	}
+
+	{
+		const (
+			key          = keys.SubmitDeadline
+			longOpt      = "submit-deadline"
+			envVar       = release.ENVPREFIX + "_SUBMIT_DEADLINE"
+			description  = "Metric submission deadline"
+			defaultValue = defaults.SubmitDeadline
+		)
+
+		rootCmd.PersistentFlags().String(longOpt, defaultValue, envDescription(description, envVar))
+		flag := rootCmd.PersistentFlags().Lookup(longOpt)
+		flag.Hidden = true
+		bindFlagError(longOpt, viper.BindPFlag(key, flag))
+		bindEnvError(envVar, viper.BindEnv(key, envVar))
+		viper.SetDefault(key, defaultValue)
+	}
+
 	//
 	// hidden circonus options for development and debugging
 	//

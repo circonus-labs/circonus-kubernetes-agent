@@ -37,15 +37,16 @@ import (
 
 type Cluster struct {
 	sync.Mutex
-	tlsConfig  *tls.Config
-	check      *circonus.Check
-	lastStart  *time.Time
-	logger     zerolog.Logger
-	collectors []string
-	circCfg    config.Circonus
-	cfg        config.Cluster
-	interval   time.Duration
-	running    bool
+	tlsConfig       *tls.Config
+	check           *circonus.Check
+	lastStart       *time.Time
+	logger          zerolog.Logger
+	collectors      []string
+	circCfg         config.Circonus
+	cfg             config.Cluster
+	interval        time.Duration
+	collectDeadline time.Duration
+	running         bool
 }
 type Collector interface {
 	ID() string
@@ -95,10 +96,17 @@ func New(ctx context.Context, cfg config.Cluster, circCfg config.Circonus, paren
 
 	d, err := time.ParseDuration(c.cfg.Interval)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid duration in cluster configuration")
+		return nil, fmt.Errorf("parsing collect interval %s: %w", c.cfg.Interval, err)
 	}
 	c.interval = d
-	c.logger.Debug().Str("interval", d.String()).Msg("using interval")
+	c.logger.Debug().Str("interval", d.String()).Msg("using collect interval")
+
+	d, err = time.ParseDuration(c.circCfg.CollectDeadline)
+	if err != nil {
+		return nil, fmt.Errorf("parsing collect deadline %s: %w", c.circCfg.CollectDeadline, err)
+	}
+	c.collectDeadline = d
+	c.logger.Debug().Str("deadline", d.String()).Msg("using collect deadline")
 
 	// set check title if it has not been explicitly set by user
 	if circCfg.Check.Title == "" {
@@ -216,7 +224,7 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 	c.running = true
 	c.Unlock()
 
-	collectCtx, collectCancel := context.WithDeadline(ctx, time.Now().Add(c.interval))
+	collectCtx, collectCancel := context.WithDeadline(ctx, time.Now().Add(c.collectDeadline))
 	defer collectCancel()
 
 	// reset submit retries metric
@@ -319,7 +327,7 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 	deadlineTimeout := false
 	select {
 	case <-collectCtx.Done():
-		c.logger.Warn().Err(collectCtx.Err()).Msg("deadline triggered cancellation of metric collection: increase interval, node pool, or resources")
+		c.logger.Warn().Err(collectCtx.Err()).Str("deadline", c.collectDeadline.String()).Str("interval", c.interval.String()).Uint("pool", c.cfg.NodePoolSize).Msg("deadline triggered cancellation of metric collection: increase interval, node pool, or resources")
 		deadlineTimeout = true
 	default:
 	}

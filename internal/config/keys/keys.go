@@ -92,6 +92,12 @@ const (
 	// TraceSubmits enables writing all metrics sent to circonus to files
 	TraceSubmits = "circonus.trace_submits"
 
+	// CollectDeadline sets the timeout deadline for metric collection
+	CollectDeadline = "circous.collect_deadline"
+
+	// SubmitDeadline sets the timeout deadline for metric submissions
+	SubmitDeadline = "circonus.submit_deadline"
+
 	//
 	// hidden circonus settings for development and debugging
 	//

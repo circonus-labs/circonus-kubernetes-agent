@@ -11,10 +11,12 @@ import (
 	"expvar"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config/keys"
 	toml "github.com/pelletier/go-toml"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -78,6 +80,8 @@ type Circonus struct {
 	DefaultStreamtags string `mapstructure:"default_streamtags" json:"default_streamtags" toml:"default_streamtags" yaml:"default_streamtags"`
 	MetricFiltersFile string `mapstructure:"metric_filters_file" json:"metric_filters_file" toml:"metric_filters_file" yaml:"metric_filters_file"`
 	DefaultAlertsFile string `mapstructure:"default_alerts_file" json:"default_alerts_file" toml:"default_alerts_file" yaml:"default_alerts_file"`
+	CollectDeadline   string `mapstructure:"collect_deadline" json:"collect_deadline" toml:"collect_deadline" yaml:"collect_deadline"`
+	SubmitDeadline    string `mapstructure:"submit_deadline" json:"submit_deadline" toml:"submit_deadline" yaml:"submit_deadline"`
 	Check             Check  `json:"check" toml:"check" yaml:"check"`
 	API               API    `json:"api" toml:"api" yaml:"api"`
 	// hidden circonus settings for development and debugging
@@ -124,11 +128,53 @@ func Validate() error {
 		viper.GetString(keys.APIURL),
 		viper.GetString(keys.APICAFile))
 	if err != nil {
-		return errors.Wrap(err, "API config")
+		return fmt.Errorf("API Config: %w", err)
 	}
 
 	if viper.GetString(keys.CheckBundleCID) != "" && viper.GetBool(keys.CheckCreate) {
-		return errors.New("use --check-create OR --check-bundle-cid, they are mutually exclusive")
+		return fmt.Errorf("use --check-create OR --check-bundle-cid, they are mutually exclusive")
+	}
+
+	interval := viper.GetString(keys.K8SInterval)
+	collectDeadline := viper.GetString(keys.CollectDeadline)
+	submitDeadline := viper.GetString(keys.SubmitDeadline)
+
+	i, err := time.ParseDuration(interval)
+	if err != nil {
+		return fmt.Errorf("parsing collection interval: %w", err)
+	}
+	if i < 60*time.Second {
+		log.Warn().Str("interval", interval).Msg("less than 60s - may not provide adequate time to collect metrics depending on cluster size and total metrics being collected")
+	}
+
+	sd, err := time.ParseDuration(submitDeadline)
+	if err != nil {
+		return fmt.Errorf("parsing submit deadline: %w", err)
+	}
+	if sd > i {
+		log.Warn().Str("submit_deadline", submitDeadline).Str("interval", interval).Msg("submit deadline > collect interval - should be less than collect interval")
+	}
+
+	if collectDeadline == "" {
+		// if it wasn't set, set it to collect interval - submit deadline
+		x := i - sd
+		collectDeadline = x.String()
+		viper.Set(keys.CollectDeadline, collectDeadline)
+	}
+	cd, err := time.ParseDuration(collectDeadline)
+	if err != nil {
+		return fmt.Errorf("parsing collect deadline: %w", err)
+	}
+	if cd > i {
+		log.Warn().Str("collect_deadline", collectDeadline).Str("interval", interval).Msg("collect deadline > collect interval - should be less than collect interval")
+	}
+
+	if sd > cd {
+		log.Warn().Str("submit_deadline", submitDeadline).Str("collect_deadline", collectDeadline).Msg("submit deadline > collect deadline - should be less than collect deadline")
+	}
+
+	if sd+cd > i {
+		log.Warn().Str("submit_deadline", submitDeadline).Str("collect_deadline", collectDeadline).Str("interval", interval).Msg("submit deadline + collect deadline > interval - should be less than the collection interval")
 	}
 
 	return nil

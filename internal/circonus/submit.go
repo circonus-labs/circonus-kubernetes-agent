@@ -75,7 +75,7 @@ func (c *Check) FlushCGM(ctx context.Context, ts *time.Time, lg zerolog.Logger, 
 		}
 
 		for {
-			submitCtx, submitCtxCancel := context.WithDeadline(ctx, time.Now().Add(30*time.Second))
+			submitCtx, submitCtxCancel := context.WithDeadline(ctx, time.Now().Add(c.submitDeadline))
 			err := c.submitMetrics(submitCtx, metrics, lg, !agentStats)
 			if err == nil {
 				submitCtxCancel()
@@ -83,7 +83,7 @@ func (c *Check) FlushCGM(ctx context.Context, ts *time.Time, lg zerolog.Logger, 
 			}
 
 			if errors.Is(err, context.DeadlineExceeded) {
-				c.log.Warn().Err(err).Msg("deadline reached submitting metrics, retrying")
+				c.log.Warn().Err(err).Str("deadline", c.submitDeadline.String()).Msg("deadline reached submitting metrics, retrying")
 				submitCtxCancel()
 				continue
 			}
@@ -101,7 +101,7 @@ func (c *Check) FlushCollectorMetrics(ctx context.Context, metrics map[string]Me
 	var err error
 
 	for {
-		submitCtx, submitCtxCancel := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
+		submitCtx, submitCtxCancel := context.WithDeadline(ctx, time.Now().Add(c.submitDeadline))
 		err = c.submitMetrics(submitCtx, metrics, resultLogger, includeStats)
 		if err == nil {
 			submitCtxCancel()
@@ -109,7 +109,7 @@ func (c *Check) FlushCollectorMetrics(ctx context.Context, metrics map[string]Me
 		}
 
 		if errors.Is(err, context.DeadlineExceeded) {
-			c.log.Warn().Err(err).Msg("deadline reached submitting metrics, retrying")
+			c.log.Warn().Err(err).Str("deadline", c.submitDeadline.String()).Msg("deadline reached submitting metrics, retrying")
 			submitCtxCancel()
 			continue
 		}
