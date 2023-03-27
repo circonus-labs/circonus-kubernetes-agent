@@ -108,7 +108,7 @@ func (e *Events) Start(ctx context.Context, tlsConfig *tls.Config) {
 			[]string{"__rollup:false"}, measurementTags,
 			string(data),
 			&ets)
-		if err := e.check.SubmitMetrics(ctx, metrics, e.log.With().Str("type", "event").Logger(), true); err != nil {
+		if err := e.check.FlushCollectorMetrics(ctx, metrics, e.log.With().Str("type", "event").Logger(), true); err != nil {
 			e.log.Warn().Err(err).Msg("submitting initial event")
 		}
 	}()
@@ -166,7 +166,7 @@ func (e *Events) submitEvent(ctx context.Context, event *corev1.Event) {
 		string(data),
 		&ets)
 
-	if err := e.check.SubmitMetrics(ctx, metrics, e.log.With().Str("type", "event").Logger(), true); err != nil {
+	if err := e.check.FlushCollectorMetrics(ctx, metrics, e.log.With().Str("type", "event").Logger(), true); err != nil {
 		e.log.Warn().Err(err).Msg("submitting event")
 	}
 }
