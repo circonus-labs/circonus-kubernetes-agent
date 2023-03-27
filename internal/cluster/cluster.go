@@ -227,24 +227,30 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 	if dynamicCollectors != nil {
 		wg.Add(1)
 		go func() {
+			tm := time.Now()
 			c.logger.Info().Msg("starting dynamic collectors")
 			dynamicCollectors.Collect(collectCtx, c.tlsConfig, &start)
 			wg.Done()
-			c.logger.Info().Msg("finished dynamic collectors")
+			c.logger.Info().Str("dur", time.Since(tm).String()).Str("sdur", time.Since(start).String()).Msg("finished dynamic collectors")
 		}()
 	}
 
 	for _, collectorID := range c.collectors {
 		switch collectorID {
 		case "node":
-			collector, err := nodes.New(&c.cfg, c.logger, c.check, c.circCfg.NodeCC)
-			if err != nil {
-				c.logger.Error().Err(err).Msg("initializing node collector")
-			} else {
-				c.logger.Info().Msg("starting node collector")
-				collector.Collect(collectCtx, c.tlsConfig, &start)
-				c.logger.Info().Msg("finished node collector")
-			}
+			wg.Add(1)
+			go func() {
+				collector, err := nodes.New(&c.cfg, c.logger, c.check, c.circCfg.NodeCC)
+				if err != nil {
+					c.logger.Error().Err(err).Msg("initializing node collector")
+				} else {
+					tm := time.Now()
+					c.logger.Info().Msg("starting node collector")
+					collector.Collect(collectCtx, c.tlsConfig, &start)
+					c.logger.Info().Str("dur", time.Since(tm).String()).Str("sdur", time.Since(start).String()).Msg("finished node collector")
+				}
+				wg.Done()
+			}()
 		case "health":
 			wg.Add(1)
 			go func() {
@@ -252,9 +258,10 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 				if err != nil {
 					c.logger.Error().Err(err).Msg("initializing health collector")
 				} else {
+					tm := time.Now()
 					c.logger.Info().Msg("starting health collector")
 					collector.Collect(collectCtx, c.tlsConfig, &start)
-					c.logger.Info().Msg("finished health collector")
+					c.logger.Info().Str("dur", time.Since(tm).String()).Str("sdur", time.Since(start).String()).Msg("finished health collector")
 				}
 				wg.Done()
 			}()
@@ -265,9 +272,10 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 				if err != nil {
 					c.logger.Error().Err(err).Msg("initializing kube-state-metrics collector")
 				} else {
+					tm := time.Now()
 					c.logger.Info().Msg("starting ksm collector")
 					collector.Collect(collectCtx, c.tlsConfig, &start)
-					c.logger.Info().Msg("finished ksm collector")
+					c.logger.Info().Str("dur", time.Since(tm).String()).Str("sdur", time.Since(start).String()).Msg("finished ksm collector")
 				}
 				wg.Done()
 			}()
@@ -278,9 +286,10 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 				if err != nil {
 					c.logger.Error().Err(err).Msg("initializing api-server collector")
 				} else {
+					tm := time.Now()
 					c.logger.Info().Msg("starting api collector")
 					collector.Collect(collectCtx, c.tlsConfig, &start)
-					c.logger.Info().Msg("finished api collector")
+					c.logger.Info().Str("dur", time.Since(tm).String()).Str("sdur", time.Since(start).String()).Msg("finished api collector")
 				}
 				wg.Done()
 			}()
@@ -291,9 +300,10 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 				if err != nil {
 					c.logger.Error().Err(err).Msg("initializing kube-dns/coredns collector")
 				} else {
+					tm := time.Now()
 					c.logger.Info().Msg("starting dns collector")
 					collector.Collect(collectCtx, c.tlsConfig, &start)
-					c.logger.Info().Msg("finished dns collector")
+					c.logger.Info().Str("dur", time.Since(tm).String()).Str("sdur", time.Since(start).String()).Msg("finished dns collector")
 				}
 				wg.Done()
 			}()
@@ -309,7 +319,7 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 	deadlineTimeout := false
 	select {
 	case <-collectCtx.Done():
-		c.logger.Warn().Msg("deadline triggered cancellation of metric collection: increase interval, node pool, or resources")
+		c.logger.Warn().Err(collectCtx.Err()).Msg("deadline triggered cancellation of metric collection: increase interval, node pool, or resources")
 		deadlineTimeout = true
 	default:
 	}
