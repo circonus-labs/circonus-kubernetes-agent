@@ -106,6 +106,7 @@ func NewCheck(ctx context.Context, parentLogger zerolog.Logger, cfg *config.Circ
 		return nil, fmt.Errorf("parsing submit deadline %s: %w", cfg.SubmitDeadline, err)
 	}
 	c.submitDeadline = d
+	c.log.Debug().Str("deadline", d.String()).Msg("using submit deadline")
 
 	if cfg.DefaultStreamtags != "" {
 		tagList := strings.Split(cfg.DefaultStreamtags, ",")

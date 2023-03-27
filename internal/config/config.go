@@ -159,6 +159,7 @@ func Validate() error {
 		// if it wasn't set, set it to collect interval - submit deadline
 		x := i - sd
 		collectDeadline = x.String()
+		log.Info().Str("deadline", x.String()).Msg("collect deadline not set, setting to default (collect interval - submission deadline)")
 		viper.Set(keys.CollectDeadline, collectDeadline)
 	}
 	cd, err := time.ParseDuration(collectDeadline)
