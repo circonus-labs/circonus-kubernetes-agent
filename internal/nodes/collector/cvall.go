@@ -26,6 +26,10 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 		return
 	}
 
+	start := time.Now()
+	logger := nc.log.With().Str("type", "meta").Logger()
+	logger.Debug().Msg("start")
+
 	metrics := make(map[string]circonus.MetricSample)
 
 	{ // meta
@@ -93,7 +97,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 				SetNodeStat(nc.node.Name, ns)
 			}
 		} else {
-			nc.log.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.Cpu().String()).Msg("converting capacity.cpu")
+			logger.Warn().Err(err).Str("cpu", nc.node.Status.Capacity.Cpu().String()).Msg("converting capacity.cpu")
 			ns, ok := GetNodeStat(nc.node.Name)
 			if !ok {
 				ns = NewNodeStat()
@@ -113,7 +117,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 					nc.ts)
 			}
 		} else {
-			nc.log.Warn().Err(err).Str("pods", nc.node.Status.Capacity.Pods().String()).Msg("converting capacity.pods")
+			logger.Warn().Err(err).Str("pods", nc.node.Status.Capacity.Pods().String()).Msg("converting capacity.pods")
 		}
 
 		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.Memory().String()); err == nil {
@@ -128,7 +132,7 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 					nc.ts)
 			}
 		} else {
-			nc.log.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory().String()).Msg("parsing quantity capacity.memory")
+			logger.Warn().Err(err).Str("memory", nc.node.Status.Capacity.Memory().String()).Msg("parsing quantity capacity.memory")
 		}
 
 		if qty, err := resource.ParseQuantity(nc.node.Status.Capacity.StorageEphemeral().String()); err == nil {
@@ -143,17 +147,18 @@ func (nc *Collector) meta(parentStreamTags []string, parentMeasurementTags []str
 					nc.ts)
 			}
 		} else {
-			nc.log.Warn().Err(err).Str("ephemeral_storage", nc.node.Status.Capacity.StorageEphemeral().String()).Msg("parsing quantity capacity.ephemeral-storage")
+			logger.Warn().Err(err).Str("ephemeral_storage", nc.node.Status.Capacity.StorageEphemeral().String()).Msg("parsing quantity capacity.ephemeral-storage")
 		}
 	}
 
 	if len(metrics) == 0 {
-		// nc.log.Warn().Msg("no meta telemetry to submit")
+		logger.Warn().Str("duration", time.Since(start).String()).Msg("no meta telemetry to submit")
 		return
 	}
-	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "meta").Logger(), true); err != nil {
-		nc.log.Warn().Err(err).Msg("submitting metrics")
+	if err := nc.check.FlushCollectorMetrics(nc.ctx, metrics, logger, true); err != nil {
+		logger.Warn().Err(err).Msg("submitting metrics")
 	}
+	logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 }
 
 // nmetrics emits metrics from the node /metrics endpoint
@@ -163,9 +168,13 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 	}
 
 	start := time.Now()
+	logger := nc.log.With().Str("type", "/metrics").Logger()
+	logger.Debug().Msg("start")
+
 	clientset, err := k8s.GetClient(&nc.cfg)
 	if err != nil {
-		nc.log.Error().Err(err).Msg("initializing client set for node metrics, abandoning collection")
+		logger.Error().Err(err).Msg("initializing client set for node metrics, abandoning collection")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -179,7 +188,8 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kubelet"},
 		})
-		nc.log.Error().Err(err).Str("url", req.URL().String()).Msg("fetching /metrics stats")
+		logger.Error().Err(err).Str("url", req.URL().String()).Msg("fetching /metrics stats")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -192,9 +202,10 @@ func (nc *Collector) nmetrics(parentStreamTags []string, parentMeasurementTags [
 	}, float64(time.Since(start).Milliseconds()))
 
 	var parser expfmt.TextParser
-	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, nc.log, bytes.NewReader(data), parentStreamTags, parentMeasurementTags, nil); err != nil {
-		nc.log.Error().Err(err).Msg("parsing node metrics")
+	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, logger, bytes.NewReader(data), parentStreamTags, parentMeasurementTags, nil); err != nil {
+		logger.Error().Err(err).Msg("parsing node metrics")
 	}
+	logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 }
 
 // cadvisor emits metrics from the node /metrics/cadvisor endpoint
@@ -204,10 +215,13 @@ func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags [
 	}
 
 	start := time.Now()
+	logger := nc.log.With().Str("type", "/metrics/cadvisor").Logger()
+	logger.Debug().Msg("start")
 
 	clientset, err := k8s.GetClient(&nc.cfg)
 	if err != nil {
-		nc.log.Error().Err(err).Msg("initializing client set for cadvisor metrics, abandoning collection")
+		logger.Error().Err(err).Msg("initializing client set for cadvisor metrics, abandoning collection")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -221,7 +235,8 @@ func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags [
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kubelet"},
 		})
-		nc.log.Error().Err(err).Str("url", req.URL().String()).Msg("fetching /metrics/cadvisor stats")
+		logger.Error().Err(err).Str("url", req.URL().String()).Msg("fetching /metrics/cadvisor stats")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -235,7 +250,8 @@ func (nc *Collector) cadvisor(parentStreamTags []string, parentMeasurementTags [
 
 	streamTags := nc.check.NewTagList(parentStreamTags, []string{"__rollup:false"})
 	var parser expfmt.TextParser
-	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, nc.log, bytes.NewReader(data), streamTags, parentMeasurementTags, nil); err != nil {
-		nc.log.Error().Err(err).Msg("parsing node metrics/cadvisor")
+	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, logger, bytes.NewReader(data), streamTags, parentMeasurementTags, nil); err != nil {
+		logger.Error().Err(err).Msg("parsing node metrics/cadvisor")
 	}
+	logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 }

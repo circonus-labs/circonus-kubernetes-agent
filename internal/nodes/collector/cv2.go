@@ -27,9 +27,13 @@ func (nc *Collector) resources(parentStreamTags []string, parentMeasurementTags 
 	}
 
 	start := time.Now()
+	logger := nc.log.With().Str("type", "/metrics/resource").Logger()
+	logger.Debug().Msg("start")
+
 	clientset, err := k8s.GetClient(&nc.cfg)
 	if err != nil {
-		nc.log.Error().Err(err).Msg("initializing client set for node resource metrics, abandoning collection")
+		logger.Error().Err(err).Msg("initializing client set for node resource metrics, abandoning collection")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -43,7 +47,8 @@ func (nc *Collector) resources(parentStreamTags []string, parentMeasurementTags 
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kubelet"},
 		})
-		nc.log.Error().Err(err).Str("url", req.URL().String()).Msg("fetching /metrics/resource")
+		logger.Error().Err(err).Str("url", req.URL().String()).Msg("fetching /metrics/resource")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -56,9 +61,10 @@ func (nc *Collector) resources(parentStreamTags []string, parentMeasurementTags 
 	}, float64(time.Since(start).Milliseconds()))
 
 	var parser expfmt.TextParser
-	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, nc.log, bytes.NewReader(data), parentStreamTags, parentMeasurementTags, nil); err != nil {
-		nc.log.Error().Err(err).Msg("parsing node resource metrics")
+	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, logger, bytes.NewReader(data), parentStreamTags, parentMeasurementTags, nil); err != nil {
+		logger.Error().Err(err).Msg("parsing node resource metrics")
 	}
+	logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 }
 
 // probes emits node probe stats
@@ -68,9 +74,13 @@ func (nc *Collector) probes(parentStreamTags []string, parentMeasurementTags []s
 	}
 
 	start := time.Now()
+	logger := nc.log.With().Str("type", "/metrics/probes").Logger()
+	logger.Debug().Msg("start")
+
 	clientset, err := k8s.GetClient(&nc.cfg)
 	if err != nil {
-		nc.log.Error().Err(err).Msg("initializing client set for node probe metrics, abandoning collection")
+		logger.Error().Err(err).Msg("initializing client set for node probe metrics, abandoning collection")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -84,7 +94,8 @@ func (nc *Collector) probes(parentStreamTags []string, parentMeasurementTags []s
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kubelet"},
 		})
-		nc.log.Error().Err(err).Str("url", req.URL().String()).Msg("fetching /metrics/probes")
+		logger.Error().Err(err).Str("url", req.URL().String()).Msg("fetching /metrics/probes")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -97,7 +108,8 @@ func (nc *Collector) probes(parentStreamTags []string, parentMeasurementTags []s
 	}, float64(time.Since(start).Milliseconds()))
 
 	var parser expfmt.TextParser
-	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, nc.log, bytes.NewReader(data), parentStreamTags, parentMeasurementTags, nil); err != nil {
-		nc.log.Error().Err(err).Msg("parsing node probe metrics")
+	if err := promtext.QueueMetrics(nc.ctx, parser, nc.check, logger, bytes.NewReader(data), parentStreamTags, parentMeasurementTags, nil); err != nil {
+		logger.Error().Err(err).Msg("parsing node probe metrics")
 	}
+	logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 }
