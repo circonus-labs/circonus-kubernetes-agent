@@ -99,10 +99,10 @@ func (nc *Collector) Collect(ctx context.Context, workerID int, tlsConfig *tls.C
 	baseStreamTags := []string{"source:kubelet", "node:" + nc.node.Name}
 
 	if nc.verConstraint.Check(nc.kubeletVer) {
-		nc.log.Debug().Str("ver", nc.kubeletVer.String()).Msg("using v2 collector")
+		nc.log.Info().Str("kubelet_ver", nc.kubeletVer.String()).Msg("using v2 collector")
 		nc.collectV2(concurrent, baseStreamTags, baseMeasurementTags)
 	} else {
-		nc.log.Debug().Str("ver", nc.kubeletVer.String()).Msg("using v1 collector")
+		nc.log.Info().Str("kubelet_ver", nc.kubeletVer.String()).Msg("using v1 collector")
 		nc.collectV1(concurrent, baseStreamTags, baseMeasurementTags)
 	}
 
