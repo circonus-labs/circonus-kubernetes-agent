@@ -79,6 +79,7 @@ docker_manifests:
     
 archives: 
   - id: default
+    rlcp: true
     name_template: "{{.ProjectName}}_{{.Version}}_{{.Os}}_{{.Arch}}"
     format: tar.gz
     files: 
