@@ -224,6 +224,8 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 	c.running = true
 	c.Unlock()
 
+	c.logger.Info().Msg("collection start")
+
 	collectCtx, collectCancel := context.WithDeadline(ctx, time.Now().Add(c.collectDeadline))
 	defer collectCancel()
 
@@ -322,7 +324,7 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 
 	wg.Wait()
 
-	c.logger.Info().Msg("collections complete, adding internal metrics")
+	c.logger.Info().Msg("collections complete, adding internal tracking metrics")
 
 	deadlineTimeout := false
 	select {
@@ -352,6 +354,8 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 	c.check.AddText("collect_agent", baseStreamTags, release.NAME+"_"+release.VERSION)
 	c.check.AddGauge("collect_metrics", baseStreamTags, cstats.SentMetrics)
 	c.check.AddGauge("collect_filtered", baseStreamTags, cstats.LocFiltered)
+	c.check.AddGauge("collect_bytes_sent", baseStreamTags, cstats.SentBytes)
+	c.check.AddGauge("collect_bytes_transmitted", baseStreamTags, cstats.SentSize)
 	c.check.AddGauge("collect_ngr", baseStreamTags, uint64(runtime.NumGoroutine()))
 
 	cdt := 0
@@ -399,14 +403,15 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 		c.check.AddGauge("collect_interval", streamTags, uint64(c.interval.Milliseconds()))
 	}
 
-	c.logger.Info().Msg("starting metric flush")
-	// use regular ctx not the collection deadlined ctx
+	fs := time.Now()
+	c.logger.Info().Msg("starting tracking metric flush")
+	// use regular app ctx not collection deadlined ctx, flush deadline applied in check.FlushCGM
 	c.check.FlushCGM(ctx, &start, c.logger, true)
-	c.logger.Info().Msg("finished metric flush")
+	c.logger.Info().Str("dur", time.Since(fs).String()).Msg("finished tracking metric flush")
 
 	c.logger.Info().
 		Interface("metrics_sent", cstats).
-		Str("duration", dur.String()).
+		Str("dur", dur.String()).
 		Msg("collection complete")
 	c.Lock()
 	c.running = false
