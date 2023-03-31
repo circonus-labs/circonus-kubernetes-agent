@@ -94,6 +94,9 @@ func New() (*Agent, error) {
 		Bool(keys.K8SEnableNodes, viper.GetBool(keys.K8SEnableNodes)).
 		Bool(keys.K8SIncludeContainers, viper.GetBool(keys.K8SIncludeContainers)).
 		Bool(keys.K8SIncludePods, viper.GetBool(keys.K8SIncludePods)).
+		Str(keys.K8SInterval, viper.GetString(keys.K8SInterval)).
+		Str(keys.CollectDeadline, viper.GetString(keys.CollectDeadline)).
+		Str(keys.SubmitDeadline, viper.GetString(keys.SubmitDeadline)).
 		Msg("collection configuration")
 
 	// Set the hidden settings based on viper
