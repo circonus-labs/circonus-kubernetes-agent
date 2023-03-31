@@ -238,7 +238,7 @@ func (c *Check) submitMetrics(ctx context.Context, metrics map[string]MetricSamp
 		}
 	}
 
-	dataLen := subData.Len()
+	dataLen := len(rawData) // subData.Len()
 
 	reqStart := time.Now()
 
@@ -337,6 +337,7 @@ func (c *Check) submitMetrics(ctx context.Context, metrics map[string]MetricSamp
 		c.stats.RecvMetrics += result.Stats
 		c.stats.SentMetrics += uint64(len(metrics))
 		c.stats.SentBytes += uint64(dataLen)
+		c.stats.SentSize += uint64(subData.Len())
 		c.stats.BkrFiltered += result.Filtered
 		c.statsmu.Unlock()
 	}
