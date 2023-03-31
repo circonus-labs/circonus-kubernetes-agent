@@ -1,5 +1,21 @@
 # **unreleased**
 
+# v0.18.0
+
+* feat: add interval, collect deadline, submit deadline to collect config startup message
+* feat: add uncompressed data size to stats
+* fix: clarify tracking messages
+* fix: typo in key name
+* feat: add kubelet ver and ver mode info msg
+* chore: add rlcp:true for future deprecation
+* chore: debug msgs for deadlines
+* feat: add --submit-deadline option
+* feat: add --collect-deadline option
+* chore: use submit and collect deadline options
+* chore: switch from submit metrics to flush collector metrics wrapper
+* chore: improved stats messaging
+* fix: make metric submitter private and add public wrapper with deadline
+
 # v0.17.0
 
 * fix(goreleaser): deprecated syntax

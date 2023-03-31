@@ -189,7 +189,7 @@ func QueueMetrics(
 		return nil
 	}
 
-	if err := check.SubmitMetrics(ctx, metrics, logger, true); err != nil {
+	if err := check.FlushCollectorMetrics(ctx, metrics, logger, true); err != nil {
 		logger.Warn().Err(err).Msg("submitting metrics")
 	}
 

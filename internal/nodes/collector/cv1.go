@@ -25,10 +25,13 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 	}
 
 	start := time.Now()
+	logger := nc.log.With().Str("type", "/stats/summary").Logger()
+	logger.Debug().Msg("start")
 
 	clientset, err := k8s.GetClient(&nc.cfg)
 	if err != nil {
-		nc.log.Error().Err(err).Msg("initializing client set for stats/summary, abandoning collection")
+		logger.Error().Err(err).Msg("initializing client set for stats/summary, abandoning collection")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -42,7 +45,8 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 			cgm.Tag{Category: "proxy", Value: "api-server"},
 			cgm.Tag{Category: "target", Value: "kubelet"},
 		})
-		nc.log.Error().Err(err).Str("k8s_ver", nc.kubeletVer.String()).Str("url", req.URL().String()).Msg("fetching stats/summary stats")
+		logger.Error().Err(err).Str("k8s_ver", nc.kubeletVer.String()).Str("url", req.URL().String()).Msg("fetching stats/summary stats")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -56,7 +60,8 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 
 	var stats statsSummary
 	if err := json.Unmarshal(data, &stats); err != nil {
-		nc.log.Error().Err(err).Msg("parsing stats/summary metrics")
+		logger.Error().Err(err).Msg("parsing stats/summary metrics")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -68,12 +73,18 @@ func (nc *Collector) summary(parentStreamTags []string, parentMeasurementTags []
 	nc.summaryNode(&stats.Node, parentStreamTags, parentMeasurementTags)
 	nc.summarySystemContainers(&stats.Node, parentStreamTags, parentMeasurementTags)
 	nc.summaryPods(&stats, parentStreamTags, parentMeasurementTags)
+
+	logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 }
 
 func (nc *Collector) summaryNode(node *statsSummaryNode, parentStreamTags []string, parentMeasurementTags []string) {
 	if nc.done() {
 		return
 	}
+
+	start := time.Now()
+	logger := nc.log.With().Str("type", "/stats/summary").Logger()
+	logger.Debug().Msg("start")
 
 	metrics := make(map[string]circonus.MetricSample)
 
@@ -85,12 +96,14 @@ func (nc *Collector) summaryNode(node *statsSummaryNode, parentStreamTags []stri
 	nc.queueRlimit(metrics, &node.Rlimit, parentStreamTags, parentMeasurementTags)
 
 	if len(metrics) == 0 {
-		// nc.log.Warn().Msg("no summary telemetry to submit")
+		logger.Warn().Msg("no summary telemetry to submit")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
-	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "/stats/summary").Logger(), true); err != nil {
-		nc.log.Warn().Err(err).Msg("submitting metrics")
+	if err := nc.check.FlushCollectorMetrics(nc.ctx, metrics, logger, true); err != nil {
+		logger.Err(err).Msg("submitting metrics")
 	}
+	logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 }
 
 func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStreamTags []string, parentMeasurementTags []string) {
@@ -100,8 +113,14 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 	if !nc.cfg.IncludeContainers {
 		return
 	}
+
+	start := time.Now()
+	logger := nc.log.With().Str("type", "system_containers").Logger()
+	logger.Debug().Msg("start")
+
 	if len(node.SystemContainers) == 0 {
-		nc.log.Error().Msg("invalid system containers (none)")
+		logger.Error().Msg("invalid system containers (none)")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -119,12 +138,15 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 	}
 
 	if len(metrics) == 0 {
-		// nc.log.Warn().Msg("no system container telemetry to submit")
+		logger.Warn().Msg("no system container telemetry to submit")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
-	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "system_containers").Logger(), true); err != nil {
-		nc.log.Warn().Err(err).Msg("submitting metrics")
+	if err := nc.check.FlushCollectorMetrics(nc.ctx, metrics, logger, true); err != nil {
+		logger.Warn().Err(err).Msg("submitting metrics")
 	}
+
+	logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 }
 
 func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string, parentMeasurementTags []string) {
@@ -134,8 +156,14 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 	if !nc.cfg.IncludePods {
 		return
 	}
+
+	start := time.Now()
+	logger := nc.log.With().Str("type", "pods").Logger()
+	logger.Debug().Msg("start")
+
 	if len(stats.Pods) == 0 {
-		nc.log.Error().Msg("invalid pods (none)")
+		logger.Error().Msg("invalid pods (none)")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -144,7 +172,8 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 	// clientset
 	clientset, err := k8s.GetClient(&nc.cfg)
 	if err != nil {
-		nc.log.Error().Err(err).Msg("initializing client set for pods, abandoning collection")
+		logger.Error().Err(err).Msg("initializing client set for pods, abandoning collection")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
 
@@ -159,7 +188,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 				cgm.Tag{Category: "request", Value: "pod"},
 				cgm.Tag{Category: "target", Value: "api-server"},
 			})
-			nc.log.Error().Err(err).Str("pod", pod.PodRef.Name).Str("ns", pod.PodRef.Namespace).Msg("fetching pod, skipping")
+			logger.Error().Err(err).Str("pod", pod.PodRef.Name).Str("ns", pod.PodRef.Namespace).Msg("fetching pod, skipping")
 			continue
 		}
 
@@ -217,10 +246,12 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 	}
 
 	if len(metrics) == 0 {
-		// nc.log.Warn().Msg("no pod telemetry to submit")
+		logger.Warn().Msg("no pod telemetry to submit")
+		logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 		return
 	}
-	if err := nc.check.SubmitMetrics(nc.ctx, metrics, nc.log.With().Str("type", "pods").Logger(), true); err != nil {
-		nc.log.Warn().Err(err).Msg("submitting metrics")
+	if err := nc.check.FlushCollectorMetrics(nc.ctx, metrics, logger, true); err != nil {
+		logger.Warn().Err(err).Msg("submitting metrics")
 	}
+	logger.Debug().Str("duration", time.Since(start).String()).Msg("complete")
 }

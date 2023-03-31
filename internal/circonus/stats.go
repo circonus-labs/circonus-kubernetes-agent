@@ -9,12 +9,13 @@ import "code.cloudfoundry.org/bytefmt"
 
 // Stats defines the submission stats tracked across metric submissions to broker
 type Stats struct {
-	SentSize    string
+	Transmitted string
 	LocFiltered uint64 // agent: filtered based on namerx
 	BkrFiltered uint64 // broker: filtered
 	RecvMetrics uint64 // broker: "stats" received
 	SentMetrics uint64 // agent: total "unique" metrics sent
-	SentBytes   uint64
+	SentBytes   uint64 // size of raw data (not compressed)
+	SentSize    uint64 // actual size of data sent
 }
 
 // SubmitStats returns copy of the submission stats
@@ -27,7 +28,8 @@ func (c *Check) SubmitStats() Stats {
 		RecvMetrics: c.stats.RecvMetrics,
 		SentMetrics: c.stats.SentMetrics,
 		SentBytes:   c.stats.SentBytes,
-		SentSize:    bytefmt.ByteSize(c.stats.SentBytes),
+		SentSize:    c.stats.SentSize,
+		Transmitted: bytefmt.ByteSize(c.stats.SentSize),
 	}
 }
 
@@ -38,6 +40,7 @@ func (c *Check) ResetSubmitStats() {
 	c.stats.SentMetrics = 0
 	c.stats.RecvMetrics = 0
 	c.stats.SentBytes = 0
+	c.stats.SentSize = 0
 	c.stats.LocFiltered = 0
 	c.stats.BkrFiltered = 0
 }

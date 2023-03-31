@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	cgm "github.com/circonus-labs/circonus-gometrics/v3"
 	"github.com/circonus-labs/circonus-kubernetes-agent/internal/config"
@@ -51,9 +52,9 @@ type Check struct {
 	config               *config.Circonus
 	client               *http.Client
 	metrics              *cgm.CirconusMetrics
-	clusterName          string
-	checkCID             string
 	checkUUID            string
+	checkCID             string
+	clusterName          string
 	checkBundleCID       string
 	clusterTag           string
 	clusterVers          string
@@ -62,6 +63,7 @@ type Check struct {
 	metricFilters        []MetricFilter
 	defaultTags          cgm.Tags
 	stats                Stats
+	submitDeadline       time.Duration
 	filterDynamicMetrics bool
 }
 
@@ -98,6 +100,13 @@ func NewCheck(ctx context.Context, parentLogger zerolog.Logger, cfg *config.Circ
 	if cfg.LogAgentMetrics != defaults.LogAgentMetrics {
 		c.log.Info().Bool("enabled", cfg.LogAgentMetrics).Msg("log agent metrics")
 	}
+
+	d, err := time.ParseDuration(cfg.SubmitDeadline)
+	if err != nil {
+		return nil, fmt.Errorf("parsing submit deadline %s: %w", cfg.SubmitDeadline, err)
+	}
+	c.submitDeadline = d
+	c.log.Debug().Str("deadline", d.String()).Msg("using submit deadline")
 
 	if cfg.DefaultStreamtags != "" {
 		tagList := strings.Split(cfg.DefaultStreamtags, ",")

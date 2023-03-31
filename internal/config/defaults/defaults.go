@@ -37,6 +37,8 @@ const (
 	CustomRulesFile    = "/ck8sa/custom-rules.json"   // assumes running in a pod, ConfigMap mounted volume
 	CheckTitle         = ""
 	TraceSubmits       = ""
+	CollectDeadline    = ""    // if not set, will be set to collection interval - SubmitDeadline
+	SubmitDeadline     = "10s" // must be less than  collection interval
 	// hidden circonus settings for development and debugging
 	DryRun = false
 	// StreamMetrics = false
@@ -67,7 +69,7 @@ const (
 	*/
 
 	K8SName                      = ""
-	K8SInterval                  = "1m"
+	K8SInterval                  = "60s"                                                  // if less than 30,s will be set to 30s
 	K8SAPIURL                    = "https://kubernetes.default.svc"                       // https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod
 	K8SAPICAFile                 = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt" // https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod
 	K8SBearerToken               = ""

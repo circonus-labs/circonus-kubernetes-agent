@@ -37,15 +37,16 @@ import (
 
 type Cluster struct {
 	sync.Mutex
-	tlsConfig  *tls.Config
-	check      *circonus.Check
-	lastStart  *time.Time
-	logger     zerolog.Logger
-	collectors []string
-	circCfg    config.Circonus
-	cfg        config.Cluster
-	interval   time.Duration
-	running    bool
+	tlsConfig       *tls.Config
+	check           *circonus.Check
+	lastStart       *time.Time
+	logger          zerolog.Logger
+	collectors      []string
+	circCfg         config.Circonus
+	cfg             config.Cluster
+	interval        time.Duration
+	collectDeadline time.Duration
+	running         bool
 }
 type Collector interface {
 	ID() string
@@ -95,10 +96,17 @@ func New(ctx context.Context, cfg config.Cluster, circCfg config.Circonus, paren
 
 	d, err := time.ParseDuration(c.cfg.Interval)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid duration in cluster configuration")
+		return nil, fmt.Errorf("parsing collect interval %s: %w", c.cfg.Interval, err)
 	}
 	c.interval = d
-	c.logger.Debug().Str("interval", d.String()).Msg("using interval")
+	c.logger.Debug().Str("interval", d.String()).Msg("using collect interval")
+
+	d, err = time.ParseDuration(c.circCfg.CollectDeadline)
+	if err != nil {
+		return nil, fmt.Errorf("parsing collect deadline %s: %w", c.circCfg.CollectDeadline, err)
+	}
+	c.collectDeadline = d
+	c.logger.Debug().Str("deadline", d.String()).Msg("using collect deadline")
 
 	// set check title if it has not been explicitly set by user
 	if circCfg.Check.Title == "" {
@@ -216,7 +224,9 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 	c.running = true
 	c.Unlock()
 
-	collectCtx, collectCancel := context.WithDeadline(ctx, time.Now().Add(c.interval))
+	c.logger.Info().Msg("collection start")
+
+	collectCtx, collectCancel := context.WithDeadline(ctx, time.Now().Add(c.collectDeadline))
 	defer collectCancel()
 
 	// reset submit retries metric
@@ -227,24 +237,30 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 	if dynamicCollectors != nil {
 		wg.Add(1)
 		go func() {
+			tm := time.Now()
 			c.logger.Info().Msg("starting dynamic collectors")
 			dynamicCollectors.Collect(collectCtx, c.tlsConfig, &start)
 			wg.Done()
-			c.logger.Info().Msg("finished dynamic collectors")
+			c.logger.Info().Str("dur", time.Since(tm).String()).Str("sdur", time.Since(start).String()).Msg("finished dynamic collectors")
 		}()
 	}
 
 	for _, collectorID := range c.collectors {
 		switch collectorID {
 		case "node":
-			collector, err := nodes.New(&c.cfg, c.logger, c.check, c.circCfg.NodeCC)
-			if err != nil {
-				c.logger.Error().Err(err).Msg("initializing node collector")
-			} else {
-				c.logger.Info().Msg("starting node collector")
-				collector.Collect(collectCtx, c.tlsConfig, &start)
-				c.logger.Info().Msg("finished node collector")
-			}
+			wg.Add(1)
+			go func() {
+				collector, err := nodes.New(&c.cfg, c.logger, c.check, c.circCfg.NodeCC)
+				if err != nil {
+					c.logger.Error().Err(err).Msg("initializing node collector")
+				} else {
+					tm := time.Now()
+					c.logger.Info().Msg("starting node collector")
+					collector.Collect(collectCtx, c.tlsConfig, &start)
+					c.logger.Info().Str("dur", time.Since(tm).String()).Str("sdur", time.Since(start).String()).Msg("finished node collector")
+				}
+				wg.Done()
+			}()
 		case "health":
 			wg.Add(1)
 			go func() {
@@ -252,9 +268,10 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 				if err != nil {
 					c.logger.Error().Err(err).Msg("initializing health collector")
 				} else {
+					tm := time.Now()
 					c.logger.Info().Msg("starting health collector")
 					collector.Collect(collectCtx, c.tlsConfig, &start)
-					c.logger.Info().Msg("finished health collector")
+					c.logger.Info().Str("dur", time.Since(tm).String()).Str("sdur", time.Since(start).String()).Msg("finished health collector")
 				}
 				wg.Done()
 			}()
@@ -265,9 +282,10 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 				if err != nil {
 					c.logger.Error().Err(err).Msg("initializing kube-state-metrics collector")
 				} else {
+					tm := time.Now()
 					c.logger.Info().Msg("starting ksm collector")
 					collector.Collect(collectCtx, c.tlsConfig, &start)
-					c.logger.Info().Msg("finished ksm collector")
+					c.logger.Info().Str("dur", time.Since(tm).String()).Str("sdur", time.Since(start).String()).Msg("finished ksm collector")
 				}
 				wg.Done()
 			}()
@@ -278,9 +296,10 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 				if err != nil {
 					c.logger.Error().Err(err).Msg("initializing api-server collector")
 				} else {
+					tm := time.Now()
 					c.logger.Info().Msg("starting api collector")
 					collector.Collect(collectCtx, c.tlsConfig, &start)
-					c.logger.Info().Msg("finished api collector")
+					c.logger.Info().Str("dur", time.Since(tm).String()).Str("sdur", time.Since(start).String()).Msg("finished api collector")
 				}
 				wg.Done()
 			}()
@@ -291,9 +310,10 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 				if err != nil {
 					c.logger.Error().Err(err).Msg("initializing kube-dns/coredns collector")
 				} else {
+					tm := time.Now()
 					c.logger.Info().Msg("starting dns collector")
 					collector.Collect(collectCtx, c.tlsConfig, &start)
-					c.logger.Info().Msg("finished dns collector")
+					c.logger.Info().Str("dur", time.Since(tm).String()).Str("sdur", time.Since(start).String()).Msg("finished dns collector")
 				}
 				wg.Done()
 			}()
@@ -304,12 +324,12 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 
 	wg.Wait()
 
-	c.logger.Info().Msg("collections complete, adding internal metrics")
+	c.logger.Info().Msg("collections complete, adding internal tracking metrics")
 
 	deadlineTimeout := false
 	select {
 	case <-collectCtx.Done():
-		c.logger.Warn().Msg("deadline triggered cancellation of metric collection: increase interval, node pool, or resources")
+		c.logger.Warn().Err(collectCtx.Err()).Str("deadline", c.collectDeadline.String()).Str("interval", c.interval.String()).Uint("pool", c.cfg.NodePoolSize).Msg("deadline triggered cancellation of metric collection: increase interval, node pool, or resources")
 		deadlineTimeout = true
 	default:
 	}
@@ -334,6 +354,8 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 	c.check.AddText("collect_agent", baseStreamTags, release.NAME+"_"+release.VERSION)
 	c.check.AddGauge("collect_metrics", baseStreamTags, cstats.SentMetrics)
 	c.check.AddGauge("collect_filtered", baseStreamTags, cstats.LocFiltered)
+	c.check.AddGauge("collect_bytes_sent", baseStreamTags, cstats.SentBytes)
+	c.check.AddGauge("collect_bytes_transmitted", baseStreamTags, cstats.SentSize)
 	c.check.AddGauge("collect_ngr", baseStreamTags, uint64(runtime.NumGoroutine()))
 
 	cdt := 0
@@ -381,14 +403,15 @@ func (c *Cluster) collect(ctx context.Context, dynamicCollectors *dc.DC) {
 		c.check.AddGauge("collect_interval", streamTags, uint64(c.interval.Milliseconds()))
 	}
 
-	c.logger.Info().Msg("starting metric flush")
-	// use regular ctx not the collection deadlined ctx
+	fs := time.Now()
+	c.logger.Info().Msg("starting tracking metric flush")
+	// use regular app ctx not collection deadlined ctx, flush deadline applied in check.FlushCGM
 	c.check.FlushCGM(ctx, &start, c.logger, true)
-	c.logger.Info().Msg("finished metric flush")
+	c.logger.Info().Str("dur", time.Since(fs).String()).Msg("finished tracking metric flush")
 
 	c.logger.Info().
 		Interface("metrics_sent", cstats).
-		Str("duration", dur.String()).
+		Str("dur", dur.String()).
 		Msg("collection complete")
 	c.Lock()
 	c.running = false
