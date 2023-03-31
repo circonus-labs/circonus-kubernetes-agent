@@ -93,7 +93,7 @@ const (
 	TraceSubmits = "circonus.trace_submits"
 
 	// CollectDeadline sets the timeout deadline for metric collection
-	CollectDeadline = "circous.collect_deadline"
+	CollectDeadline = "circonus.collect_deadline"
 
 	// SubmitDeadline sets the timeout deadline for metric submissions
 	SubmitDeadline = "circonus.submit_deadline"
