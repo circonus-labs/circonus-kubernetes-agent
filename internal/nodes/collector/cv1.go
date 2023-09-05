@@ -127,6 +127,7 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 	metrics := make(map[string]circonus.MetricSample)
 
 	for _, container := range node.SystemContainers {
+       	        container := container
 		if nc.done() {
 			break
 		}
