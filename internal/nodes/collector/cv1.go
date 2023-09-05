@@ -127,7 +127,7 @@ func (nc *Collector) summarySystemContainers(node *statsSummaryNode, parentStrea
 	metrics := make(map[string]circonus.MetricSample)
 
 	for _, container := range node.SystemContainers {
-       	        container := container
+		container := container
 		if nc.done() {
 			break
 		}
@@ -179,6 +179,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 	}
 
 	for _, pod := range stats.Pods {
+		pod := pod
 		if nc.done() {
 			break
 		}
