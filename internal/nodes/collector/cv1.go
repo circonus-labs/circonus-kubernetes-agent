@@ -211,10 +211,10 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 
 		totUsed := uint64(0)
 		for _, volume := range pod.Volumes {
+			volume := volume
 			if nc.done() {
 				break
 			}
-			volume := volume
 			nc.queueVolume(metrics, &volume, podStreamTags, parentMeasurementTags)
 			totUsed += volume.UsedBytes
 		}
@@ -231,6 +231,7 @@ func (nc *Collector) summaryPods(stats *statsSummary, parentStreamTags []string,
 
 		if nc.cfg.IncludeContainers {
 			for _, container := range pod.Containers {
+				container := container
 				if nc.done() {
 					break
 				}
