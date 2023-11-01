@@ -10,7 +10,7 @@ github.com/PuerkitoBio/urlesc
 # github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137
 ## explicit; go 1.15
 github.com/alecthomas/units
-# github.com/circonus-labs/circonus-gometrics/v3 v3.4.6
+# github.com/circonus-labs/circonus-gometrics/v3 v3.4.7
 ## explicit; go 1.14
 github.com/circonus-labs/circonus-gometrics/v3
 github.com/circonus-labs/circonus-gometrics/v3/checkmgr
