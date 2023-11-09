@@ -1,6 +1,10 @@
 # **unreleased**
 
-# v0.18.0
+## v0.19.0
+
+* fix: changelog typos and h1>h2
+
+## v0.18.0
 
 * feat: add interval, collect deadline, submit deadline to collect config startup message
 * feat: add uncompressed data size to stats
@@ -16,7 +20,7 @@
 * chore: improved stats messaging
 * fix: make metric submitter private and add public wrapper with deadline
 
-# v0.17.0
+## v0.17.0
 
 * fix(goreleaser): deprecated syntax
 * build(deps): bump github.com/circonus-labs/go-apiclient from 0.7.22 to 0.7.23
@@ -24,15 +28,15 @@
 * fix: update deps for security vulnerabilities
 * fix: tags for submission metrics
 
-# v0.16.1
+## v0.16.1
 
 * feat: add start/finish status messages around collectors
 
-# v0.16.0
+## v0.16.0
 
 * feat: add `summary/stats` into v2 collection (was supposed to have been deprecated in 1.18) but is still present and user is looking for `usageNanoCores`.
 
-# v0.15.0
+## v0.15.0
 
 * chore: update warning when alert config file not found to not stutter the file nam
 * fix: clean non-semver GKE k8s version (metric filters)
@@ -50,13 +54,13 @@
 * fix: drop NaN metrics when queueing
 * feat: go1.19 for strings.Cut
 
-# v0.14.0
+## v0.14.0
 
 * feat: add node_name tag for pods
 * feat: add owner tag for pods
 * feat: add support for label_tags=* to turn all labels into tags for the given object
 
-# v0.13.0
+## v0.13.0
 
 2022-08-08
 
@@ -134,7 +138,7 @@
               dependency-type: direct:production
               update-type: version-update:semver-major
 
-# v0.12.6
+## v0.12.6
 
 * upd: log error message on cn mismatch in tls verify
 * upd: lint issues
@@ -145,20 +149,20 @@
 * build(deps): bump github.com/spf13/viper from 1.10.0 to 1.10.1
 * build(deps): bump github.com/rs/zerolog from 1.26.0 to 1.26.1
 
-# v0.12.5
+## v0.12.5
 
 * upd: update dependencies to latest versions
 
-# v0.12.4
+## v0.12.4
 
 * add: namespace tag to all dc targets
 
-# v0.12.3
+## v0.12.3
 
 * add: metric_filter configuration to helm chart files
 * build(deps): bump github.com/spf13/viper from 1.8.1 to 1.9.0
 
-# v0.12.2
+## v0.12.2
 
 * upd: bump github.com/rs/zerolog from 1.24.0 to 1.25.0
 * upd: disable rule sets by default
@@ -169,13 +173,13 @@
 * build(deps): bump github.com/rs/zerolog from 1.23.0 to 1.24.0
 * build(deps): bump github.com/pelletier/go-toml from 1.9.3 to 1.9.4
 
-# v0.12.1
+## v0.12.1
 
 * fix: broker cluster support for CA/CN validation
 * upd: struct align
 * upd: contributed helm chart
 
-# v0.12.0
+## v0.12.0
 
 * add: configuration options for >v1.18 k8s node metrics
 * add: support v1.18+ deprecation of cadvisor endpoints
@@ -186,7 +190,7 @@
 * upd: lint ver
 * upd: dependencies (viper/cobra/zerolog/etc.)
 
-# v0.11.7
+## v0.11.7
 
 * upd: add metric type to nan detection err msg
 * upd: dc request timeouts
@@ -198,20 +202,20 @@
 * upd: lint version 1.38
 * mrg: PR59 - custom/deployment.yaml mismatch with args_kubernetes.go
 
-# v0.11.6
+## v0.11.6
 
 * upd: enable cumulative histogram support
 * upd: change [dockerhub organization](https://hub.docker.com/repository/docker/circonus/circonus-kubernetes-agent) circonuslabs->circonus
 
-# v0.11.5
+## v0.11.5
 
 * doc: update dynamic collector documentation
 * upd: centralize config parsing
-* upd: control setting, use label/annotation value as a boolean rather than comparisson
+* upd: control setting, use label/annotation value as a boolean rather than comparison
 * add: more logging on setting parse failures
 * add: node/pod status skip if not ready
 
-# v0.11.4
+## v0.11.4
 
 * add: dynamic collector filter to allow all dc metrics by default
 * add: only apply local filters if rule enabled
@@ -222,20 +226,20 @@
 * fix: rollup setting parsing
 * fix: filter and log NaNs
 
-# v0.11.3
+## v0.11.3
 
 * fix: default dynamic collector file extension .json->.yaml (must be yaml)
 
-# v0.11.2
+## v0.11.2
 
 * add: support annotation/label/value for dynamic collection rollup
 
-# v0.11.1
+## v0.11.1
 
 * add: rollup setting for dynamic collection
 * add: support annotation/label/value for schema
 
-# v0.11.0
+## v0.11.0
 
 * add: dynamic collectors - define objects (endpoints, nodes, pods, services) to collect metrics from in configuration CIRC-5871
 * upd: refactor ksm collection to be more intelligent w/re to port used (not all deployment methods name ports the same) CIRC-5890
@@ -245,38 +249,38 @@
 * upd: return error when no metrics received from ksm so it can be expose in dashboard
 * upd: add check for NaN values (skip) in metric processing
 * upd: emit warning when no metrics to submit, with number processed (e.g. locally filtered)
-* upd: use epoch for log timestamps (performace)
+* upd: use epoch for log timestamps (performance)
 * upd: refactor cli arg handling
 
-# v0.10.4
+## v0.10.4
 
 * add: additional logging for ksm collection/processing
 * upd: add field selector to ksm errors for service and endpoint queries
 * upd: example args (debug) to default deployment
 * upd: switching to main errors pkg and new error handling
-* upd: lastest lint release
+* upd: latest lint release
 
-# v0.10.3
+## v0.10.3
 
 * upd: alter default `network_unavailable` ruleset to help with spurious alerts CIRC-5849
 
-# v0.10.2
+## v0.10.2
 
 * upd: add on absence rule to all default rulesets in order to clear stale alerts
 * upd: remove previously created ruleset if configuration updated to disable a default ruleset
 
-# v0.10.1
+## v0.10.1
 
 * upd: send node conditions when status changes
 * upd: remove unused text metrics
-* add: usage millicores for res req/lim comparisson
+* add: usage millicores for res req/lim comparison
 * fix: need ':' when category only tag
 * upd: ensure sorted tag list
 * add: resource request/limit metric filters
 * add: hpa metric filters
 * upd: add rollup:false to events
 
-# v0.10.0
+## v0.10.0
 
 * doc: add observation deployment instructions
 * add: observation/sizing mode deployment manifests `deploy/observation`
@@ -296,13 +300,13 @@
 * add: `collect_k8s_node_count` metric
 * fix: whitespace
 
-# v0.9.10
+## v0.9.10
 
 * fix: separate ksm and agent metrics
 * upd: refactor submission stats
 * add: --log-agent-metrics for debugging
 
-# v0.9.9
+## v0.9.9
 
 * upd: refactor, common clientset func
 * add: k8s version metric `collect_k8s_ver`
@@ -310,37 +314,37 @@
 * upd: default k8s url host `kubernetes.default.svc`
 * fix: downgrade to go1.14
 
-# v0.9.8
+## v0.9.8
 
 * fix: revert back to `pod_status_ready` and `pod_status_scheduled`
 
-# v0.9.7
+## v0.9.7
 
 * add: `pod_status` text metric filter
 * upd: `pod_container_status` and `pod_status_phase` filters
 * fix: lint min tls ver
 * upd: go1.15
 
-# v0.9.6
+## v0.9.6
 
 * add: `pod_status_phase` metric filter
 * add: `pod_container_status` text metrics and metric filter
 
-# v0.9.5
+## v0.9.5
 
 * add: derived metrics to enhance dashboard performance
-* add: IncrementCounterByVvalue method
+* add: IncrementCounterByValue method
 * upd: force lowercase tag categories
 * upd: dependencies
 * upd: stub hpa endpoints
 * fix: binary name for updated goreleaser
 * upd: refactor dns annotation and explicit port use
 
-# v0.9.4
+## v0.9.4
 
 * add: kube-dns-metrics-port - used when scrape/port annotations are NOT defined on the kube-dns service (e.g. GKE)
 
-# v0.9.3
+## v0.9.3
 
 * fix: broker cn check both ip and external_host
 * upd: add debug line when using custom api ca  cert
@@ -348,7 +352,7 @@
 * upd: remove path validation from api url
 * upd: add `/v2` path to default api url
 
-# v0.9.2
+## v0.9.2
 
 * upd: explicit cases for prometheus metric types
 * add: golangci-lint action
@@ -356,18 +360,18 @@
 * upd: collect immediately then start intervals
 * add: dns collection state metric
 * fix: correct dns config option name
-* doc: update wiht dns configuration information
+* doc: update with dns configuration information
 * add: support `kubedns*` metrics if backing kube-dns service
 * add: initial event if event watching is enabled
 * add: support for broker's "filtered" back into  per submission stat
 * add: logging of result if broker returned an err msg
 
-# v0.9.1
+## v0.9.1
 
 * add: `lookup_key` to rule_sets
 * upd: dependencies (apiclient, cgm, toml, yaml, viper, zerolog)
 
-# v0.9.0
+## v0.9.0
 
 * upd: deployment configurations to v0.9.0
 * add: ksm request mode (direct or proxy)
@@ -377,7 +381,7 @@
 * add: default alerting and custom rules support
 * add: `_avg` for prom histograms (sum/count) for health dashboard dns metrics
 * add: config items for configmap json files (metric-filters.json, default-rules.json, custom-rules.json)
-* upd: default settings enable required collections for dashbaord
+* upd: default settings enable required collections for dashboard
 * upd: split deployment configurations into two: `deploy/default/` (simplified) and `deploy/custom/` full control
 * upd: dns metrics, use `pod` for tag
 * upd: metric filters
@@ -388,15 +392,15 @@
 * add: node cpu utilization for health dashboard
 * add: cluster name to check for tagging check, rules, contacts
 
-# v0.8.0
+## v0.8.0
 
 * add: kube-state-metrics field selector
 
-# v0.7.1
+## v0.7.1
 
 * add: contributed helm chart
 
-# v0.7.0
+## v0.7.0
 
 * NOTE: metrics-server option is deprecated
 * add: metric filter rules to configuration for dns, api errors, and api auth
@@ -406,12 +410,12 @@
 * upd: collect dns metrics from each kube-dns pod, default true, for new health dashboard - can be turned off in configuration
 * add: api-server metrics collection, default true, for new health dashboard - can be turned off in configuration
 
-# v0.6.6
+## v0.6.6
 
 * fix: force float64 for used percentages
 * upd: include `units:percent` for fs metric filters
 
-# v0.6.5
+## v0.6.5
 
 * add: update metric filters from configuration on every start. deployment configuration is definitive source for metric filters.
 * fix: add default tags to internal `collect_*` metrics
@@ -420,15 +424,15 @@
 * add: used percent for fs/volume metrics
 * add: `metrics.k8s.io` to rbac
 
-# v0.6.4
+## v0.6.4
 
-* add: support https for certain kube-state-metrics configurations. port names prefixed with `https-` will trigger apiserver proxy urls using `https:`.
+* add: support https for certain kube-state-metrics configurations. port names prefixed with `https-` will trigger api server proxy urls using `https:`.
 
-# v0.6.3
+## v0.6.3
 
 * add: make kube-state-metrics port names for metrics and telemetry configurable. Default from ['standard' service deployment](https://github.com/kubernetes/kube-state-metrics/blob/master/examples/standard/service.yaml). metrics=`http-metrics` and telemetry=`telemetry`.
 
-# v0.6.2
+## v0.6.2
 
 * add: optional, metric collection for kube-dns
 * upd: default check.target to cluster.name if target is unset
@@ -437,22 +441,22 @@
 * add: warn if telemetry port not found in ksm service definition
 * add: debug message for ksm urls being used
 
-# v0.6.1
+## v0.6.1
 
 * add: `__rollup:false` stream tag to remaining high cardinality metrics
 
-# v0.6.0
+## v0.6.0
 
 * Switch to `httptrap:kubernetes` check type. To preserve metric continuity - if
 an `httptrap:kubernetes` check is not found, the agent will search for an `httptrap`
 check and use that if found. Otherwise, it will create a new check using the new
 check with correct sub-type.
 
-# v0.5.8
+## v0.5.8
 
 * add: optional collection of cadvisor metrics from kubelet
 
-# v0.5.7
+## v0.5.7
 
 * add: option `--serial-submissions` to disable concurrent submissions
 * upd: default to concurrent submissions w/timestamp metrics
@@ -461,7 +465,7 @@ check with correct sub-type.
 * fix: ensure all metrics have timestamp, address drift on retries
 * fix: `/health` output
 
-# v0.5.6
+## v0.5.6
 
 * upd: sequential to use contextual logger for messages when submitting
 * add: use sequential for stream if not concurrent
@@ -472,38 +476,38 @@ check with correct sub-type.
 * upd: use config option for max metric bucket size
 * fix: remove redundant call parameter for promtext
 
-# v0.5.5
+## v0.5.5
 
 * upd: increase metric bucket size to 1000
 * fix: typo in metric name
 * upd: use `resultLogger` to identify source of submission errors/retries
 * add: set `collect_submit_retries` to 0 at start of each collection run
 
-# v0.5.4
+## v0.5.4
 
 * add: liveness probe support `/health`
 * upd: increase default pool size to 2
 * upd: resource request/limit example (commented out)
 * add: ksm service error collect metric
 
-# v0.5.3
+## v0.5.3
 
 * fix: `async_metrics` (queue/stream)
 * fix: drain streamed metrics in bucket
 * fix: use cluster ctx to honor signals
 
-# v0.5.2
+## v0.5.2
 
 * add: collect submit counters (success,fail,error)
 
-# v0.5.1
+## v0.5.1
 
 * upd: normalize collection metric tags for more clarity
 
-# v0.5.0
+## v0.5.0
 
 * add: logging on submit retries and non-200 responses
-* add: api request timelimit (default:10s)
+* add: api request time limit (default:10s)
 * add: `kube_pod_deleted` to metric filters
 * add: agent metric
 * add: api request error metrics
@@ -511,32 +515,32 @@ check with correct sub-type.
 * upd: failure message when cluster(s) can't be initialized resulting in 0 clusters
 * fix: ensure default tags used in queued metrics
 
-# v0.4.5
+## v0.4.5
 
 * fix: handle empty tag lists better, e.g. events with no tags
 * doc: elaborate on need for settings to be uncommented in both configuration and deployment
 * fix: remove `available` memory metric for pods and containers since it is not provided
 
-# v0.4.4
+## v0.4.4
 
 * fix: typo in network errors rule
 
-# v0.4.3
+## v0.4.3
 
 * upd: metric filter rule to include storage `capacity` for pod volumes
 * add: per-interface network metrics
 * add: node `capacity_ephemeral_storage` metric
 
-# v0.4.2
+## v0.4.2
 
-* add: node capacity metrtics: `capacity_cpu`, `capacity_memory`, and `capacity_pods`
+* add: node capacity metrics: `capacity_cpu`, `capacity_memory`, and `capacity_pods`
 
-# v0.4.1
+## v0.4.1
 
 * add: `collect_interval` metric
 * add: `default_streamtags` option to apply a set of tags to _all_ metrics
 
-# v0.4.0
+## v0.4.0
 
 * upd: implement check `metric_filters` to collect only metrics in dashboard
 * add: chunk large arbitrary metric collectors (ksm and ms)
@@ -544,22 +548,22 @@ check with correct sub-type.
 * add: collection metrics - agent memory and goroutine metrics
 * upd: dependencies
 
-# v0.3.1
+## v0.3.1
 
 * add: collection summary metrics (sent,accept,filter,bytes,duration)
 
-# v0.3.0
+## v0.3.0
 
 * add: `--no-base64` switch to disable for test/debug (base64 stream tags)
 * add: `--no-gzip` switch to disable for test/debug (gzip trap submissions)
 * upd: switch to using gzip compression for trap submissions as default
 * fix: stream tag quote escaping in printf
 
-# v0.2.0
+## v0.2.0
 
 * add: abridged events
 * add: pod filtering by label key/val
 
-# v0.1.0
+## v0.1.0
 
 * initial preview release
