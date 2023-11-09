@@ -2,7 +2,16 @@
 
 ## v0.19.0
 
+* fix: binary location for copy (docker)
 * fix: changelog typos and h1>h2
+* build(deps): bump github.com/spf13/cobra from 1.6.1 to 1.8.0
+* build(deps): bump github.com/circonus-labs/circonus-gometrics/v3 from 3.4.6 to 3.4.7
+* build(deps): bump github.com/spf13/viper from 1.15.0 to 1.17.0
+* fix: vulnerability golang.org/x/net to v0.17.0
+* build(deps): bump github.com/rs/zerolog from 1.29.0 to 1.31.0
+* fix(cv1): more implicit memory usage in loop
+* fix(cv1): implicit memory access
+* build(deps): bump go.uber.org/automaxprocs from 1.5.2 to 1.5.3
 
 ## v0.18.0
 
