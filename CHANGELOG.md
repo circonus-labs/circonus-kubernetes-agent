@@ -2,6 +2,7 @@
 
 ## v0.19.0
 
+* chore(goreleaser): remove archives.rlcp -- deprecated
 * fix: binary location for copy (docker)
 * fix: changelog typos and h1>h2
 * build(deps): bump github.com/spf13/cobra from 1.6.1 to 1.8.0
