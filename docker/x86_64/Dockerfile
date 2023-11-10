@@ -1,3 +1,3 @@
 FROM gcr.io/distroless/static
-COPY circonus-kubernetes-agentd /
+COPY sbin/circonus-kubernetes-agentd /
 ENTRYPOINT ["/circonus-kubernetes-agentd"]
