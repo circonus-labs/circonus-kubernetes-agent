@@ -1,5 +1,13 @@
 project_name: circonus-kubernetes-agent
 
+before:
+  hooks:
+    - go mod tidy
+    - cmd: golangci-lint run
+      env:
+        - GOOS=linux
+    - govulncheck ./...
+
 builds: 
   - id: cka
     main: main.go
@@ -14,6 +22,8 @@ builds:
     ignore: 
       - 
         goarch: 386
+    flags:
+      - -trimpath
     ldflags: 
       - -s
       - -w
