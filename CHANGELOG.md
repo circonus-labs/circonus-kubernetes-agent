@@ -1,5 +1,11 @@
 # **unreleased**
 
+## v0.19.1
+
+* build: add after hook for `grype` on generated sboms
+* build: add .sbom for archive artifacts
+* build: add before hooks for `go mod tidy`, `govulncheck` and `golangci-lint`
+
 ## v0.19.0
 
 * chore(goreleaser): remove archives.rlcp -- deprecated
