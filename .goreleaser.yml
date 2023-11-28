@@ -1,5 +1,13 @@
 project_name: circonus-kubernetes-agent
 
+before:
+  hooks:
+    - go mod tidy
+    - cmd: golangci-lint run
+      env:
+        - GOOS=linux
+    - govulncheck ./...
+
 builds: 
   - id: cka
     main: main.go
@@ -14,6 +22,8 @@ builds:
     ignore: 
       - 
         goarch: 386
+    flags:
+      - -trimpath
     ldflags: 
       - -s
       - -w
@@ -95,3 +105,15 @@ release:
 
 checksum: 
   name_template: "{{.ProjectName}}_checksums.txt"
+
+sboms:
+  - artifacts: archive
+    args: ["$artifact", "--output", "cyclonedx-json@1.5=$document"]
+    env:
+      - SYFT_GOLANG_SEARCH_LOCAL_MOD_CACHE_LICENSES=true
+      - SYFT_GOLANG_SEARCH_REMOTE_LICENSES=true
+
+after:
+  hooks:
+    - cmd: bash -c 'for b in *.sbom; do grype -q --add-cpes-if-none $b; done'
+      dir: ./dist
