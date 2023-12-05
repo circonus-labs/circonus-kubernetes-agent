@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+version: 1
+
+project_name: go-apiclient
+
+before:
+  hooks:
+    - go mod tidy
+    - golangci-lint run
+    - cmd: golangci-lint run
+      env:
+        - GOOS=linux
+    - govulncheck ./...
+
+builds:
+  - skip: true
+
+release:
+  github:
+    owner: circonus-labs
+    name: go-apiclient
+
+  draft: false
+  prerelease: auto
+
+changelog:
+  use: git
+  sort: desc
+  abbrev: 0
+  groups:
+    - title: Features
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: 'Bug fixes'
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: 'Dependencies'
+      regexp: "^.*build(deps):+.*$"
+      order: 2
+    - title: Others
+      order: 999
+  filters:
+    exclude:
+      - '^docs:'
+      - typo
+
+checksum:
+    name_template: "{{.ProjectName}}_checksums.txt"
+
+sboms:
+  - artifacts: any
+    args: ["../go.mod", "--output", "cyclonedx-json@1.5={{.ProjectName}}_{{.Version}}.sbom"]
+    env:
+      - SYFT_GOLANG_SEARCH_LOCAL_MOD_CACHE_LICENSES=true
+      - SYFT_GOLANG_SEARCH_REMOTE_LICENSES=true
+

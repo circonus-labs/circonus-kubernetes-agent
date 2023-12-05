@@ -1,9 +1,25 @@
+# MacOS
 .DS_Store
-env.sh
-NOTES.md
 
-.vscode/
+# Vagrant
+.vagrant*/
 
-vendor/
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
 
-examples/go.*
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# vendored packages
+vendor*/
+
+# goreleaser
+dist/
+
+.envrc
