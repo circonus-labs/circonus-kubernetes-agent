@@ -22,8 +22,8 @@ func TestValidate(t *testing.T) {
 	t.Log("no config")
 	{
 		err := Validate()
-		if err != nil {
-			t.Fatalf("Expected NO error, got (%s)", err)
+		if err == nil {
+			t.Fatal("expected error")
 		}
 	}
 }
