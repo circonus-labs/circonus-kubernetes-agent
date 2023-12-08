@@ -17,7 +17,7 @@ require (
 	github.com/prometheus/common v0.37.0
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.8.0
-	github.com/spf13/viper v1.18.0
+	github.com/spf13/viper v1.18.1
 	go.uber.org/automaxprocs v1.5.3
 	golang.org/x/sync v0.5.0
 	golang.org/x/sys v0.15.0
