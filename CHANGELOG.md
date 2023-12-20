@@ -1,5 +1,17 @@
 # **unreleased**
 
+## v0.19.2
+
+* build(deps): bump github.com/spf13/viper from 1.18.1 to 1.18.2
+* build(deps): bump github/codeql-action from 2 to 3
+* build(deps): bump github.com/spf13/viper from 1.18.0 to 1.18.1
+* build(deps): bump github.com/spf13/viper from 1.17.0 to 1.18.0
+* chore: remove codeql workflow as nobody uses it
+* fix: config test with no config, should get error
+* build(deps): bump github.com/circonus-labs/go-apiclient from 0.7.23 to 0.7.24
+* build: add changelog config
+* build: skip go in lint workflow
+
 ## v0.19.1
 
 * build: add after hook for `grype` on generated sboms
