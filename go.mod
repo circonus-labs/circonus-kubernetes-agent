@@ -1,6 +1,6 @@
 module github.com/circonus-labs/circonus-kubernetes-agent
 
-go 1.17
+go 1.21
 
 require (
 	code.cloudfoundry.org/bytefmt v0.0.0-20211005130812-5bb3c17173e5
