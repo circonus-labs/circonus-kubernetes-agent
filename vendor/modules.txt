@@ -160,7 +160,7 @@ github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
 github.com/prometheus/common/model
 # github.com/rogpeppe/go-internal v1.10.0
 ## explicit; go 1.19
-# github.com/rs/zerolog v1.31.0
+# github.com/rs/zerolog v1.32.0
 ## explicit; go 1.15
 github.com/rs/zerolog
 github.com/rs/zerolog/internal/cbor
